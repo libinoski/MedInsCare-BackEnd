@@ -103,5 +103,21 @@ Hospital.login = (email, password, result) => {
 };
 
 
+  //Hospital View Profile
+  Hospital.getProfile = (hospitalId, result) => {
+    const query = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    db.query(query, [hospitalId], (err, res) => {
+        if (err) {
+            return result(err, null);
+        }
+
+        if (res.length === 0) {
+            return result("Hospital not found", null);
+        }
+
+        return result(null, res[0]);
+    });
+};
+
 
 module.exports = Hospital;

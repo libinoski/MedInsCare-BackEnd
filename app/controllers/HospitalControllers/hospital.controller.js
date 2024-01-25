@@ -147,4 +147,47 @@ exports.hospitalLogin = (req, res) => {
     });
   };
   
-  
+
+
+// Hospital View Profile
+exports.getHospitalProfile = (req, res) => {
+    const { hospitalId } = req.body;
+
+    if (!hospitalId) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Hospital ID is required in the request body',
+        });
+    }
+
+    jwt.verify(req.headers.token, 'micadmin', (err, decoded) => {
+        if (err) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Invalid token',
+            });
+        }
+
+        if (decoded.hospitalId != hospitalId) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Unauthorized access to the hospital profile',
+            });
+        }
+
+        Hospital.getProfile(hospitalId, (error, result) => {
+            if (error) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: error,
+                });
+            }
+
+            return res.status(200).json({
+                status: 'success',
+                data: result,
+            });
+        });
+    });
+};
+
