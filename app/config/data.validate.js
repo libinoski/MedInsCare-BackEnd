@@ -2,6 +2,7 @@
 
 const path = require('path');
 
+// Check if a value is null or undefined
 function isNullOrUndefined(value) {
     return value === null || value === undefined;
 }
@@ -9,11 +10,12 @@ function isNullOrUndefined(value) {
 const ID_REGEX = /^[0-9]+$/;
 const INVALID_ID_MESSAGE = `Must be a valid numeric ID.`;
 
+// Validate if a value is empty
 function isEmpty(value, fieldName) {
-    if (!value || value.trim() === "") {
+    if (isNullOrUndefined(value) || value.trim() === "") {
         return {
             isValid: false,
-            message: `Field cannot be empty`
+            message: `Field cannot be empty. Warning: This field is required.`
         };
     }
     return {
@@ -21,11 +23,12 @@ function isEmpty(value, fieldName) {
     };
 }
 
+// Validate if an ID is valid
 function isValidId(id, idName) {
-    if (isNullOrUndefined(id)) {
+    if (isNullOrUndefined(id) || id.trim() === "") {
         return {
             isValid: false,
-            message: `ID can't be empty`
+            message: `ID can't be empty. Warning: This field is required.`
         };
     }
 
@@ -43,10 +46,12 @@ function isValidId(id, idName) {
     };
 }
 
+// Validate if a phone number is valid
 function isValidPhoneNumber(phoneNumber) {
     if (isNullOrUndefined(phoneNumber)) {
         return {
             isValid: true,
+            message: `Warning: Phone number is not provided.`
         };
     }
 
@@ -56,11 +61,12 @@ function isValidPhoneNumber(phoneNumber) {
     };
 }
 
+// Validate image with a 1 MB size constraint
 function isValidImageWith1MBConstraint(file) {
-    if (!file) {
+    if (isNullOrUndefined(file)) {
         return {
             isValid: false,
-            message: 'File is required'
+            message: 'File is required. Warning: Please upload a file.'
         };
     }
 
@@ -72,17 +78,17 @@ function isValidImageWith1MBConstraint(file) {
     if (!extensionIsValid && !sizeIsValid) {
         return {
             isValid: false,
-            message: 'Invalid file format and size exceeds the limit of 1 MB.'
+            message: 'Invalid file format and size exceeds the limit of 1 MB. Warning: Please upload a valid file within 1 MB size limit.'
         };
     } else if (!extensionIsValid) {
         return {
             isValid: false,
-            message: 'Invalid file format. Only JPG, JPEG, PNG, WEBP, and HEIF files are allowed.'
+            message: 'Invalid file format. Only JPG, JPEG, PNG, WEBP, and HEIF files are allowed. Warning: Please upload a valid file.'
         };
     } else if (!sizeIsValid) {
         return {
             isValid: false,
-            message: 'File size exceeds the limit of 1 MB.'
+            message: 'File size exceeds the limit of 1 MB. Warning: Please upload a file within 1 MB size limit.'
         };
     }
 
@@ -92,22 +98,39 @@ function isValidImageWith1MBConstraint(file) {
     };
 }
 
+// Validate a mobile number
 function isValidMobileNumber(mobileNumber) {
+    if (isNullOrUndefined(mobileNumber) || mobileNumber.trim() === "") {
+        return {
+            isValid: false,
+            message: "Mobile Number cannot be empty"
+        };
+    }
+
     return {
         isValid: /^\+91[6-9]\d{9}$|^\+91\s?[6-9]\d{9}$|^[6-9]\d{9}$/.test(mobileNumber),
         message: "Invalid Mobile Number"
     };
 }
 
+// Validate an amount
 function isValidAmount(amount) {
+    if (isNullOrUndefined(amount) || amount.trim() === "") {
+        return {
+            isValid: false,
+            message: "Amount cannot be empty"
+        };
+    }
+
     return {
         isValid: amount > 0,
         message: "Value must be greater than zero"
     };
 }
 
+// Validate an address
 function isValidAddress(address) {
-    if (!address || address.trim() === "") {
+    if (isNullOrUndefined(address) || address.trim() === "") {
         return {
             isValid: false,
             message: "Address cannot be empty"
@@ -120,11 +143,12 @@ function isValidAddress(address) {
     };
 }
 
+// Validate a website
 function isValidWebsite(website) {
-    if (isNullOrUndefined(website)) {
+    if (isNullOrUndefined(website) || website.trim() === "") {
         return {
             isValid: false,
-            message: "Website is empty or null."
+            message: "Website is empty or null. Warning: This field is required."
         };
     }
 
@@ -136,22 +160,27 @@ function isValidWebsite(website) {
     };
 }
 
-
+// Validate an email address
 function isValidEmail(email) {
+    if (isNullOrUndefined(email) || email.trim() === "") {
+        return {
+            isValid: false,
+            message: "Email cannot be empty. Warning: This field is required."
+        };
+    }
+
     return {
         isValid: /^[a-z0-9._!#$%&'*+/=?^_`{|}~-]+@[a-z]+(\.[a-z]+)+$/.test(email),
-        message: "Email cannot be empty or Invalid Email! "
+        message: "Invalid Email! "
     };
 }
 
-
-
-
+// Validate a password
 function isValidPassword(password) {
-    if (!password) {
+    if (isNullOrUndefined(password) || password.trim() === "") {
         return {
             isValid: false,
-            message: ["Password can't be empty."]
+            message: ["Password can't be empty. Warning: This field is required."]
         };
     }
 
@@ -189,28 +218,45 @@ function isValidPassword(password) {
     };
 }
 
-
-
-
-
-
-
-
+// Validate a name
 function isValidName(name) {
+    if (isNullOrUndefined(name) || name.trim() === "") {
+        return {
+            isValid: false,
+            message: "Name cannot be empty. Warning: This field is required."
+        };
+    }
+
     return {
         isValid: /^[a-zA-Z\s]*$/.test(name),
         message: "Name must contain only alphabets"
     };
 }
 
+// Validate a date
 function isValidDate(date) {
+    if (isNullOrUndefined(date) || date.trim() === "") {
+        return {
+            isValid: false,
+            message: "Date cannot be empty. Warning: This field is required."
+        };
+    }
+
     return {
         isValid: /^([0-2][0-9]|3[0-1])\/(0[1-9]|1[0-2])\/\d{4}$/.test(date),
         message: "Date must be in the format DD/MM/YYYY"
     };
 }
 
+// Validate if a date is greater than today
 function isDateGreaterThanToday(date) {
+    if (isNullOrUndefined(date) || date.trim() === "") {
+        return {
+            isValid: false,
+            message: "Date cannot be empty. Warning: This field is required."
+        };
+    }
+
     const inputDate = new Date(date.split('/').reverse().join('-'));
     const currentDate = new Date();
 
@@ -220,21 +266,45 @@ function isDateGreaterThanToday(date) {
     };
 }
 
+// Validate a time
 function isValidTime(time) {
+    if (isNullOrUndefined(time) || time.trim() === "") {
+        return {
+            isValid: false,
+            message: "Time cannot be empty. Warning: This field is required."
+        };
+    }
+
     return {
         isValid: /^\d{2}:\d{2}:\d{2}$/.test(time),
         message: "Time must be in the format HH:MM:SS"
     };
 }
 
+// Validate an Aadhar number
 function isValidAadharNumber(aadharNumber) {
+    if (isNullOrUndefined(aadharNumber) || aadharNumber.trim() === "") {
+        return {
+            isValid: false,
+            message: "Aadhar Number cannot be empty. Warning: This field is required."
+        };
+    }
+
     return {
         isValid: /^\d{12}$/.test(aadharNumber),
-        message: "Aadhar Number cannot be empty and must be of 12 digits"
+        message: "Aadhar Number must be of 12 digits"
     };
 }
 
+// Validate a file
 function isValidFile(file) {
+    if (isNullOrUndefined(file)) {
+        return {
+            isValid: false,
+            message: 'File is required. Warning: Please upload a file.'
+        };
+    }
+
     const allowedExtensions = /\.(pdf|docx)$/;
     const extensionIsValid = allowedExtensions.test(path.extname(file.filename.replace(/[^\w\-.]/g, '')).toLowerCase());
     const maxFileSize = 2 * 1024 * 1024;
@@ -243,17 +313,17 @@ function isValidFile(file) {
     if (!extensionIsValid && !sizeIsValid) {
         return {
             isValid: false,
-            message: 'Invalid file format and size exceeds the limit of 2 MB.'
+            message: 'Invalid file format and size exceeds the limit of 2 MB. Warning: Please upload a valid file within 2 MB size limit.'
         };
     } else if (!extensionIsValid) {
         return {
             isValid: false,
-            message: 'Invalid file format. Only PDF and DOCX files are allowed.'
+            message: 'Invalid file format. Only PDF and DOCX files are allowed. Warning: Please upload a valid file.'
         };
     } else if (!sizeIsValid) {
         return {
             isValid: false,
-            message: 'File size exceeds the limit of 2 MB.'
+            message: 'File size exceeds the limit of 2 MB. Warning: Please upload a file within 2 MB size limit.'
         };
     }
 
@@ -263,7 +333,15 @@ function isValidFile(file) {
     };
 }
 
+// Check if one date is greater than or equal to another date after one year
 function isDate1GreaterThanDate2(date1, date2) {
+    if (isNullOrUndefined(date1) || date1.trim() === "" || isNullOrUndefined(date2) || date2.trim() === "") {
+        return {
+            isValid: false,
+            message: "Both dates are required. Warning: Please provide both dates."
+        };
+    }
+
     const [day1, month1, year1] = date1.split('/').map(Number);
     const inputDate1 = new Date(year1, month1 - 1, day1);
 
@@ -279,6 +357,7 @@ function isDate1GreaterThanDate2(date1, date2) {
     };
 }
 
+// Validate Aadhar number for update
 function isValidAadharNumberUpdate(aadharNumber) {
     if (isNullOrUndefined(aadharNumber)) {
         return {
@@ -291,13 +370,22 @@ function isValidAadharNumberUpdate(aadharNumber) {
     };
 }
 
+// Accept only capital letters
 function acceptOnlyCapitalLetters(value) {
+    if (isNullOrUndefined(value) || value.trim() === "") {
+        return {
+            isValid: false,
+            message: "Code cannot be empty. Warning: This field is required."
+        };
+    }
+
     return {
         isValid: /^[A-Z]*$/.test(value),
         message: "Invalid Code. It must contain only CAPITAL letters."
     };
 }
 
+// Export all validation functions
 module.exports = {
     isEmpty,
     isValidId,
