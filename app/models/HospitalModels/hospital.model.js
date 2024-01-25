@@ -120,4 +120,52 @@ Hospital.login = (email, password, result) => {
 };
 
 
+
+// Hospital edit profile
+Hospital.editProfile = (updatedHospital, result) => {
+    db.query("SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1", [updatedHospital.hospitalId], (selectErr, selectRes) => {
+        if (selectErr) {
+            console.log("Error Checking Hospital: ", selectErr);
+            result(selectErr, null);
+            return;
+        } else {
+            if (selectRes.length === 0) {
+                console.log("Hospital Not Found");
+                result("Hospital Not Found", null);
+                return;
+            } else {
+                db.query("SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND hospitalId != ? AND deleteStatus = 0 AND isActive = 1", [updatedHospital.hospitalAadhar, updatedHospital.hospitalId], (aadharErr, aadharRes) => {
+                    if (aadharErr) {
+                        console.log("Error Checking Aadhar: ", aadharErr);
+                        result(aadharErr, null);
+                        return;
+                    } else {
+                        if (aadharRes.length > 0) {
+                            console.log("Aadhar Number Already Exists.");
+                            result("Aadhar Number Already Exists.", null);
+                            return;
+                        } else {
+                            db.query("UPDATE Hospitals SET hospitalName = ?, hospitalAadhar = ?, hospitalMobile = ?, hospitalAddress = ?, hospitalWebSite = ?, hospitalImage = ?, updateStatus = 1, updatedDate = CURRENT_DATE() WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1",
+                                [updatedHospital.hospitalName, updatedHospital.hospitalAadhar, updatedHospital.hospitalMobile, updatedHospital.hospitalAddress, updatedHospital.hospitalWebSite, updatedHospital.hospitalImage, updatedHospital.hospitalId],
+                                (updateErr, updateRes) => {
+                                    if (updateErr) {
+                                        console.log("Error Updating Hospital Details: ", updateErr);
+                                        result(updateErr, null);
+                                        return;
+                                    }
+                                    console.log("Updated Hospitals Details: ", { id: updatedHospital.hospitalId, ...updatedHospital });
+                                    result(null, { id: updatedHospital.hospitalId, ...updatedHospital });
+                                });
+                        }
+                    }
+                });
+            }
+        }
+    });
+};
+
+
+
+
+
 module.exports = Hospital;

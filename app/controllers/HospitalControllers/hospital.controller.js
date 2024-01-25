@@ -191,3 +191,87 @@ exports.getHospitalProfile = (req, res) => {
     });
 };
 
+
+
+// Hospital edit profile
+exports.hospitalEditProfile = (req, res) => {
+    const updateProfileToken = req.headers.token;
+    if (!updateProfileToken) {
+      return res.status(401).json({ "status": "Token missing" });
+    }
+  
+    jwt.verify(updateProfileToken, "micadmin", (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ "status": "Invalid token" });
+      }
+  
+      const uploadSingle = upload.single('hospitalImage');
+      uploadSingle(req, res, async (err) => {
+        if (err) {
+          return res.status(500).json({ "status": err.message });
+        }
+        if (!req.file) {
+          return res.status(400).json({ "status": "No file uploaded" });
+        }
+  
+        const {
+          hospitalId,
+          hospitalName,
+          hospitalAadhar,
+          hospitalMobile,
+          hospitalAddress,
+          hospitalWebSite,
+        } = req.body;
+  
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: 'error',
+            message: 'Unauthorized access to edit the hospital profile',
+          });
+        }
+  
+        const validationErrors = {};
+  
+        if (!Validator.isValidId(hospitalId).isValid) validationErrors.hospitalId = Validator.isValidId(hospitalId).message;
+        if (!Validator.isValidName(hospitalName).isValid) validationErrors.hospitalName = Validator.isValidName(hospitalName).message;
+        if (!Validator.isValidAadharNumber(hospitalAadhar).isValid) validationErrors.hospitalAadhar = Validator.isValidAadharNumber(hospitalAadhar).message;
+        if (!Validator.isValidMobileNumber(hospitalMobile).isValid) validationErrors.hospitalMobile = Validator.isValidMobileNumber(hospitalMobile).message;
+        if (!Validator.isValidAddress(hospitalAddress).isValid) validationErrors.hospitalAddress = Validator.isValidAddress(hospitalAddress).message;
+        if (!Validator.isValidWebsite(hospitalWebSite).isValid) validationErrors.hospitalWebSite = Validator.isValidWebsite(hospitalWebSite).message;
+  
+        const hospitalImageValidation = Validator.isValidImageWith1MBConstraint(req.file);
+        if (!hospitalImageValidation.isValid) {
+          validationErrors.hospitalImage = hospitalImageValidation.message;
+        }
+  
+        if (Object.keys(validationErrors).length > 0) {
+          return res.status(400).json({ "status": "Validation failed", "data": validationErrors });
+        }
+  
+        const updatedHospital = {
+          hospitalId: hospitalId,
+          hospitalName: hospitalName,
+          hospitalAadhar: hospitalAadhar,
+          hospitalMobile: hospitalMobile,
+          hospitalAddress: hospitalAddress,
+          hospitalWebSite: hospitalWebSite,
+          hospitalImage: req.file.filename,
+        };
+  
+        Hospital.editProfile(updatedHospital, (err, data) => {
+          if (err) {
+            if (err === "Hospital Not Found" || err === "Aadhar Number Already Exists.") {
+              return res.status(404).json({ "status": err });
+            } else {
+              return res.status(500).json({ "status": 'Failed to edit hospital profile', "error": err });
+            }
+          } else {
+            return res.status(200).json({ "status": "success", "data": data });
+          }
+        });
+      });
+    });
+  };
+  
+  
+  
