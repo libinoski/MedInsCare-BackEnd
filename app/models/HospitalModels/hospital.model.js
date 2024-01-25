@@ -1,7 +1,8 @@
 // hospital.model.js
-
 const bcrypt = require('bcrypt');
 const db = require('../db');
+
+
 
 const Hospital = function (hospital) {
     this.hospitalId = hospital.hospitalId;
@@ -20,6 +21,8 @@ const Hospital = function (hospital) {
     this.passwordUpdatedStatus = hospital.passwordUpdatedStatus;
     this.updatedDate = hospital.updatedDate;
 };
+
+
 
 // Hospital Registration
 Hospital.register = (newHospital, result) => {
@@ -60,6 +63,41 @@ Hospital.register = (newHospital, result) => {
                     return result(null, { id: insertRes.insertId, ...newHospital });
                 });
             });
+        });
+    });
+};
+
+
+
+// Hospital login
+Hospital.login = (email, password, result) => {
+    const query = "SELECT * FROM Hospitals WHERE BINARY hospitalEmail = ?";
+    db.query(query, [email], (err, res) => {
+        if (err) {
+            return result(err, null);
+        }
+
+        if (res.length === 0) {
+            return result("Hospital not found", null);
+        }
+
+        const hospital = res[0];
+
+        // Check if the hospital is active and not deleted
+        if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
+            return result("Hospital is not active or has been deleted", null);
+        }
+
+        bcrypt.compare(password, hospital.hospitalPassword, (compareErr, isMatch) => {
+            if (compareErr) {
+                return result(compareErr, null);
+            }
+
+            if (!isMatch) {
+                return result("Invalid password", null);
+            }
+
+            return result(null, hospital);
         });
     });
 };
