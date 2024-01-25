@@ -1,10 +1,11 @@
 // hospital.controller.js
-
 const multer = require('multer');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const Hospital = require('../../models/HospitalModels/hospital.model');
 const Validator = require('../../config/data.validate');
 const bcrypt = require('bcrypt');
+
 
 
 // Multer configuration
@@ -20,6 +21,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 const uploadMiddleware = upload.single('hospitalImage');
+
 
 
 // Hospital Registration
@@ -63,7 +65,6 @@ exports.hospitalRegister = async (req, res) => {
             }
 
             try {
-                const hashedPassword = await bcrypt.hash(req.body.hospitalPassword, 10);
 
                 const newHospital = new Hospital({
                     hospitalName: req.body.hospitalName,
@@ -73,7 +74,7 @@ exports.hospitalRegister = async (req, res) => {
                     hospitalMobile: req.body.hospitalMobile,
                     hospitalAddress: req.body.hospitalAddress,
                     hospitalImage: req.file.filename,
-                    hospitalPassword: hashedPassword,
+                    hospitalPassword: req.body.hospitalPassword,
                     registeredDate: new Date(),
                     isActive: 1,
                     deleteStatus: 0,
@@ -119,3 +120,31 @@ exports.hospitalRegister = async (req, res) => {
         });
     }
 };
+
+
+
+//Hospital Login
+exports.hospitalLogin = (req, res) => {
+    const { hospitalEmail, hospitalPassword } = req.body;
+          const emailValidation = Validator.isValidEmail(hospitalEmail);
+          const passwordValidation = Validator.isValidPassword(hospitalPassword);
+  
+          const validationErrors = {};
+          if (!emailValidation.isValid) validationErrors.hospitalEmail = emailValidation.message;
+          if (!passwordValidation.isValid) validationErrors.hospitalPassword = passwordValidation.message;
+
+    Hospital.login(hospitalEmail, hospitalPassword, (err, hospital) => {
+      if (err) {
+        return res.status(401).json({ status: 'Login failed', data: err });
+      }
+      const token = jwt.sign(
+        { hospitalId: hospital.hospitalId, hospitalEmail: hospital.hospitalEmail },
+        'micadmin', //secret key
+        { expiresIn: '1h' }
+      );
+  
+      return res.status(200).json({ status: 'Login successful', data: { token, hospital } });
+    });
+  };
+  
+  
