@@ -21,9 +21,7 @@ const Hospital = function (hospital) {
     this.updatedDate = hospital.updatedDate;
 };
 
-// Hospital register:
-// Hospital register:
-// Hospital register:
+// Hospital Registration
 Hospital.register = (newHospital, result) => {
     const checkEmailQuery = "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
     const checkAadharQuery = "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND deleteStatus=0 AND isActive=1";

@@ -6,6 +6,7 @@ const Hospital = require('../../models/HospitalModels/hospital.model');
 const Validator = require('../../config/data.validate');
 const bcrypt = require('bcrypt');
 
+
 // Multer configuration
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -19,7 +20,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 const uploadMiddleware = upload.single('hospitalImage');
-
 
 
 // Hospital Registration
