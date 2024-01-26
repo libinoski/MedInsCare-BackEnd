@@ -231,107 +231,67 @@ exports.getHospitalProfile = (req, res) => {
 exports.hospitalEditProfile = (req, res) => {
   const updateProfileToken = req.headers.token;
   if (!updateProfileToken) {
-    return res.status(401).json({ "status": "Token missing" });
+    return res.status(401).json({ status: "Token missing" });
   }
 
   jwt.verify(updateProfileToken, "micadmin", (err, decoded) => {
     if (err) {
-      return res.status(401).json({ "status": "Invalid token" });
+      return res.status(401).json({ status: "Invalid token" });
     }
 
-    const hospitalImageStorage = multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, 'Files/HospitalImages');
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-      }
-    });
+    const {
+      hospitalId,
+      hospitalName,
+      hospitalAadhar,
+      hospitalMobile,
+      hospitalAddress,
+      hospitalWebSite
+    } = req.body;
 
-    const hospitalImageUpload = multer({ storage: hospitalImageStorage }).single('hospitalImage');
-
-    hospitalImageUpload(req, res, async function (uploadError) {
-      if (uploadError && req.file) {
-        const imagePath = req.file.path;
-        fs.unlinkSync(imagePath);
-
-        return res.status(500).json({ "status": uploadError.message });
-      }
-
-      const {
-        hospitalId,
-        hospitalName,
-        hospitalAadhar,
-        hospitalMobile,
-        hospitalAddress,
-        hospitalWebSite,
-      } = req.body;
-
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Unauthorized access to edit the hospital profile',
-        });
-      }
-      const validationErrors = {};
-
-      const hospitalNameValidation = Validator.isValidName(hospitalName);
-      const hospitalAadharValidation = Validator.isValidAadharNumber(hospitalAadhar);
-      const hospitalMobileValidation = Validator.isValidMobileNumber(hospitalMobile);
-      const hospitalAddressValidation = Validator.isValidAddress(hospitalAddress);
-      const hospitalWebSiteValidation = Validator.isValidWebsite(hospitalWebSite);
-
-      if (!hospitalNameValidation.isValid) validationErrors.hospitalName = hospitalNameValidation.message;
-      if (!hospitalAadharValidation.isValid) validationErrors.hospitalAadhar = hospitalAadharValidation.message;
-      if (!hospitalMobileValidation.isValid) validationErrors.hospitalMobile = hospitalMobileValidation.message;
-      if (!hospitalAddressValidation.isValid) validationErrors.hospitalAddress = hospitalAddressValidation.message;
-      if (!hospitalWebSiteValidation.isValid) validationErrors.hospitalWebSite = hospitalWebSiteValidation.message;
-
-      const hospitalImageValidation = Validator.isValidImageWith1MBConstraint(req.file);
-      if (hospitalImageValidation.isValid) {
-        validationErrors.hospitalImage = hospitalImageValidation.message;
-      }
-
-      if (Object.keys(validationErrors).length > 0) {
-        if (req.file) {
-          const imagePath = req.file.path;
-          fs.unlinkSync(imagePath);
-        }
-
-        return res.status(400).json({ "status": "Validation failed", "data": validationErrors });
-      }
-
-      const updatedHospital = {
-        hospitalId,
-        hospitalName,
-        hospitalAadhar,
-        hospitalMobile,
-        hospitalAddress,
-        hospitalWebSite,
-      };
-
-      if (req.file) {
-        updatedHospital.hospitalImage = req.file.filename;
-      }
-
-      Hospital.editProfile(updatedHospital, (err, data) => {
-        if (err) {
-          if (req.file) {
-            const imagePath = req.file.path;
-            fs.unlinkSync(imagePath);
-          }
-
-          if (err === "Hospital Not Found" || err === "Aadhar Number Already Exists.") {
-            return res.status(404).json({ "status": err });
-          } else {
-            return res.status(500).json({ "status": 'Failed to edit hospital profile', "error": err });
-          }
-        } else {
-          return res.status(200).json({ "status": "success", "data": data });
-        }
+    if (decoded.hospitalId != hospitalId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Unauthorized access to edit the hospital profile',
       });
+    }
+
+    const validationErrors = {};
+
+    const hospitalNameValidation = Validator.isValidName(hospitalName);
+    const hospitalAadharValidation = Validator.isValidAadharNumber(hospitalAadhar);
+    const hospitalMobileValidation = Validator.isValidMobileNumber(hospitalMobile);
+    const hospitalAddressValidation = Validator.isValidAddress(hospitalAddress);
+    const hospitalWebSiteValidation = Validator.isValidWebsite(hospitalWebSite);
+
+    if (!hospitalNameValidation.isValid) validationErrors.hospitalName = hospitalNameValidation.message;
+    if (!hospitalAadharValidation.isValid) validationErrors.hospitalAadhar = hospitalAadharValidation.message;
+    if (!hospitalMobileValidation.isValid) validationErrors.hospitalMobile = hospitalMobileValidation.message;
+    if (!hospitalAddressValidation.isValid) validationErrors.hospitalAddress = hospitalAddressValidation.message;
+    if (!hospitalWebSiteValidation.isValid) validationErrors.hospitalWebSite = hospitalWebSiteValidation.message;
+
+    if (Object.keys(validationErrors).length > 0) {
+      return res.status(400).json({ status: "Validation failed", data: validationErrors });
+    }
+
+    const updatedHospital = {
+      hospitalId,
+      hospitalName,
+      hospitalAadhar,
+      hospitalMobile,
+      hospitalAddress,
+      hospitalWebSite,
+    };
+
+    Hospital.editProfile(updatedHospital, (err, data) => {
+      if (err) {
+        if (err === "Hospital Not Found" || err === "Aadhar Number Already Exists.") {
+          return res.status(404).json({ status: err });
+        } else {
+          return res.status(500).json({ status: 'Failed to edit hospital profile', error: err });
+        }
+      } else {
+        return res.status(200).json({ status: "success", data });
+      }
     });
   });
 };
@@ -547,6 +507,56 @@ exports.addHospitalStaff = (req, res) => {
 };
 
 
+// Delete Hospital Staff 
+exports.deleteHospitalStaff = (req, res) => {
+  const updateProfileToken = req.headers.token;
+
+  if (!updateProfileToken) {
+    return res.status(401).json({ "status": "Token missing" });
+  }
+
+  jwt.verify(updateProfileToken, "micadmin", (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ "status": "Invalid token" });
+    }
+
+    const { hospitalId, hospitalStaffId } = req.body;
+
+    if (decoded.hospitalId != hospitalId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Unauthorized access to delete hospital staff',
+      });
+    }
+
+    const validationErrors = {};
+
+    const hospitalIdValidation = Validator.isValidId(hospitalId);
+    const hospitalStaffIdValidation = Validator.isValidId(hospitalStaffId);
+
+    if (!hospitalIdValidation.isValid) validationErrors.hospitalId = hospitalIdValidation.message;
+    if (!hospitalStaffIdValidation.isValid) validationErrors.hospitalStaffId = hospitalStaffIdValidation.message;
+
+    if (Object.keys(validationErrors).length > 0) {
+      return res.status(400).json({ "status": "Validation failed", "data": validationErrors });
+    }
+
+    Hospital.deleteStaff(hospitalId, hospitalStaffId, (err, result) => {
+      if (err) {
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to delete hospital staff',
+          error: err.message,
+        });
+      }
+
+      return res.status(200).json({
+        status: 'success',
+        data: result,
+      });
+    });
+  });
+};
 
 
 
