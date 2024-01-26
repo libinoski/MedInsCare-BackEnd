@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const db = require('../db');
 
 
-
+//Hospital Model 
 const Hospital = function (hospital) {
     this.hospitalId = hospital.hospitalId;
     this.hospitalName = hospital.hospitalName;
@@ -22,6 +22,25 @@ const Hospital = function (hospital) {
     this.updatedDate = hospital.updatedDate;
 };
 
+
+//Hospital Staff Model
+const HospitalStaff = function (hospitalStaff) {
+    this.hospitalId = hospitalStaff.hospitalId;
+    this.hospitalStaffName = hospitalStaff.hospitalStaffName;
+    this.hospitalStaffProfileImage = hospitalStaff.hospitalStaffProfileImage;
+    this.hospitalStaffIdProofImage = hospitalStaff.hospitalStaffIdProofImage;
+    this.hospitalStaffMobile = hospitalStaff.hospitalStaffMobile;
+    this.hospitalStaffEmail = hospitalStaff.hospitalStaffEmail;
+    this.hospitalStaffAddress = hospitalStaff.hospitalStaffAddress;
+    this.hospitalStaffAadhar = hospitalStaff.hospitalStaffAadhar;
+    this.hospitalStaffPassword = hospitalStaff.hospitalStaffPassword;
+    this.addedDate = hospitalStaff.addedDate;
+    this.updatedDate = hospitalStaff.updatedDate;
+    this.isActive = hospitalStaff.isActive;
+    this.deleteStatus = hospitalStaff.deleteStatus;
+    this.updateStatus = hospitalStaff.updateStatus;
+    this.passwordUpdateStatus = hospitalStaff.passwordUpdateStatus;
+};
 
 
 // Hospital Registration
@@ -68,8 +87,7 @@ Hospital.register = (newHospital, result) => {
 };
 
 
-
-// Hospital login
+// Hospital Login
 Hospital.login = (email, password, result) => {
     const query = "SELECT * FROM Hospitals WHERE BINARY hospitalEmail = ?";
     db.query(query, [email], (err, res) => {
@@ -103,8 +121,8 @@ Hospital.login = (email, password, result) => {
 };
 
 
-  //Hospital View Profile
-  Hospital.getProfile = (hospitalId, result) => {
+//Hospital View Profile
+Hospital.getProfile = (hospitalId, result) => {
     const query = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
     db.query(query, [hospitalId], (err, res) => {
         if (err) {
@@ -120,8 +138,7 @@ Hospital.login = (email, password, result) => {
 };
 
 
-
-// Hospital edit profile
+// Hospital Edit Profile
 Hospital.editProfile = (updatedHospital, result) => {
     db.query("SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1", [updatedHospital.hospitalId], (selectErr, selectRes) => {
         if (selectErr) {
@@ -145,17 +162,59 @@ Hospital.editProfile = (updatedHospital, result) => {
                             result("Aadhar Number Already Exists.", null);
                             return;
                         } else {
-                            db.query("UPDATE Hospitals SET hospitalName = ?, hospitalAadhar = ?, hospitalMobile = ?, hospitalAddress = ?, hospitalWebSite = ?, hospitalImage = ?, updateStatus = 1, updatedDate = CURRENT_DATE() WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1",
-                                [updatedHospital.hospitalName, updatedHospital.hospitalAadhar, updatedHospital.hospitalMobile, updatedHospital.hospitalAddress, updatedHospital.hospitalWebSite, updatedHospital.hospitalImage, updatedHospital.hospitalId],
-                                (updateErr, updateRes) => {
-                                    if (updateErr) {
-                                        console.log("Error Updating Hospital Details: ", updateErr);
-                                        result(updateErr, null);
-                                        return;
-                                    }
-                                    console.log("Updated Hospitals Details: ", { id: updatedHospital.hospitalId, ...updatedHospital });
-                                    result(null, { id: updatedHospital.hospitalId, ...updatedHospital });
-                                });
+                            let updateQuery = "UPDATE Hospitals SET updateStatus = 1, updatedDate = CURRENT_DATE(), deleteStatus = 0, isActive = 1";
+
+                            // Check if hospitalName is provided and different from the existing value
+                            if (updatedHospital.hospitalName !== null && updatedHospital.hospitalName !== selectRes[0].hospitalName) {
+                                updateQuery += ", hospitalName = '" + updatedHospital.hospitalName + "'";
+                            }
+
+                            // Check if hospitalEmail is provided and different from the existing value
+                            if (updatedHospital.hospitalEmail !== null && updatedHospital.hospitalEmail !== selectRes[0].hospitalEmail) {
+                                updateQuery += ", hospitalEmail = '" + updatedHospital.hospitalEmail + "'";
+                            }
+
+                            // Check if hospitalWebSite is provided and different from the existing value
+                            if (updatedHospital.hospitalWebSite !== null && updatedHospital.hospitalWebSite !== selectRes[0].hospitalWebSite) {
+                                updateQuery += ", hospitalWebSite = '" + updatedHospital.hospitalWebSite + "'";
+                            }
+
+                            // Check if hospitalAadhar is provided and different from the existing value
+                            if (updatedHospital.hospitalAadhar !== null && updatedHospital.hospitalAadhar !== selectRes[0].hospitalAadhar) {
+                                updateQuery += ", hospitalAadhar = '" + updatedHospital.hospitalAadhar + "'";
+                            }
+
+                            // Check if hospitalMobile is provided and different from the existing value
+                            if (updatedHospital.hospitalMobile !== null && updatedHospital.hospitalMobile !== selectRes[0].hospitalMobile) {
+                                updateQuery += ", hospitalMobile = '" + updatedHospital.hospitalMobile + "'";
+                            }
+
+                            // Check if hospitalAddress is provided and different from the existing value
+                            if (updatedHospital.hospitalAddress !== null && updatedHospital.hospitalAddress !== selectRes[0].hospitalAddress) {
+                                updateQuery += ", hospitalAddress = '" + updatedHospital.hospitalAddress + "'";
+                            }
+
+                            // Check if hospitalImage is provided and different from the existing value
+                            if (updatedHospital.hospitalImage !== null && updatedHospital.hospitalImage !== selectRes[0].hospitalImage) {
+                                updateQuery += ", hospitalImage = '" + updatedHospital.hospitalImage + "'";
+                            }
+
+                            // Check if hospitalPassword is provided and different from the existing value
+                            if (updatedHospital.hospitalPassword !== null && updatedHospital.hospitalPassword !== selectRes[0].hospitalPassword) {
+                                updateQuery += ", hospitalPassword = '" + updatedHospital.hospitalPassword + "'";
+                            }
+
+                            updateQuery += " WHERE hospitalId = " + updatedHospital.hospitalId + " AND deleteStatus = 0 AND isActive = 1";
+
+                            db.query(updateQuery, (updateErr, updateRes) => {
+                                if (updateErr) {
+                                    console.log("Error Updating Hospital Details: ", updateErr);
+                                    result(updateErr, null);
+                                    return;
+                                }
+                                console.log("Updated Hospitals Details: ", { id: updatedHospital.hospitalId, ...updatedHospital });
+                                result(null, { id: updatedHospital.hospitalId, ...updatedHospital });
+                            });
                         }
                     }
                 });
@@ -165,7 +224,66 @@ Hospital.editProfile = (updatedHospital, result) => {
 };
 
 
+//Add Hospital Staff:
+HospitalStaff.addNewOne = (newHospitalStaff, result) => {
+    if (newHospitalStaff.hospitalStaffName !== "" && newHospitalStaff.hospitalStaffName !== null) {
+        db.query("SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus=0 AND isActive=1", [newHospitalStaff.hospitalId], (err, hospitalResult) => {
+            if (err) {
+                console.log("error: ", err);
+                result(null, err);
+                return;
+            } else {
+                if (hospitalResult.length === 0) {
+                    result("Hospital ID does not exist", null);
+                    return;
+                }
+                db.query("SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar=? AND deleteStatus=0 AND isActive=1", [newHospitalStaff.hospitalStaffAadhar], (err, res) => {
+                    if (err) {
+                        result(null, err);
+                        return;
+                    } else {
+                        if (res.length > 0) {
+                            result("Aadhar already exists", null);
+                            return;
+                        } else {
+                            db.query("SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail=? AND deleteStatus=0 AND isActive=1", [newHospitalStaff.hospitalStaffEmail], (err, res) => {
+                                if (err) {
+                                    result(null, err);
+                                    return;
+                                } else {
+                                    if (res.length > 0) {
+                                        result("Email already exists", null);
+                                        return;
+                                    } else {
+                                        bcrypt.hash(newHospitalStaff.hospitalStaffPassword, 10, (hashErr, hashedPassword) => {
+                                            if (hashErr) {
+                                                return result(hashErr, null);
+                                            }
+
+                                            newHospitalStaff.hospitalStaffPassword = hashedPassword;
+
+                                            db.query("INSERT INTO Hospital_Staffs SET ?", [newHospitalStaff], (err, res) => {
+                                                if (err) {
+                                                    result(err, null);
+                                                    return;
+                                                } else {
+                                                    result(null, { id: res.insertId, ...newHospitalStaff });
+                                                }
+                                            });
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    } else {
+        result({ "status": "Cannot be empty." }, null);
+    }
+};
 
 
 
-module.exports = Hospital;
+module.exports = { Hospital, HospitalStaff };

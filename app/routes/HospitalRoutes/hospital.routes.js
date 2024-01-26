@@ -12,6 +12,8 @@ router.post("/hospitalRegistration", HospitalController.hospitalRegister);
 router.post("/hospitalLogin", HospitalController.hospitalLogin);
 router.post("/hospitalViewProfile", HospitalController.getHospitalProfile);
 router.post("/hospitalEditProfile", HospitalController.hospitalEditProfile);
+router.post("/addHospitalStaff", HospitalController.addHospitalStaff);
+
 
 
 module.exports = router;
