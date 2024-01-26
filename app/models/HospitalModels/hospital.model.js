@@ -140,89 +140,83 @@ Hospital.getProfile = (hospitalId, result) => {
 
 // Hospital Edit Profile
 Hospital.editProfile = (updatedHospital, result) => {
-    db.query("SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1", [updatedHospital.hospitalId], (selectErr, selectRes) => {
+    db.query(
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1",
+      [updatedHospital.hospitalId],
+      (selectErr, selectRes) => {
         if (selectErr) {
-            console.log("Error Checking Hospital: ", selectErr);
-            result(selectErr, null);
-            return;
+          console.log("Error Checking Hospital: ", selectErr);
+          result(selectErr, null);
+          return;
         } else {
-            if (selectRes.length === 0) {
-                console.log("Hospital Not Found");
-                result("Hospital Not Found", null);
-                return;
-            } else {
-                db.query("SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND hospitalId != ? AND deleteStatus = 0 AND isActive = 1", [updatedHospital.hospitalAadhar, updatedHospital.hospitalId], (aadharErr, aadharRes) => {
-                    if (aadharErr) {
-                        console.log("Error Checking Aadhar: ", aadharErr);
-                        result(aadharErr, null);
-                        return;
-                    } else {
-                        if (aadharRes.length > 0) {
-                            console.log("Aadhar Number Already Exists.");
-                            result("Aadhar Number Already Exists.", null);
-                            return;
-                        } else {
-                            let updateQuery = "UPDATE Hospitals SET updateStatus = 1, updatedDate = CURRENT_DATE(), deleteStatus = 0, isActive = 1";
+          if (selectRes.length === 0) {
+            console.log("Hospital Not Found");
+            result("Hospital Not Found", null);
+            return;
+          } else {
+            db.query(
+              "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND hospitalId != ? AND deleteStatus = 0 AND isActive = 1",
+              [updatedHospital.hospitalAadhar, updatedHospital.hospitalId],
+              (aadharErr, aadharRes) => {
+                if (aadharErr) {
+                  console.log("Error Checking Aadhar: ", aadharErr);
+                  result(aadharErr, null);
+                  return;
+                } else {
+                  if (aadharRes.length > 0) {
+                    console.log("Aadhar Number Already Exists.");
+                    result("Aadhar Number Already Exists.", null);
+                    return;
+                  } else {
+                    let updateQuery =
+                      "UPDATE Hospitals SET updateStatus = 1, updatedDate = CURRENT_DATE(), deleteStatus = 0, isActive = 1";
+  
+                    // Conditionally add fields only if non-null values are provided
+                    if (updatedHospital.hospitalName !== null) {
+                      updateQuery += ", hospitalName = '" + updatedHospital.hospitalName + "'";
+                    }  
+  
 
-                            // Check if hospitalName is provided and different from the existing value
-                            if (updatedHospital.hospitalName !== null && updatedHospital.hospitalName !== selectRes[0].hospitalName) {
-                                updateQuery += ", hospitalName = '" + updatedHospital.hospitalName + "'";
-                            }
-
-                            // Check if hospitalEmail is provided and different from the existing value
-                            if (updatedHospital.hospitalEmail !== null && updatedHospital.hospitalEmail !== selectRes[0].hospitalEmail) {
-                                updateQuery += ", hospitalEmail = '" + updatedHospital.hospitalEmail + "'";
-                            }
-
-                            // Check if hospitalWebSite is provided and different from the existing value
-                            if (updatedHospital.hospitalWebSite !== null && updatedHospital.hospitalWebSite !== selectRes[0].hospitalWebSite) {
-                                updateQuery += ", hospitalWebSite = '" + updatedHospital.hospitalWebSite + "'";
-                            }
-
-                            // Check if hospitalAadhar is provided and different from the existing value
-                            if (updatedHospital.hospitalAadhar !== null && updatedHospital.hospitalAadhar !== selectRes[0].hospitalAadhar) {
-                                updateQuery += ", hospitalAadhar = '" + updatedHospital.hospitalAadhar + "'";
-                            }
-
-                            // Check if hospitalMobile is provided and different from the existing value
-                            if (updatedHospital.hospitalMobile !== null && updatedHospital.hospitalMobile !== selectRes[0].hospitalMobile) {
-                                updateQuery += ", hospitalMobile = '" + updatedHospital.hospitalMobile + "'";
-                            }
-
-                            // Check if hospitalAddress is provided and different from the existing value
-                            if (updatedHospital.hospitalAddress !== null && updatedHospital.hospitalAddress !== selectRes[0].hospitalAddress) {
-                                updateQuery += ", hospitalAddress = '" + updatedHospital.hospitalAddress + "'";
-                            }
-
-                            // Check if hospitalImage is provided and different from the existing value
-                            if (updatedHospital.hospitalImage !== null && updatedHospital.hospitalImage !== selectRes[0].hospitalImage) {
-                                updateQuery += ", hospitalImage = '" + updatedHospital.hospitalImage + "'";
-                            }
-
-                            // Check if hospitalPassword is provided and different from the existing value
-                            if (updatedHospital.hospitalPassword !== null && updatedHospital.hospitalPassword !== selectRes[0].hospitalPassword) {
-                                updateQuery += ", hospitalPassword = '" + updatedHospital.hospitalPassword + "'";
-                            }
-
-                            updateQuery += " WHERE hospitalId = " + updatedHospital.hospitalId + " AND deleteStatus = 0 AND isActive = 1";
-
-                            db.query(updateQuery, (updateErr, updateRes) => {
-                                if (updateErr) {
-                                    console.log("Error Updating Hospital Details: ", updateErr);
-                                    result(updateErr, null);
-                                    return;
-                                }
-                                console.log("Updated Hospitals Details: ", { id: updatedHospital.hospitalId, ...updatedHospital });
-                                result(null, { id: updatedHospital.hospitalId, ...updatedHospital });
-                            });
-                        }
+                    if (updatedHospital.hospitalWebSite !== null) {
+                      updateQuery += ", hospitalWebSite = '" + updatedHospital.hospitalWebSite + "'";
                     }
-                });
-            }
+  
+                    if (updatedHospital.hospitalAadhar !== null) {
+                      updateQuery += ", hospitalAadhar = '" + updatedHospital.hospitalAadhar + "'";
+                    }
+  
+                    if (updatedHospital.hospitalMobile !== null) {
+                      updateQuery += ", hospitalMobile = '" + updatedHospital.hospitalMobile + "'";
+                    }
+  
+                    if (updatedHospital.hospitalAddress !== null) {
+                      updateQuery += ", hospitalAddress = '" + updatedHospital.hospitalAddress + "'";
+                    }
+  
+                    updateQuery +=
+                      " WHERE hospitalId = " +
+                      updatedHospital.hospitalId +
+                      " AND deleteStatus = 0 AND isActive = 1";
+  
+                    db.query(updateQuery, (updateErr, updateRes) => {
+                      if (updateErr) {
+                        console.log("Error Updating Hospital Details: ", updateErr);
+                        result(updateErr, null);
+                        return;
+                      }
+                      console.log("Updated Hospitals Details: ", { id: updatedHospital.hospitalId, ...updatedHospital });
+                      result(null, { id: updatedHospital.hospitalId, ...updatedHospital });
+                    });
+                  }
+                }
+              }
+            );
+          }
         }
-    });
-};
-
+      }
+    );
+  };
+  
 
 //Add Hospital Staff:
 HospitalStaff.addNewOne = (newHospitalStaff, result) => {
@@ -267,7 +261,8 @@ HospitalStaff.addNewOne = (newHospitalStaff, result) => {
                                                     result(err, null);
                                                     return;
                                                 } else {
-                                                    result(null, { id: res.insertId, ...newHospitalStaff });
+                                                    // Modify the response to include hospitalStaffId
+                                                    result(null, { hospitalStaffId: res.insertId, ...newHospitalStaff });
                                                 }
                                             });
                                         });
@@ -283,6 +278,49 @@ HospitalStaff.addNewOne = (newHospitalStaff, result) => {
         result({ "status": "Cannot be empty." }, null);
     }
 };
+
+
+
+
+// Delete Hospital Staff by Hospital ID and Hospital Staff ID
+Hospital.deleteStaff = (hospitalId, hospitalStaffId, result) => {
+    // Check if the hospital exists
+    db.query("SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1", [hospitalId], (hospitalErr, hospitalRes) => {
+        if (hospitalErr) {
+            result(hospitalErr, null);
+            return;
+        }
+
+        if (hospitalRes.length === 0) {
+            result("Hospital not found", null);
+            return;
+        }
+
+        // Check if the hospital staff exists
+        db.query("SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND deleteStatus = 0 AND isActive = 1", [hospitalStaffId, hospitalId], (staffErr, staffRes) => {
+            if (staffErr) {
+                result(staffErr, null);
+                return;
+            }
+
+            if (staffRes.length === 0) {
+                result("Hospital staff not found", null);
+                return;
+            }
+
+            // Soft delete the hospital staff
+            db.query("UPDATE Hospital_Staffs SET deleteStatus = 1, isActive = 0 WHERE hospitalStaffId = ? AND hospitalId = ?", [hospitalStaffId, hospitalId], (deleteErr, deleteRes) => {
+                if (deleteErr) {
+                    result(deleteErr, null);
+                    return;
+                }
+
+                result(null, { message: "Hospital staff deleted successfully", hospitalStaffId: hospitalStaffId, hospitalId: hospitalId });
+            });
+        });
+    });
+};
+
 
 
 

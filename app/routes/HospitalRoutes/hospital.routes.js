@@ -13,6 +13,7 @@ router.post("/hospitalLogin", HospitalController.hospitalLogin);
 router.post("/hospitalViewProfile", HospitalController.getHospitalProfile);
 router.post("/hospitalEditProfile", HospitalController.hospitalEditProfile);
 router.post("/addHospitalStaff", HospitalController.addHospitalStaff);
+router.post("/deleteHospitalStaff", HospitalController.deleteHospitalStaff);
 
 
 
