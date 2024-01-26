@@ -147,7 +147,7 @@ exports.hospitalRegister = async (req, res) => {
 };
 
 
-//Hospital Login
+// Hospital Login
 exports.hospitalLogin = (req, res) => {
   const { hospitalEmail, hospitalPassword } = req.body;
   const emailValidation = Validator.isValidEmail(hospitalEmail);
