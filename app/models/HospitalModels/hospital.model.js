@@ -312,4 +312,32 @@ Hospital.getHospitalStaffs = async (hospitalId) => {
 };
 
 
+
+
+// View One Hospital Staff by Hospital
+Hospital.viewOneStaff = async (hospitalId, hospitalStaffId) => {
+    try {
+        const query = `
+            SELECT * 
+            FROM Hospital_Staffs 
+            WHERE hospitalId = ? 
+                AND hospitalStaffId = ? 
+                AND deleteStatus = 0 
+                AND isActive = 1
+        `;
+
+        const result = await dbQuery(query, [hospitalId, hospitalStaffId]);
+
+        if (result.length === 0) {
+            throw new Error("Hospital Staff not found or has been deleted");
+        }
+
+        return result[0];
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
 module.exports = { Hospital, HospitalStaff };

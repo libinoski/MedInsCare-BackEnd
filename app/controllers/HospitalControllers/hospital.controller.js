@@ -554,7 +554,6 @@ exports.deleteHospitalStaff = async (req, res) => {
 
 
 // Update Hospital Staff
-// Update Hospital Staff
 exports.updateHospitalStaff = async (req, res) => {
   try {
       const updateStaffToken = req.headers.token;
@@ -696,5 +695,55 @@ exports.viewAllHospitalStaffs = async (req, res) => {
   }
 };
 
+
+// View One Hospital Staff
+exports.viewOneHospitalStaff = async (req, res) => {
+  const { hospitalId, hospitalStaffId } = req.body;
+  const token = req.headers.token;
+
+  if (!hospitalId || !hospitalStaffId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Both hospitalId and hospitalStaffId are required in the request body',
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, 'micadmin');
+
+    if (decoded.hospitalId != hospitalId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Unauthorized access to view hospital staff',
+      });
+    }
+
+    // Retrieve the specified hospital staff using a model function (replace with your actual model function)
+    const hospitalStaff = await Hospital.viewOneStaff(hospitalId, hospitalStaffId);
+
+    return res.status(200).json({
+      status: 'success',
+      data: hospitalStaff,
+    });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid token',
+      });
+    } else if (error.message === 'Hospital not found' || error.message === 'Hospital Staff not found or has been deleted') {
+      return res.status(404).json({
+        status: 'error',
+        message: error.message,
+      });
+    } else {
+      console.error('Error fetching hospital staff:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Internal server error',
+      });
+    }
+  }
+};
 
 
