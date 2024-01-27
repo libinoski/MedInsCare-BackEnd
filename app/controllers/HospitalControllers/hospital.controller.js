@@ -809,7 +809,6 @@ exports.searchHospitalStaff = async (req, res) => {
 };
 
 
-
 // Add Hospital News
 exports.addHospitalNews = async (req, res) => {
   try {
