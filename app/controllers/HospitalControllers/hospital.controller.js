@@ -696,6 +696,7 @@ exports.viewAllHospitalStaffs = async (req, res) => {
 };
 
 
+
 // View One Hospital Staff
 exports.viewOneHospitalStaff = async (req, res) => {
   const { hospitalId, hospitalStaffId } = req.body;
@@ -747,3 +748,63 @@ exports.viewOneHospitalStaff = async (req, res) => {
 };
 
 
+// Search Hospital Staff
+exports.searchHospitalStaff = async (req, res) => {
+  const { hospitalId, searchQuery } = req.body;
+  const token = req.headers.token;
+
+  if (!hospitalId || !searchQuery) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Both hospitalId and searchQuery are required in the request body',
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, 'micadmin');
+
+    if (decoded.hospitalId != hospitalId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Unauthorized access to search hospital staff',
+      });
+    }
+
+    // Search for hospital staff based on the criteria using a model function (replace with your actual model function)
+    const searchResults = await Hospital.searchStaff(hospitalId, searchQuery);
+
+    if (searchResults.length > 0) {
+      // Matches found
+      return res.status(200).json({
+        status: 'success',
+        message: 'Matches found in the search results',
+        data: searchResults,
+      });
+    } else {
+      // No matches found
+      return res.status(200).json({
+        status: 'Failed',
+        message: 'No matches found in the search results',
+        
+      });
+    }
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid token',
+      });
+    } else if (error.message === 'Hospital not found') {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Hospital not found',
+      });
+    } else {
+      console.error('Error searching hospital staff:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Internal server error',
+      });
+    }
+  }
+};
