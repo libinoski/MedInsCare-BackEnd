@@ -339,5 +339,35 @@ Hospital.viewOneStaff = async (hospitalId, hospitalStaffId) => {
 };
 
 
+// Hospital Search Staff
+Hospital.searchStaff = async (hospitalId, searchQuery) => {
+    const query = `
+        SELECT * 
+        FROM Hospital_Staffs 
+        WHERE hospitalId = ? 
+            AND deleteStatus = 0 
+            AND isActive = 1
+            AND (
+                hospitalStaffId LIKE ? OR
+                hospitalStaffName LIKE ? OR
+                hospitalStaffAadhar LIKE ? OR
+                hospitalStaffMobile LIKE ? OR
+                hospitalStaffEmail LIKE ? OR
+                addedDate LIKE ? OR
+
+                hospitalStaffAddress LIKE ?
+            )
+    `;
+
+    try {
+        const result = await dbQuery(query, [hospitalId, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`]);
+
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 
 module.exports = { Hospital, HospitalStaff };
