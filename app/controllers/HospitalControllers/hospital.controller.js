@@ -644,7 +644,6 @@ function validateHospitalStaffUpdate(hospitalStaffData) {
 
 
 
-
 // View All Hospital Staffs
 exports.viewAllHospitalStaffs = async (req, res) => {
   const { hospitalId } = req.body;
@@ -811,9 +810,6 @@ exports.searchHospitalStaff = async (req, res) => {
 
 
 
-
-
-
 // Add Hospital News
 exports.addHospitalNews = async (req, res) => {
   try {
@@ -895,7 +891,6 @@ exports.addHospitalNews = async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
-
 // Function to validate the news data
 function validateNewsData(newsData, newsImageFile) {
   // Use data.validate.js functions to validate each field
