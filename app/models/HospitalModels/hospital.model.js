@@ -52,8 +52,8 @@ const HospitalNews = function (hospitalNews) {
     this.hospitalNewsImage = hospitalNews.hospitalNewsImage;
     this.addedDate = hospitalNews.addedDate;
     this.updatedDate = hospitalNews.updatedDate;
-    this.isActive = hospitalNews.isActive;
     this.deleteStatus = hospitalNews.deleteStatus;
+    this.isActive = hospitalNews.isActive;
 };
 
 
@@ -404,6 +404,41 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
         throw error;
     }
 };
+
+
+
+// Hospital Delete News
+Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
+    try {
+        // Check if the hospital exists and is active
+        const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+        if (checkHospitalRes.length === 0) {
+            throw new Error("Hospital not found, is not active, or has been deleted");
+        }
+
+        // Check if the news exists for the specified hospital
+        const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
+        const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
+
+        if (checkNewsRes.length === 0) {
+            throw new Error("Hospital News not found or has been deleted");
+        }
+
+        // Delete the news and set deleteStatus to 1
+        const deleteQuery = "UPDATE Hospital_News SET deleteStatus = 1, isActive = 0 WHERE hospitalNewsId = ? AND hospitalId = ?";
+        const deleteRes = await dbQuery(deleteQuery, [hospitalNewsId, hospitalId]);
+
+        return { message: "Hospital News deleted successfully" };
+    } catch (error) {
+        throw error; 
+    }
+};
+
+
+
+
 
 
 module.exports = { Hospital, HospitalStaff, HospitalNews };
