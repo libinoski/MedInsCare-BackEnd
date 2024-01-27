@@ -2,7 +2,7 @@
 const multer = require('multer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
-const { Hospital, HospitalStaff } = require('../../models/HospitalModels/hospital.model');
+const { Hospital, HospitalNews } = require('../../models/HospitalModels/hospital.model');
 const dataValidator = require('../../config/data.validate');
 const bcrypt = require('bcrypt');
 
@@ -866,8 +866,8 @@ exports.addHospitalNews = async (req, res) => {
           hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
           addedDate: new Date(),
           updatedDate: null,
-          isActive: 1,
           deleteStatus: 0,
+          isActive:1
         };
 
         // Add news using the model function
@@ -925,3 +925,62 @@ function validateNewsData(newsData, newsImageFile) {
 
   return validationResults;
 }
+
+
+
+// Delete Hospital News
+exports.deleteHospitalNews = async (req, res) => {
+  const { hospitalNewsId, hospitalId } = req.body;
+
+  if (!hospitalNewsId || !hospitalId) {
+      return res.status(400).json({
+          status: 'error',
+          message: 'Both hospitalNewsId and hospitalId are required in the request body',
+      });
+  }
+
+  const deleteNewsToken = req.headers.token;
+
+  if (!deleteNewsToken) {
+      return res.status(401).json({
+          status: 'error',
+          message: 'Token missing',
+      });
+  }
+
+  try {
+      const decoded = jwt.verify(deleteNewsToken, 'micadmin');
+
+      if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+              status: 'error',
+              message: 'Unauthorized access to delete hospital news',
+          });
+      }
+
+      const result = await Hospital.deleteNews(hospitalNewsId, hospitalId);
+
+      return res.status(200).json({
+          status: 'success',
+          message: result.message,
+      });
+  } catch (error) {
+      if (error.message === "Hospital News not found or has been deleted") {
+          return res.status(404).json({
+              status: 'error',
+              message: 'Hospital News not found',
+          });
+      } else if (error.name === 'JsonWebTokenError') {
+          return res.status(401).json({ status: 'error', message: 'Invalid token' });
+      } else {
+          console.error('Error deleting hospital news:', error);
+          return res.status(500).json({
+              status: 'error',
+              message: 'Failed to delete hospital news',
+              error: error.message,
+          });
+      }
+  }
+};
+
+
