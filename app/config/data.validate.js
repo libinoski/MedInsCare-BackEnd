@@ -46,6 +46,84 @@ function isValidId(id, idName) {
     };
 }
 
+
+
+
+// Validate content with any characters, symbols, and numbers
+function isValidContent(content, fieldName) {
+    if (isNullOrUndefined(content) || content.trim() === "") {
+        return {
+            isValid: false,
+            message: `${fieldName || 'Content'} cannot be empty. Warning: This field is required.`
+        };
+    }
+
+    // Modify this regex pattern based on your specific criteria for valid content
+    const regex = /^[\w\s!@#$%^&*()-_=+[\]{}|;:'",.<>/?]*$/;
+
+    return {
+        isValid: regex.test(content),
+        message: "Content contains invalid characters."
+    };
+}
+
+
+
+
+function isValidTitle(title) {
+    if (isNullOrUndefined(title) || title.trim() === "") {
+        return {
+            isValid: false,
+            message: "Title cannot be empty. Warning: This field is required."
+        };
+    }
+
+    // Modify this regex pattern based on your specific criteria for valid titles
+    const regex = /^[\w\s!@#$%^&*()-_=+[\]{}|;:'",.<>/?]*$/;
+
+    return {
+        isValid: regex.test(title),
+        message: "Title contains invalid characters."
+    };
+}
+
+
+
+function isValidNewsImage(file) {
+    if (isNullOrUndefined(file)) {
+        return {
+            isValid: true,
+            message: 'Image is not provided. Warning: You can leave this field empty.'
+        };
+    }
+
+    const maxFileSize = 10 * 1024 * 1024; // Updated size constraint to 10 MB
+
+    if (file.size > maxFileSize) {
+        return {
+            isValid: false,
+            message: 'File size exceeds the limit of 10 MB. Warning: Please upload an image within 10 MB size limit.'
+        };
+    }
+
+    const allowedExtensions = /\.(jpg|jpeg|png|webp|heif)$/i;
+    const extensionIsValid = allowedExtensions.test(path.extname(file.filename.replace(/[^\w\-.]/g, '')).toLowerCase());
+
+    if (!extensionIsValid) {
+        return {
+            isValid: false,
+            message: 'Invalid file format. Only JPG, JPEG, PNG, WEBP, and HEIF files are allowed. Warning: Please upload a valid image file.'
+        };
+    }
+
+    return {
+        isValid: true,
+        message: 'Image is valid'
+    };
+}
+
+
+
 // Validate if a phone number is valid
 function isValidPhoneNumber(phoneNumber) {
     if (isNullOrUndefined(phoneNumber)) {
@@ -405,5 +483,8 @@ module.exports = {
     isValidFile,
     isDate1GreaterThanDate2,
     isValidAadharNumberUpdate,
-    acceptOnlyCapitalLetters
+    acceptOnlyCapitalLetters,
+    isValidContent,
+    isValidTitle,
+    isValidNewsImage
 };

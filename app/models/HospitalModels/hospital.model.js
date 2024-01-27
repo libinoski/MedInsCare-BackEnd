@@ -43,6 +43,18 @@ const HospitalStaff = function (hospitalStaff) {
     this.passwordUpdateStatus = hospitalStaff.passwordUpdateStatus;
 };
 
+// Hospital News Model
+const HospitalNews = function (hospitalNews) {
+    this.hospitalNewsId = hospitalNews.hospitalNewsId;
+    this.hospitalId = hospitalNews.hospitalId;
+    this.hospitalNewsTitle = hospitalNews.hospitalNewsTitle;
+    this.hospitalNewsContent = hospitalNews.hospitalNewsContent;
+    this.hospitalNewsImage = hospitalNews.hospitalNewsImage;
+    this.addedDate = hospitalNews.addedDate;
+    this.updatedDate = hospitalNews.updatedDate;
+    this.isActive = hospitalNews.isActive;
+    this.deleteStatus = hospitalNews.deleteStatus;
+};
 
 
 
@@ -369,5 +381,29 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
 };
 
 
+// Hospital Add News
+Hospital.addNews = async (hospitalId, newHospitalNews) => {
+    try {
+        // Check if the hospital exists and is active
+        const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
-module.exports = { Hospital, HospitalStaff };
+        if (checkHospitalRes.length === 0) {
+            throw new Error("Hospital not found, is not active, or has been deleted");
+        }
+
+        // Add hospitalId to the news object
+        newHospitalNews.hospitalId = hospitalId;
+
+        // Insert the news into the HospitalNews table
+        const insertQuery = "INSERT INTO Hospital_News SET ?";
+        const insertRes = await dbQuery(insertQuery, newHospitalNews);
+
+        return { id: insertRes.insertId, ...newHospitalNews };
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+module.exports = { Hospital, HospitalStaff, HospitalNews };

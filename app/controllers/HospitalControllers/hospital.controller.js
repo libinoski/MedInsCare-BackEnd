@@ -644,7 +644,6 @@ function validateHospitalStaffUpdate(hospitalStaffData) {
 
 
 
-
 // View All Hospital Staffs
 exports.viewAllHospitalStaffs = async (req, res) => {
   const { hospitalId } = req.body;
@@ -808,3 +807,121 @@ exports.searchHospitalStaff = async (req, res) => {
     }
   }
 };
+
+
+
+// Add Hospital News
+exports.addHospitalNews = async (req, res) => {
+  try {
+    // Extract the token from the request headers
+    const token = req.headers.token;
+
+    // Verify the JWT token
+    jwt.verify(token, 'micadmin', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+
+      // Continue with the news addition process if the token is valid
+
+      // Multer configuration for hospital news image upload
+      const newsImageStorage = multer.diskStorage({
+        destination: function (req, file, cb) {
+          cb(null, 'Files/HospitalImages/HospitalNewsImages');
+        },
+        filename: function (req, file, cb) {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          const ext = path.extname(file.originalname);
+          cb(null, 'hospitalNewsImage-' + uniqueSuffix + ext);
+        }
+      });
+
+      const uploadNewsImage = multer({ storage: newsImageStorage }).single('hospitalNewsImage');
+
+      // Multer middleware to handle file upload
+      uploadNewsImage(req, res, async function (err) {
+        if (err) {
+          return res.status(400).json({ error: 'File upload failed', details: err.message });
+        }
+
+        // Use data from req.body and req.file
+        const newsData = req.body;
+        const newsImageFile = req.file;
+
+        // Validate the request body and news image using data.validate.js functions
+        const validationResults = validateNewsData(newsData, newsImageFile);
+        if (!validationResults.isValid) {
+          return res.status(400).json({ error: 'Validation failed', details: validationResults.messages });
+        }
+
+        if (newsData.hospitalId != decoded.hospitalId) {
+          return res.status(401).json({ error: 'Unauthorized to add hospital news' });
+        }
+
+        // Construct the news object for adding
+        const newHospitalNews = {
+          hospitalId: decoded.hospitalId, // Use hospitalId from the decoded token
+          hospitalNewsTitle: newsData.hospitalNewsTitle,
+          hospitalNewsContent: newsData.hospitalNewsContent,
+          hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
+          addedDate: new Date(),
+          updatedDate: null,
+          isActive: 1,
+          deleteStatus: 0,
+        };
+
+        // Add news using the model function
+        try {
+          const addedNews = await Hospital.addNews(decoded.hospitalId, newHospitalNews);
+
+          // Respond with the added news details
+          return res.status(201).json({ message: 'Hospital News added successfully', data: addedNews });
+        } catch (error) {
+          // Handle specific errors thrown by the model function
+          if (error.message === "Hospital not found, is not active, or has been deleted") {
+            return res.status(404).json({ error: error.message });
+          } else {
+            throw error; // Propagate other errors
+          }
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error during adding hospital news:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+// Function to validate the news data
+function validateNewsData(newsData, newsImageFile) {
+  // Use data.validate.js functions to validate each field
+  const validationResults = {
+    isValid: true,
+    messages: [],
+  };
+
+  const idValidation = dataValidator.isValidId(newsData.hospitalId);
+  if (!idValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'hospitalId', message: idValidation.message });
+  }
+
+  const titleValidation = dataValidator.isValidTitle(newsData.hospitalNewsTitle);
+  if (!titleValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'hospitalNewsTitle', message: titleValidation.message });
+  }
+
+  const contentValidation = dataValidator.isValidContent(newsData.hospitalNewsContent);
+  if (!contentValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'hospitalNewsContent', message: contentValidation.message });
+  }
+
+  const imageValidation = dataValidator.isValidNewsImage(newsImageFile);
+  if (!imageValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'hospitalNewsImage', message: imageValidation.message });
+  }
+
+  return validationResults;
+}
