@@ -6,6 +6,8 @@ const { Hospital, HospitalNews } = require('../../models/HospitalModels/hospital
 const dataValidator = require('../../config/data.validate');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
+const emailConfig = require('../../config/emailConfig');
 
 
 
@@ -344,15 +346,18 @@ function validateHospitalUpdateProfile(hospitalData) {
 
 
 
-// Register New Hospital Staff
+
+
 exports.hospitalStaffRegister = async (req, res) => {
   try {
+    // Verify JWT token
     const token = req.headers.token;
     jwt.verify(token, 'micadmin', async (err, decoded) => {
       if (err) {
         return res.status(401).json({ error: 'Invalid token' });
       }
 
+      // Set up multer storage and file handling
       const staffImagesStorage = multer.diskStorage({
         destination: function (req, file, cb) {
           cb(null, 'Files/HospitalStaffImages');
@@ -360,7 +365,7 @@ exports.hospitalStaffRegister = async (req, res) => {
         filename: function (req, file, cb) {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
           const ext = path.extname(file.originalname);
-        
+
           if (file.fieldname === 'hospitalStaffProfileImage') {
             const fileName = 'hospitalStaffProfileImage-' + uniqueSuffix + ext;
             cb(null, fileName);
@@ -370,7 +375,7 @@ exports.hospitalStaffRegister = async (req, res) => {
             cb(null, fileName);
             req.hospitalStaffIdProofImageFileName = fileName;
           }
-        }        
+        }
       });
 
       const uploadStaffImages = multer({ storage: staffImagesStorage }).fields([
@@ -378,22 +383,24 @@ exports.hospitalStaffRegister = async (req, res) => {
         { name: 'hospitalStaffIdProofImage', maxCount: 1 }
       ]);
 
+      // Upload staff images
       uploadStaffImages(req, res, async function (err) {
         if (err) {
           return res.status(400).json({ error: 'File upload failed', details: err.message });
         }
 
+        // Get uploaded files
         const staffProfileImageFile = req.files['hospitalStaffProfileImage'] ? req.files['hospitalStaffProfileImage'][0] : null;
         const staffIdProofImageFile = req.files['hospitalStaffIdProofImage'] ? req.files['hospitalStaffIdProofImage'][0] : null;
 
+        // Check if both images are uploaded
         if (!staffProfileImageFile || !staffIdProofImageFile) {
+          // Clean up code for uploaded images
           if (staffProfileImageFile) {
-            const profileImagePath = path.join('Files/HospitalStaffImages', staffProfileImageFile.filename);
-            fs.unlinkSync(profileImagePath);
+            fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
           }
           if (staffIdProofImageFile) {
-            const idProofImagePath = path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename);
-            fs.unlinkSync(idProofImagePath);
+            fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
           }
 
           return res.status(400).json({ error: 'Both profile image and ID proof image are required for registration' });
@@ -401,27 +408,28 @@ exports.hospitalStaffRegister = async (req, res) => {
 
         const staffData = req.body;
 
+        // Validate staff registration data
         const validationResults = validateHospitalStaffRegistration(staffData, staffProfileImageFile, staffIdProofImageFile);
         if (!validationResults.isValid) {
-          const profileImagePath = path.join('Files/HospitalStaffImages', staffProfileImageFile.filename);
-          fs.unlinkSync(profileImagePath);
-          const idProofImagePath = path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename);
-          fs.unlinkSync(idProofImagePath);
+          // Clean up code for uploaded images
+          fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+          fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
 
           return res.status(400).json({ error: 'Validation failed', details: validationResults.messages });
         }
 
         const hospitalIdFromToken = decoded.hospitalId;
 
+        // Check if the hospital ID from the token matches the provided hospital ID
         if (staffData.hospitalId != hospitalIdFromToken) {
-          const profileImagePath = path.join('Files/HospitalStaffImages', staffProfileImageFile.filename);
-          fs.unlinkSync(profileImagePath);
-          const idProofImagePath = path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename);
-          fs.unlinkSync(idProofImagePath);
+          // Clean up code for uploaded images
+          fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+          fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
 
           return res.status(401).json({ error: 'Unauthorized access to hospital data' });
         }
 
+        // Create a new hospital staff object
         const newHospitalStaff = {
           hospitalId: staffData.hospitalId,
           hospitalStaffName: staffData.hospitalStaffName,
@@ -441,27 +449,56 @@ exports.hospitalStaffRegister = async (req, res) => {
         };
 
         try {
+          // Register hospital staff
           const registrationResponse = await Hospital.registerStaff(newHospitalStaff);
 
-          return res.status(201).json({ message: 'Hospital Staff registered successfully', data: registrationResponse.data });
+          // Send a welcome email
+          const transporter = nodemailer.createTransport({
+            host: emailConfig.host,
+            port: emailConfig.port,
+            secure: emailConfig.secure,
+            auth: emailConfig.auth,
+          });
+
+          const mailOptions = {
+            from: emailConfig.fromEmail,
+            to: newHospitalStaff.hospitalStaffEmail,
+            subject: 'Welcome to Your Hospital',
+            text: `Dear ${newHospitalStaff.hospitalStaffName},\n\n` +
+                  `Welcome to Your Hospital!\n\n` +
+                  `Your login credentials:\n` +
+                  `Email: ${newHospitalStaff.hospitalStaffEmail}\n` +
+                  `Password: ${newHospitalStaff.hospitalStaffPassword}\n\n` +
+                  `Thank you for joining us!`,
+          };
+
+          transporter.sendMail(mailOptions, (emailError, info) => {
+            if (emailError) {
+              console.error('Error sending welcome email:', emailError);
+
+              // Clean up code for uploaded images
+              fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+              fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
+
+              return res.status(500).json({ error: 'Failed to send welcome email. Internal server error.' });
+            } else {
+              console.log('Welcome email sent:', info.response);
+              return res.status(201).json({ message: 'Hospital Staff registered successfully', data: registrationResponse.data });
+            }
+          });
+
         } catch (error) {
+          // Clean up code for uploaded images
+          fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+          fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
+
           if (
             error.message === "Hospital ID does not exist" ||
             error.message === "Aadhar number already exists" ||
             error.message === "Email already exists"
           ) {
-            const profileImagePath = path.join('Files/HospitalStaffImages', staffProfileImageFile.filename);
-            fs.unlinkSync(profileImagePath);
-            const idProofImagePath = path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename);
-            fs.unlinkSync(idProofImagePath);
-
             return res.status(400).json({ error: error.message });
           } else {
-            const profileImagePath = path.join('Files/HospitalStaffImages', staffProfileImageFile.filename);
-            fs.unlinkSync(profileImagePath);
-            const idProofImagePath = path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename);
-            fs.unlinkSync(idProofImagePath);
-
             throw error;
           }
         }
@@ -469,12 +506,11 @@ exports.hospitalStaffRegister = async (req, res) => {
     });
   } catch (error) {
     console.error('Error during hospital staff registration:', error);
-    
+
+    // Clean up code for uploaded images
     if (req.files) {
-      const profileImagePath = path.join('Files/HospitalStaffImages', req.files['hospitalStaffProfileImage'][0].filename);
-      fs.unlinkSync(profileImagePath);
-      const idProofImagePath = path.join('Files/HospitalStaffImages', req.files['hospitalStaffIdProofImage'][0].filename);
-      fs.unlinkSync(idProofImagePath);
+      fs.unlinkSync(path.join('Files/HospitalStaffImages', req.files['hospitalStaffProfileImage'][0].filename));
+      fs.unlinkSync(path.join('Files/HospitalStaffImages', req.files['hospitalStaffIdProofImage'][0].filename));
     }
 
     return res.status(500).json({ error: 'Internal server error' });
