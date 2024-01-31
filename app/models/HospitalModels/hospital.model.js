@@ -53,7 +53,7 @@ const HospitalNews = function (hospitalNews) {
     this.addedDate = hospitalNews.addedDate;
     this.updatedDate = hospitalNews.updatedDate;
     this.deleteStatus = hospitalNews.deleteStatus;
-    this.isActive = hospitalNews.isActive;
+    this.isHided  = hospitalNews.isHided;   
 };
 
 
@@ -310,7 +310,6 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
 };
 
 
-
 // Hospital View All Staffs
 Hospital.getHospitalStaffs = async (hospitalId) => {
     const query = "SELECT * FROM Hospital_Staffs WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
@@ -322,7 +321,6 @@ Hospital.getHospitalStaffs = async (hospitalId) => {
         throw error;
     }
 };
-
 
 
 
@@ -411,7 +409,7 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
 Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
     try {
         // Check if the hospital exists and is active
-        const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isHided = 0 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
         if (checkHospitalRes.length === 0) {
@@ -419,15 +417,15 @@ Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
         }
 
         // Check if the news exists for the specified hospital
-        const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
+        const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND isHided = 0 AND deleteStatus = 0 ";
         const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
 
         if (checkNewsRes.length === 0) {
-            throw new Error("Hospital News not found or has been deleted");
+            throw new Error("Hospital News not found or has been deleted or currently hided");
         }
 
         // Delete the news and set deleteStatus to 1
-        const deleteQuery = "UPDATE Hospital_News SET deleteStatus = 1, isActive = 0 WHERE hospitalNewsId = ? AND hospitalId = ?";
+        const deleteQuery = "UPDATE Hospital_News SET deleteStatus = 1, isHided = 0  WHERE hospitalNewsId = ? AND hospitalId = ?";
         const deleteRes = await dbQuery(deleteQuery, [hospitalNewsId, hospitalId]);
 
         return { message: "Hospital News deleted successfully" };

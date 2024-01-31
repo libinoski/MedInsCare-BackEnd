@@ -866,7 +866,7 @@ exports.addHospitalNews = async (req, res) => {
           addedDate: new Date(),
           updatedDate: null,
           deleteStatus: 0,
-          isActive:1
+          isHided:0
         };
 
         // Add news using the model function
@@ -964,7 +964,7 @@ exports.deleteHospitalNews = async (req, res) => {
           message: result.message,
       });
   } catch (error) {
-      if (error.message === "Hospital News not found or has been deleted") {
+      if (error.message === "Hospital News not found or has been deleted or currently hided") {
           return res.status(404).json({
               status: 'error',
               message: 'Hospital News not found',
