@@ -24,7 +24,7 @@ router.post("/addHospitalNews", HospitalController.addHospitalNews);
 router.post("/deleteHospitalNews", HospitalController.deleteHospitalNews);
 router.post("/hideHospitalNews", HospitalController.hideHospitalNews);
 router.post("/unhideHospitalNews", HospitalController.unhideHospitalNews);
-router.post("/updateHospitalNews", HospitalController.updateHospitalNews);
+// router.post("/updateHospitalNews", HospitalController.updateHospitalNews);
 
 
 

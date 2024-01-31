@@ -1400,3 +1400,4 @@ exports.unhideHospitalNews = async (req, res) => {
 };
 
 
+//update hnews

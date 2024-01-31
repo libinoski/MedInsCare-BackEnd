@@ -552,4 +552,11 @@ Hospital.unhideNews = async (hospitalNewsId, hospitalId) => {
 
 
 
+
+// Update Hospital News
+
+
+
+
+
 module.exports = { Hospital, HospitalStaff, HospitalNews };
