@@ -559,4 +559,21 @@ Hospital.unhideNews = async (hospitalNewsId, hospitalId) => {
 
 
 
+// View All Hospital News
+Hospital.viewAllNews = async (hospitalId) => {
+    try {
+        const viewAllNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalId = ? AND deleteStatus = 0";
+        const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
+
+        return { status: "Success", message: 'All news are retrieved successfully', data: allNews };
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+
+
+
 module.exports = { Hospital, HospitalStaff, HospitalNews };

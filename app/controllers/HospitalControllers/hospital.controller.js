@@ -1401,3 +1401,58 @@ exports.unhideHospitalNews = async (req, res) => {
 
 
 //update hnews
+
+
+
+// View All Hospital Staffs
+exports.viewAllHospitalNews = async (req, res) => {
+  try {
+      const { hospitalId } = req.body;
+
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
+      }
+
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
+
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to view hospital news',
+              });
+          }
+
+          try {
+              const allStaffs = await Hospital.viewAllNews(hospitalId);
+
+              return res.status(200).json({
+                  status: 'success',
+                  message: 'All Hospital Staffs retrieved successfully',
+                  data: allStaffs.data,
+              });
+          } catch (error) {
+              console.error('Error viewing all hospital news:', error);
+              return res.status(500).json({
+                  status: 'error',
+                  message: 'Internal server error',
+              });
+          }
+      });
+  } catch (error) {
+      console.error('Error during viewAllHospitalNews:', error);
+      return res.status(500).json({
+          status: 'error',
+          message: 'Internal server error',
+      });
+  }
+};
