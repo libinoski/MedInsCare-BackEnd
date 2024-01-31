@@ -96,10 +96,7 @@ Hospital.login = async (email, password) => {
         if (result.length === 0) {
             throw new Error("Hospital not found");
         }
-
         const hospital = result[0];
-
-        // Check if the hospital is active and not deleted
         if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
             throw new Error("Hospital is not active or has been deleted");
         }
@@ -216,7 +213,6 @@ Hospital.registerStaff = async (newHospitalStaff) => {
         const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
         const insertRes = await dbQuery(insertQuery, newHospitalStaff);
 
-        // Directly return the data without additional wrapping
         return { status: "Success", message: 'Hospital Staff added successfully', data: { hospitalStaffId: insertRes.insertId, ...newHospitalStaff } };
     } catch (error) {
         throw error;
@@ -382,7 +378,6 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
 // Hospital Add News
 Hospital.addNews = async (hospitalId, newHospitalNews) => {
     try {
-        // Check if the hospital exists and is active
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
@@ -390,10 +385,7 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
             throw new Error("Hospital not found, is not active, or has been deleted");
         }
 
-        // Add hospitalId to the news object
         newHospitalNews.hospitalId = hospitalId;
-
-        // Insert the news into the HospitalNews table
         const insertQuery = "INSERT INTO Hospital_News SET ?";
         const insertRes = await dbQuery(insertQuery, newHospitalNews);
 
@@ -408,7 +400,6 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
 // Hospital Delete News
 Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
     try {
-        // Check if the hospital exists and is active
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isHided = 0 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
@@ -416,15 +407,12 @@ Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
             throw new Error("Hospital not found, is not active, or has been deleted");
         }
 
-        // Check if the news exists for the specified hospital
         const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND isHided = 0 AND deleteStatus = 0 ";
         const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
 
         if (checkNewsRes.length === 0) {
             throw new Error("Hospital News not found or has been deleted or currently hided");
         }
-
-        // Delete the news and set deleteStatus to 1
         const deleteQuery = "UPDATE Hospital_News SET deleteStatus = 1, isHided = 0  WHERE hospitalNewsId = ? AND hospitalId = ?";
         const deleteRes = await dbQuery(deleteQuery, [hospitalNewsId, hospitalId]);
 
