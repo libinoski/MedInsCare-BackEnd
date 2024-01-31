@@ -346,8 +346,6 @@ function validateHospitalUpdateProfile(hospitalData) {
 
 
 
-
-
 exports.hospitalStaffRegister = async (req, res) => {
   try {
     // Verify JWT token
@@ -442,8 +440,8 @@ exports.hospitalStaffRegister = async (req, res) => {
           hospitalStaffPassword: staffData.hospitalStaffPassword,
           addedDate: new Date(),
           updatedDate: null,
-          isActive: 1,
           deleteStatus: 0,
+          isSuspended: 0,
           updateStatus: 0,
           passwordUpdateStatus: 0,
         };
@@ -586,36 +584,189 @@ exports.deleteHospitalStaff = async (req, res) => {
     const token = req.headers.token;
 
     if (!token) {
-      return res.status(401).json({ status: "Token missing" });
+      return res.status(401).json({
+        status: 'error',
+        message: 'Token missing',
+      });
     }
 
-    jwt.verify(token, "micadmin", async (err, decoded) => {
+    const { hospitalId, hospitalStaffId } = req.body;
+
+    jwt.verify(token, 'micadmin', async (err, decoded) => {
       if (err) {
-        return res.status(401).json({ status: "Invalid token" });
-      }
-
-      const { hospitalStaffId, hospitalId } = req.body;
-
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: "error",
-          message: "Unauthorized access to delete hospital staff",
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid token',
         });
       }
 
-      const deleteRes = await Hospital.deleteStaff(hospitalStaffId, hospitalId);
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: 'error',
+          message: 'Unauthorized access to delete hospital staff',
+        });
+      }
 
-      return res.status(200).json({
-        status: "success",
-        message: "Hospital Staff deleted successfully",
-        data: deleteRes,
-      });
+      try {
+        const deleteResult = await Hospital.deleteStaff(hospitalStaffId);
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Hospital Staff deleted successfully',
+          data: { hospitalStaffId },
+        });
+      } catch (error) {
+        if (error.message === 'Hospital Staff not found or already deleted') {
+          return res.status(404).json({
+            status: 'error',
+            message: error.message,
+          });
+        } else {
+          console.error('Error deleting hospital staff:', error);
+          return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+          });
+        }
+      }
     });
   } catch (error) {
-    console.error("Error deleting hospital staff:", error);
-    return res.status(500).json({ status: "Failed to delete hospital staff", error: error.message });
+    console.error('Error during deleteHospitalStaff:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+    });
   }
 };
+
+
+
+
+
+// Suspend Hospital Staff
+exports.suspendHospitalStaff = async (req, res) => {
+  try {
+    const token = req.headers.token;
+
+    if (!token) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Token missing',
+      });
+    }
+
+    const { hospitalId, hospitalStaffId } = req.body;
+
+    jwt.verify(token, 'micadmin', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid token',
+        });
+      }
+
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: 'error',
+          message: 'Unauthorized access to suspend hospital staff',
+        });
+      }
+
+      try {
+        const suspendResult = await Hospital.suspendStaff(hospitalStaffId);
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Hospital Staff suspended successfully',
+          data: { hospitalStaffId },
+        });
+      } catch (error) {
+        if (error.message === 'Hospital Staff not found, already deleted, or already suspended') {
+          return res.status(404).json({
+            status: 'error',
+            message: error.message,
+          });
+        } else {
+          console.error('Error suspending hospital staff:', error);
+          return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+          });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error during suspendHospitalStaff:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+    });
+  }
+};
+
+
+// Unsuspend Hospital Staff
+exports.unSuspendHospitalStaff = async (req, res) => {
+  try {
+    const token = req.headers.token;
+
+    if (!token) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Token missing',
+      });
+    }
+
+    const { hospitalId, hospitalStaffId } = req.body;
+
+    jwt.verify(token, 'micadmin', async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid token',
+        });
+      }
+
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: 'error',
+          message: 'Unauthorized access to unsuspend hospital staff',
+        });
+      }
+
+      try {
+        const unsuspendResult = await Hospital.unSuspendStaff(hospitalStaffId);
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'Hospital Staff unsuspended successfully',
+          data: { hospitalStaffId },
+        });
+      } catch (error) {
+        if (error.message === 'Hospital Staff not found, already deleted, or not suspended') {
+          return res.status(404).json({
+            status: 'error',
+            message: error.message,
+          });
+        } else {
+          console.error('Error unsuspending hospital staff:', error);
+          return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+          });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error during unSuspendHospitalStaff:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error',
+    });
+  }
+};
+
+
 
 
 
@@ -729,55 +880,57 @@ function validateHospitalStaffUpdate(hospitalStaffData) {
 
 
 
+
 // View All Hospital Staffs
 exports.viewAllHospitalStaffs = async (req, res) => {
   try {
-    const token = req.headers.token;
+      const { hospitalId } = req.body;
 
-    if (!token) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Token missing',
-      });
-    }
-
-    const { hospitalId } = req.body;
-
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Invalid token',
-        });
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
       }
 
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Unauthorized access to view hospital staffs',
-        });
-      }
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
 
-      const allStaffs = await Hospital.getHospitalStaffs(hospitalId);
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to view hospital staff details',
+              });
+          }
 
-      return res.status(200).json({
-        status: 'success',
-        data: allStaffs,
+          try {
+              const allStaffs = await Hospital.viewAllStaffs(hospitalId);
+
+              return res.status(200).json({
+                  status: 'success',
+                  message: 'All Hospital Staffs retrieved successfully',
+                  data: allStaffs.data,
+              });
+          } catch (error) {
+              console.error('Error viewing all hospital staffs:', error);
+              return res.status(500).json({
+                  status: 'error',
+                  message: 'Internal server error',
+              });
+          }
       });
-    });
   } catch (error) {
-    if (error.message === 'Hospital not found') {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Hospital not found',
-      });
-    } else {
-      console.error('Error fetching hospital staffs:', error);
+      console.error('Error during viewAllHospitalStaffs:', error);
       return res.status(500).json({
-        status: 'error',
-        message: 'Internal server error',
+          status: 'error',
+          message: 'Internal server error',
       });
-    }
   }
 };
 
@@ -787,140 +940,133 @@ exports.viewAllHospitalStaffs = async (req, res) => {
 // View One Hospital Staff
 exports.viewOneHospitalStaff = async (req, res) => {
   try {
-    const token = req.headers.token;
+      const { hospitalId, hospitalStaffId } = req.body;
+      
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
+      }
 
-    if (!token) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Token missing',
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
+
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to view hospital staff details',
+              });
+          }
+
+          try {
+              const staffDetails = await Hospital.viewOneStaff(hospitalStaffId);
+
+              return res.status(200).json({
+                  status: 'success',
+                  message: 'Hospital Staff details retrieved successfully',
+                  data: staffDetails.data,
+              });
+          } catch (error) {
+              if (error.message === 'Hospital Staff not found or already deleted') {
+                  return res.status(404).json({
+                      status: 'error',
+                      message: error.message,
+                  });
+              } else {
+                  console.error('Error viewing hospital staff details:', error);
+                  return res.status(500).json({
+                      status: 'error',
+                      message: 'Internal server error',
+                  });
+              }
+          }
       });
-    }
-
-    const { hospitalId, hospitalStaffId } = req.body;
-
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Invalid token',
-        });
-      }
-
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Unauthorized access to view hospital staff',
-        });
-      }
-
-      try {
-        const hospitalStaff = await Hospital.viewOneStaff(hospitalId, hospitalStaffId);
-
-        return res.status(200).json({
-          status: 'success',
-          data: hospitalStaff,
-        });
-      } catch (error) {
-        if (error.message === 'Hospital not found' || error.message === 'Hospital Staff not found or has been deleted') {
-          return res.status(404).json({
-            status: 'error',
-            message: error.message,
-          });
-        } else {
-          console.error('Error fetching hospital staff:', error);
-          return res.status(500).json({
-            status: 'error',
-            message: 'Internal server error',
-          });
-        }
-      }
-    });
   } catch (error) {
-    console.error('Error during viewOneHospitalStaff:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Internal server error',
-    });
-  }
-};
-
-
-
-
-// Search Hospital Staff
-exports.searchHospitalStaff = async (req, res) => {
-  try {
-    const token = req.headers.token;
-
-    if (!token) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Token missing',
-      });
-    }
-
-    const { hospitalId, searchQuery } = req.body;
-
-    if (!hospitalId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'hospitalId is required in the request body',
-      });
-    }
-
-    if (!searchQuery) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'searchQuery is required in the request body',
-      });
-    }
-
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Invalid token',
-        });
-      }
-
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Unauthorized access to search hospital staff',
-        });
-      }
-
-      try {
-        const searchResults = await Hospital.searchStaff(hospitalId, searchQuery);
-
-        if (searchResults.length > 0) {
-          return res.status(200).json({
-            status: 'success',
-            message: 'Matches found in the search results',
-            data: searchResults,
-          });
-        } else {
-          return res.status(200).json({
-            status: 'Failed',
-            message: 'No matches found in the search results',
-          });
-        }
-      } catch (error) {
-        console.error('Error searching hospital staff:', error);
-        return res.status(500).json({
+      console.error('Error during viewOneHospitalStaff:', error);
+      return res.status(500).json({
           status: 'error',
           message: 'Internal server error',
-        });
-      }
-    });
-  } catch (error) {
-    console.error('Error during searchHospitalStaff:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Internal server error',
-    });
+      });
   }
 };
+
+
+
+// Hospital Search Staff
+exports.searchHospitalStaff = async (req, res) => {
+  try {
+      const { hospitalId, searchQuery } = req.body;
+
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
+      }
+
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
+
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to search hospital staff',
+              });
+          }
+
+          try {
+              if (!searchQuery) {
+                  return res.status(400).json({
+                      status: 'error',
+                      message: 'Search query is required',
+                  });
+              }
+
+              const searchResult = await Hospital.searchStaff(hospitalId, searchQuery);
+
+              if (searchResult.length === 0) {
+                  return res.status(404).json({
+                      status: 'success',
+                      message: 'Nothing found',
+                  });
+              }
+
+              return res.status(200).json({
+                  status: 'success',
+                  message: 'Hospital Staffs found successfully',
+                  data: searchResult,
+              });
+          } catch (error) {
+              console.error('Error searching hospital staff:', error);
+              return res.status(500).json({
+                  status: 'error',
+                  message: 'Internal server error',
+              });
+          }
+      });
+  } catch (error) {
+      console.error('Error during searchHospitalStaff:', error);
+      return res.status(500).json({
+          status: 'error',
+          message: 'Internal server error',
+      });
+  }
+};
+
+
 
 
 
@@ -977,6 +1123,7 @@ exports.addHospitalNews = async (req, res) => {
           addedDate: new Date(),
           updatedDate: null,
           deleteStatus: 0,
+          updateStatus : 0,
           isHided: 0,
         };
 
@@ -1046,70 +1193,209 @@ function validateNewsData(newsData, newsImageFile) {
 
 
 
-// Delete Hospital News
+// Hospital Delete News
 exports.deleteHospitalNews = async (req, res) => {
   try {
-    const { hospitalNewsId, hospitalId } = req.body;
+      const { hospitalId, hospitalNewsId } = req.body;
 
-    if (!hospitalNewsId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'hospitalNewsId is required in the request body',
-      });
-    }
-
-    if (!hospitalId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'hospitalId is required in the request body',
-      });
-    }
-
-    const token = req.headers.token;
-
-    if (!token) {
-      return res.status(401).json({
-        status: 'error',
-        message: 'Token missing',
-      });
-    }
-
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Invalid token',
-        });
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
       }
 
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Unauthorized access to delete hospital news',
-        });
-      }
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
 
-      const result = await Hospital.deleteNews(hospitalNewsId, hospitalId);
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to delete hospital news',
+              });
+          }
 
-      return res.status(200).json({
-        status: 'success',
-        message: result.message,
+          try {
+              const deleteResult = await Hospital.deleteNews(hospitalNewsId, hospitalId);
+
+              if (deleteResult.status === 'success') {
+                  return res.status(200).json({
+                      status: deleteResult.status,
+                      message: deleteResult.message,
+                  });
+              } else {
+                  return res.status(404).json({
+                      status: deleteResult.status,
+                      message: deleteResult.message,
+                  });
+              }
+          } catch (error) {
+              console.error('Error deleting hospital news:', error);
+              return res.status(500).json({
+                  status: 'error',
+                  message: 'Internal server error',
+              });
+          }
       });
-    });
   } catch (error) {
-    if (error.message === "Hospital News not found or has been deleted or currently hided") {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Hospital News not found',
-      });
-    } else {
-      console.error('Error deleting hospital news:', error);
+      console.error('Error during deleteHospitalNews:', error);
       return res.status(500).json({
-        status: 'error',
-        message: 'Failed to delete hospital news',
-        error: error.message,
+          status: 'error',
+          message: 'Internal server error',
       });
-    }
+  }
+};
+
+
+
+
+
+
+
+// Hospital Hide News
+exports.hideHospitalNews = async (req, res) => {
+  try {
+      const { hospitalId, hospitalNewsId } = req.body;
+
+      // Check if hospitalId and hospitalNewsId are present
+      if (!hospitalId || !hospitalNewsId) {
+          return res.status(400).json({
+              status: 'error',
+              message: 'Both hospitalId and hospitalNewsId are required in the request body',
+          });
+      }
+
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
+      }
+
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
+
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to hide hospital news',
+              });
+          }
+
+          try {
+              const hideResult = await Hospital.hideNews(hospitalNewsId, hospitalId);
+
+              return res.status(200).json({
+                  status: 'success',
+                  message: hideResult.message,
+              });
+          } catch (error) {
+              console.error('Error hiding hospital news:', error);
+
+              if (error.message === 'Hospital News is already hidden') {
+                  return res.status(200).json({
+                      status: 'success',
+                      message: error.message,
+                  });
+              } else if (error.message === 'Failed to hide Hospital News') {
+                  return res.status(500).json({
+                      status: 'error',
+                      message: 'Failed to hide Hospital News',
+                  });
+              } else {
+                  return res.status(500).json({
+                      status: 'error',
+                      message: 'Internal server error',
+                  });
+              }
+          }
+      });
+  } catch (error) {
+      console.error('Error during hideHospitalNews:', error);
+      return res.status(500).json({
+          status: 'error',
+          message: 'Internal server error',
+      });
+  }
+};
+
+
+
+
+// Hospital Unhide News
+exports.unhideHospitalNews = async (req, res) => {
+  try {
+      const { hospitalId, hospitalNewsId } = req.body;
+
+      const token = req.headers.token;
+      if (!token) {
+          return res.status(401).json({
+              status: 'error',
+              message: 'Token missing',
+          });
+      }
+
+      jwt.verify(token, 'micadmin', async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({
+                  status: 'error',
+                  message: 'Invalid token',
+              });
+          }
+
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'Unauthorized access to unhide hospital news',
+              });
+          }
+
+          try {
+              const unhideResult = await Hospital.unhideNews(hospitalNewsId, hospitalId);
+
+              return res.status(200).json({
+                  status: 'success',
+                  message: unhideResult.message,
+              });
+          } catch (error) {
+              console.error('Error unhiding hospital news:', error);
+
+              if (error.message === 'Hospital News is not hidden') {
+                  return res.status(200).json({
+                      status: 'success',
+                      message: error.message,
+                  });
+              } else if (error.message === 'Failed to unhide Hospital News') {
+                  return res.status(500).json({
+                      status: 'error',
+                      message: 'Failed to unhide Hospital News',
+                  });
+              } else {
+                  return res.status(500).json({
+                      status: 'error',
+                      message: 'Internal server error',
+                  });
+              }
+          }
+      });
+  } catch (error) {
+      console.error('Error during unhideHospitalNews:', error);
+      return res.status(500).json({
+          status: 'error',
+          message: 'Internal server error',
+      });
   }
 };
 
