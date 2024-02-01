@@ -115,6 +115,53 @@ Hospital.login = async (email, password) => {
     }
 };
 
+// Hospital Change Password
+Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+
+    try {
+        const selectRes = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+        if (selectRes.length === 0) {
+            throw new Error("Hospital not found");
+        }
+
+        const hospital = selectRes[0];
+
+        const isMatch = await promisify(bcrypt.compare)(oldPassword, hospital.hospitalPassword);
+
+        if (!isMatch) {
+            throw new Error("Invalid old password");
+        }
+
+        const hashedNewPassword = await promisify(bcrypt.hash)(newPassword, 10);
+
+        const updatePasswordQuery = `
+            UPDATE Hospitals
+            SET
+                updateStatus = 1,
+                updatedDate = CURRENT_DATE(),
+                deleteStatus = 0,
+                isActive = 1,
+                hospitalPassword = ?,
+                passwordUpdatedStatus = 1
+            WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1
+        `;
+
+        const updatePasswordValues = [
+            hashedNewPassword,
+            hospitalId,
+        ];
+
+        const updatePasswordRes = await dbQuery(updatePasswordQuery, updatePasswordValues);
+
+        console.log("Hospital password updated successfully for hospitalId:", hospitalId);
+        return { message: "Password updated successfully" };
+    } catch (error) {
+        throw error;
+    }
+};
+
 
 // Hospital View Profile
 Hospital.getProfile = async (hospitalId) => {
@@ -261,9 +308,6 @@ Hospital.suspendStaff = async (hospitalStaffId) => {
 };
 
 
-
-
-
 // Unsuspend Hospital Staff
 Hospital.unSuspendStaff = async (hospitalStaffId) => {
     try {
@@ -282,15 +326,6 @@ Hospital.unSuspendStaff = async (hospitalStaffId) => {
         throw error;
     }
 };
-
-
-
-
-
-
-
-
-
 
 
 
@@ -352,6 +387,9 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
         throw error;
     }
 };
+
+
+
 
 
 // View All Hospital Staffs
@@ -467,14 +505,6 @@ Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
         return { status: 'error', message: error.message }; // You can include additional details if needed
     }
 };
-
-
-
-
-
-
-
-
 
 
 // Hospital Hide News

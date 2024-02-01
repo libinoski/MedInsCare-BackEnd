@@ -183,6 +183,175 @@ exports.hospitalLogin = async (req, res) => {
 };
 
 
+// Hospital Change Password
+exports.hospitalChangePassword = async (req, res) => {
+  const token = req.headers.token;
+
+  if (!token) {
+    return res.status(401).json({ status: "Token missing" });
+  }
+
+  try {
+    jwt.verify(token, "micadmin", async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: "Invalid token" });
+      }
+
+      const { hospitalId, oldPassword, newPassword } = req.body;
+
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: "error",
+          message: "Unauthorized access to change the hospital password",
+        });
+      }
+
+      const validationResults = validateHospitalChangePassword(req.body);
+
+      if (!validationResults.isValid) {
+        return res.status(400).json({ status: "Validation failed", data: validationResults.messages });
+      }
+
+      try {
+        await Hospital.changePassword(hospitalId, oldPassword, newPassword);
+
+        return res.status(200).json({ status: "success", message: "Password changed successfully" });
+      } catch (error) {
+        if (error.message === "Hospital not found" || error.message === "Invalid old password") {
+          return res.status(404).json({ status: "error", message: error.message });
+        } else {
+          console.error('Error changing hospital password:', error);
+          return res.status(500).json({ status: "Failed to change password", error: error.message });
+        }
+      }
+    });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ status: "Invalid token" });
+    } else {
+      console.error('Error changing hospital password:', error);
+      return res.status(500).json({ status: "Failed to change password", error: error.message });
+    }
+  }
+};
+// Function to validate the hospital change password request
+function validateHospitalChangePassword(passwordData) {
+  const validationResults = {
+    isValid: true,
+    messages: [],
+  };
+
+  const passwordValidation = dataValidator.isValidPassword(passwordData.oldPassword);
+  if (!passwordValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'oldPassword', message: passwordValidation.message });
+  }
+
+  const newPasswordValidation = dataValidator.isValidPassword(passwordData.newPassword);
+  if (!newPasswordValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'newPassword', message: newPasswordValidation.message });
+  }
+
+  return validationResults;
+}
+
+
+// Hospital Change Image
+exports.hospitalChangeImage = async (req, res) => {
+  const token = req.headers.token;
+
+  if (!token) {
+      return res.status(401).json({ status: "Token missing" });
+  }
+  const hospitalImageStorage = multer.diskStorage({
+      destination: function (req, file, cb) {
+          cb(null, 'Files/HospitalImages');
+      },
+      filename: function (req, file, cb) {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          const ext = path.extname(file.originalname);
+          cb(null, 'hospitalImage-' + uniqueSuffix + ext);
+      }
+  });
+
+  const uploadHospitalImage = multer({ storage: hospitalImageStorage }).single('hospitalImage');
+
+  try {
+      jwt.verify(token, "micadmin", async (err, decoded) => {
+          if (err) {
+              return res.status(401).json({ status: "Invalid token" });
+          }
+
+          const { hospitalId } = req.body;
+
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({
+                  status: "error",
+                  message: "Unauthorized access to change the hospital image",
+              });
+          }
+
+          uploadHospitalImage(req, res, async function (err) {
+              if (err) {
+                  return res.status(400).json({ status: 'File upload failed', details: err.message });
+              }
+
+              const imageValidation = validateHospitalImage(req.file);
+
+              if (!imageValidation.isValid) {
+                  const imagePath = path.join('Files/HospitalImages', req.file.filename);
+                  fs.unlinkSync(imagePath); // Cleanup uploaded file
+                  return res.status(400).json({ status: "Validation failed", data: imageValidation.messages });
+              }
+
+              try {
+                  const newImageFilename = req.file.filename;
+
+                  await Hospital.changeImage(hospitalId, newImageFilename);
+
+                  return res.status(200).json({ status: "success", message: "Image changed successfully" });
+              } catch (error) {
+                  if (error.message === "Hospital not found") {
+                      const imagePath = path.join('Files/HospitalImages', req.file.filename);
+                      fs.unlinkSync(imagePath); // Cleanup uploaded file
+                      return res.status(404).json({ status: "error", message: error.message });
+                  } else {
+                      console.error('Error changing hospital image:', error);
+                      return res.status(500).json({ status: "Failed to change image", error: error.message });
+                  }
+              }
+          });
+      });
+  } catch (error) {
+      if (error.name === 'JsonWebTokenError') {
+          return res.status(401).json({ status: "Invalid token" });
+      } else {
+          console.error('Error changing hospital image:', error);
+          return res.status(500).json({ status: "Failed to change image", error: error.message });
+      }
+  }
+};
+// Function to validate the hospital change image request
+function validateHospitalImage(file) {
+  const validationResults = {
+      isValid: true,
+      messages: [],
+  };
+
+  if (!file) {
+      validationResults.isValid = false;
+      validationResults.messages.push({ field: 'hospitalImage', message: 'Hospital image is required' });
+  }
+
+  const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+  if (!imageValidation.isValid) {
+    validationResults.isValid = false;
+    validationResults.messages.push({ field: 'hospitalImage', message: imageValidation.message });
+  }
+  return validationResults;
+}
+
 
 
 // View Hospital Profile
@@ -267,19 +436,6 @@ exports.hospitalUpdateProfile = async (req, res) => {
               hospitalAddress,
           } = req.body;
 
-          if (decoded.hospitalId != hospitalId) {
-              return res.status(403).json({
-                  status: "error",
-                  message: "Unauthorized access to edit the hospital profile",
-              });
-          }
-
-          const validationResults = validateHospitalUpdateProfile(req.body);
-
-          if (!validationResults.isValid) {
-              return res.status(400).json({ status: "Validation failed", data: validationResults.messages });
-          }
-
           const updatedHospital = {
               hospitalId,
               hospitalName,
@@ -289,18 +445,37 @@ exports.hospitalUpdateProfile = async (req, res) => {
               hospitalAddress,
           };
 
-          const data = await Hospital.updateProfile(updatedHospital);
+          const validationResults = validateHospitalUpdateProfile(updatedHospital);
 
-          return res.status(200).json({ status: "success", message: "Hospital updated successfully", data });
+          if (!validationResults.isValid) {
+              return res.status(400).json({ status: "Validation failed", data: validationResults.messages });
+          }
+
+          try {
+              if (decoded.hospitalId != hospitalId) {
+                  return res.status(403).json({
+                      status: "error",
+                      message: "Unauthorized access to edit the hospital profile",
+                  });
+              }
+
+              const data = await Hospital.updateProfile(updatedHospital);
+              return res.status(200).json({ status: "success", message: "Hospital updated successfully", data });
+          } catch (error) {
+              if (error.message === "Hospital not found" || error.message === "Aadhar Number Already Exists.") {
+                  return res.status(404).json({ status: error.message });
+              } else {
+                  console.error('Error updating hospital profile:', error);
+                  return res.status(500).json({ status: "Failed to edit hospital profile", error: error.message });
+              }
+          }
       });
   } catch (error) {
       if (error.name === 'JsonWebTokenError') {
           return res.status(401).json({ status: "Invalid token" });
-      } else if (error.message === "Hospital not found" || error.message === "Aadhar Number Already Exists.") {
-          return res.status(404).json({ status: error.message });
       } else {
-          console.error('Error updating hospital profile:', error);
-          return res.status(500).json({ status: "Failed to edit hospital profile", error: error.message });
+          console.error('Error during token verification:', error);
+          return res.status(500).json({ status: "Failed to verify token", error: error.message });
       }
   }
 };
@@ -770,7 +945,6 @@ exports.unSuspendHospitalStaff = async (req, res) => {
 
 
 
-
 // Update Hospital Staff
 exports.updateHospitalStaff = async (req, res) => {
   try {
@@ -787,18 +961,6 @@ exports.updateHospitalStaff = async (req, res) => {
               return res.status(401).json({ status: "Invalid token" });
           }
 
-          if (decoded.hospitalId != hospitalId) {
-              return res.status(403).json({
-                  status: "error",
-                  message: "Unauthorized access to update hospital staff",
-              });
-          }
-
-          const validationResults = validateHospitalStaffUpdate(req.body);
-          if (!validationResults.isValid) {
-              return res.status(400).json({ status: "Validation failed", data: validationResults.messages });
-          }
-
           const updatedHospitalStaff = {
               hospitalStaffId,
               hospitalId,
@@ -808,7 +970,19 @@ exports.updateHospitalStaff = async (req, res) => {
               hospitalStaffAadhar,
           };
 
+          const validationResults = validateHospitalStaffUpdate(updatedHospitalStaff);
+          if (!validationResults.isValid) {
+              return res.status(400).json({ status: "Validation failed", data: validationResults.messages });
+          }
+
           try {
+              if (decoded.hospitalId != hospitalId) {
+                  return res.status(403).json({
+                      status: "error",
+                      message: "Unauthorized access to update hospital staff",
+                  });
+              }
+
               const updateResponse = await Hospital.updateStaff(updatedHospitalStaff);
 
               return res.status(200).json({
@@ -1400,7 +1574,7 @@ exports.unhideHospitalNews = async (req, res) => {
 };
 
 
-//update hnews
+//update hospitalnews
 
 
 
