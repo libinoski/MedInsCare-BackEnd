@@ -235,4 +235,21 @@ HospitalStaff.registerPatient = async (newPatient) => {
 
 
 
+// View All patients
+HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
+    try {
+        const viewAllPatientsQuery = `
+            SELECT P.*
+            FROM Patients P
+            WHERE P.hospitalId = (SELECT hospitalId FROM Hospital_Staffs WHERE hospitalStaffId = ?) AND P.dischargeStatus = 0
+        `;
+        const allPatients = await dbQuery(viewAllPatientsQuery, [hospitalStaffId]);
+
+        return { status: "Success", message: 'All patients are retrieved successfully', data: allPatients };
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 module.exports = {HospitalStaff, Patients};

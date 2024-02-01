@@ -284,6 +284,8 @@ function validateHospitalStaffUpdateProfile(hospitalStaffData) {
 }
 
 
+
+
 // Hospital staff Register New Staff
 exports.patientRegister = async (req, res) => {
     try {
@@ -504,6 +506,60 @@ function validatePatientRegistration(patientData, patientProfileImageFile, patie
 }
 
 
+
+
+// View All Hospital Staffs
+exports.viewAllPatients = async (req, res) => {
+    try {
+        const { hospitalStaffId } = req.body;
+
+        const token = req.headers.token;
+        if (!token) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Token missing',
+            });
+        }
+
+        jwt.verify(token, 'micstaff', async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({
+                    status: 'error',
+                    message: 'Invalid token',
+                });
+            }
+
+            if (decoded.hospitalStaffId != hospitalStaffId) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Unauthorized access to view patient details',
+                });
+            }
+
+            try {
+                const allPatients = await HospitalStaff.viewAllPatients(hospitalStaffId);
+
+                return res.status(200).json({
+                    status: 'success',
+                    message: 'All patients are retrieved successfully',
+                    data: allPatients.data,
+                });
+            } catch (error) {
+                console.error('Error viewing all patients:', error);
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Internal server error',
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Error during viewAllPatients:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+        });
+    }
+};
 
 
 
