@@ -252,4 +252,32 @@ HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
 };
 
 
+
+
+// View One patient
+HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
+    try {
+        const viewOnePatientQuery = `
+            SELECT P.*
+            FROM Patients P
+            WHERE P.hospitalId = (SELECT hospitalId FROM Hospital_Staffs WHERE hospitalStaffId = ?)
+            AND P.patientId = ?
+            AND P.dischargeStatus = 0
+        `;
+        const patient = await dbQuery(viewOnePatientQuery, [hospitalStaffId, patientId]);
+
+        if (patient.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        return { status: "Success", message: 'Patient retrieved successfully', data: patient[0] };
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+
+
 module.exports = {HospitalStaff, Patients};
