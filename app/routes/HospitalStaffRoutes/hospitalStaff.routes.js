@@ -10,6 +10,7 @@ router.post("/hospitalStaffViewProfile", HospitalStaffController.hospitalStaffVi
 router.post("/hospitalStaffUpdateProfile", HospitalStaffController.hospitalStaffUpdateProfile);
 router.post("/patientRegister", HospitalStaffController.patientRegister);
 router.post("/viewAllPatients", HospitalStaffController.viewAllPatients);
+router.post("/viewOnePatient", HospitalStaffController.viewOnePatient);
 
 
 

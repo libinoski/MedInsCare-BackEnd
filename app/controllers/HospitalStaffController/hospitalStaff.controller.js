@@ -563,3 +563,61 @@ exports.viewAllPatients = async (req, res) => {
 
 
 
+// View One Patient
+exports.viewOnePatient = async (req, res) => {
+    try {
+        const { hospitalStaffId, patientId } = req.body;
+
+        const token = req.headers.token;
+        if (!token) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Token missing',
+            });
+        }
+
+        jwt.verify(token, 'micstaff', async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({
+                    status: 'error',
+                    message: 'Invalid token',
+                });
+            }
+
+            if (decoded.hospitalStaffId != hospitalStaffId) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Unauthorized access to view patient details',
+                });
+            }
+
+            try {
+                const patientData = await HospitalStaff.viewOnePatient(hospitalStaffId, patientId);
+
+                return res.status(200).json({
+                    status: 'success',
+                    message: 'Patient retrieved successfully',
+                    data: patientData.data,
+                });
+            } catch (error) {
+                if (error.message === "Patient not found") {
+                    return res.status(404).json({
+                        status: 'error',
+                        message: 'Patient not found',
+                    });
+                }
+                console.error('Error viewing one patient:', error);
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Internal server error',
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Error during viewOnePatient:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+        });
+    }
+};
