@@ -296,6 +296,24 @@ function isValidPassword(password) {
     };
 }
 
+
+
+// Validate age (allow only numbers up to 3 digits)
+function isValidAge(age) {
+    if (isNullOrUndefined(age) || age.trim() === "") {
+        return {
+            isValid: false,
+            message: "Age cannot be empty. Warning: This field is required."
+        };
+    }
+
+    return {
+        isValid: /^\d{1,3}$/.test(age),
+        message: "Invalid Age. It must be a number up to 3 digits."
+    };
+}
+
+
 // Validate a name
 function isValidName(name) {
     if (isNullOrUndefined(name) || name.trim() === "") {
@@ -463,6 +481,27 @@ function acceptOnlyCapitalLetters(value) {
     };
 }
 
+
+
+// Validate gender (allow only characters and can be null)
+function isValidGender(gender) {
+    if (isNullOrUndefined(gender)) {
+        return {
+            isValid: true,
+            message: "Gender is not provided. Warning: You can leave this field null."
+        };
+    }
+
+    return {
+        isValid: /^[a-zA-Z]*$/.test(gender),
+        message: "Invalid Gender. It must contain only characters."
+    };
+}
+
+
+
+
+
 // Export all validation functions
 module.exports = {
     isEmpty,
@@ -486,5 +525,7 @@ module.exports = {
     acceptOnlyCapitalLetters,
     isValidContent,
     isValidTitle,
-    isValidNewsImage
+    isValidNewsImage,
+    isValidAge,
+    isValidGender
 };

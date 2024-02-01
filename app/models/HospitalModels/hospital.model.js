@@ -1,4 +1,5 @@
 // hospital.model.js
+//model code for hospital activities
 const bcrypt = require('bcrypt');
 const db = require('../db');
 const { promisify } = require('util');
@@ -82,8 +83,9 @@ Hospital.register = async (newHospital) => {
         const insertQuery = "INSERT INTO Hospitals SET ?";
         const insertRes = await dbQuery(insertQuery, newHospital);
 
-        return { id: insertRes.insertId, ...newHospital };
+        return { hospitalId: insertRes.insertId, ...newHospital };
     } catch (error) {
+        console.error('Error during hospital registration in model:', error);
         throw error;
     }
 };
@@ -390,8 +392,6 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
 
 
 
-
-
 // View All Hospital Staffs
 Hospital.viewAllStaffs = async (hospitalId) => {
     try {
@@ -455,9 +455,6 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
 
 
 
-
-
-
 // Hospital Add News
 Hospital.addNews = async (hospitalId, newHospitalNews) => {
     try {
@@ -472,7 +469,7 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
         const insertQuery = "INSERT INTO Hospital_News SET ?";
         const insertRes = await dbQuery(insertQuery, newHospitalNews);
 
-        return { id: insertRes.insertId, ...newHospitalNews };
+        return { hospitalNewsId: insertRes.insertId, ...newHospitalNews };
     } catch (error) {
         throw error;
     }
@@ -507,6 +504,33 @@ Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
 };
 
 
+// Hospital Update News
+Hospital.updateNews = async (hospitalNewsId, hospitalId, updatedHospitalNews) => {
+    try {
+        const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
+  
+        if (checkHospitalRes.length === 0) {
+            throw new Error("Hospital not found, is not active, or has been deleted");
+        }
+  
+        const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
+        const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
+  
+        if (checkNewsRes.length === 0) {
+            throw new Error("Hospital News not found or has been deleted");
+        }
+  
+        const updateQuery = "UPDATE Hospital_News SET ? WHERE hospitalNewsId = ? AND hospitalId = ?";
+        await dbQuery(updateQuery, [updatedHospitalNews, hospitalNewsId, hospitalId]);
+  
+        return { message: "Hospital News updated successfully" };
+    } catch (error) {
+        throw error;
+    }
+  };
+
+
 // Hospital Hide News
 Hospital.hideNews = async (hospitalNewsId, hospitalId) => {
     try {
@@ -538,7 +562,6 @@ Hospital.hideNews = async (hospitalNewsId, hospitalId) => {
         throw error;
     }
 };
-
 
 
 
@@ -579,14 +602,7 @@ Hospital.unhideNews = async (hospitalNewsId, hospitalId) => {
 };
 
 
-
-
-
-
 // Update Hospital News
-
-
-
 
 
 // View All Hospital News
@@ -600,10 +616,6 @@ Hospital.viewAllNews = async (hospitalId) => {
         throw error;
     }
 };
-
-
-
-
 
 
 module.exports = { Hospital, HospitalStaff, HospitalNews };

@@ -121,59 +121,59 @@ function validateHospitalStaffChangePassword(passwordData) {
 exports.hospitalStaffViewProfile = async (req, res) => {
     const { hospitalStaffId } = req.body;
     const token = req.headers.token;
-  
+
     if (!hospitalStaffId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Hospital ID is required in the request body',
-      });
+        return res.status(400).json({
+            status: 'error',
+            message: 'Hospital ID is required in the request body',
+        });
     }
-  
+
     try {
-      jwt.verify(token, 'micstaff', async (err, decoded) => {
-        if (err) {
-          return res.status(401).json({
-            status: 'error',
-            message: 'Invalid token',
-          });
-        }
-  
-        if (decoded.hospitalStaffId != hospitalStaffId) {
-          return res.status(403).json({
-            status: 'error',
-            message: 'Unauthorized access to the hospital staff profile',
-          });
-        }
-  
-        const result = await HospitalStaff.viewProfile(hospitalStaffId);
-  
-        return res.status(200).json({
-          status: 'success',
-          data: result,
+        jwt.verify(token, 'micstaff', async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({
+                    status: 'error',
+                    message: 'Invalid token',
+                });
+            }
+
+            if (decoded.hospitalStaffId != hospitalStaffId) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Unauthorized access to the hospital staff profile',
+                });
+            }
+
+            const result = await HospitalStaff.viewProfile(hospitalStaffId);
+
+            return res.status(200).json({
+                status: 'success',
+                data: result,
+            });
         });
-      });
     } catch (error) {
-      if (error.name === 'JsonWebTokenError') {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Invalid token',
-        });
-      } else if (error.message === "Hospital staff not found") {
-        return res.status(404).json({
-          status: 'error',
-          message: 'Hospital staff not found',
-        });
-      } else {
-        console.error('Error fetching hospital profile:', error);
-        return res.status(500).json({
-          status: 'error',
-          message: 'Internal server error',
-        });
-      }
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Invalid token',
+            });
+        } else if (error.message === "Hospital staff not found") {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Hospital staff not found',
+            });
+        } else {
+            console.error('Error fetching hospital profile:', error);
+            return res.status(500).json({
+                status: 'error',
+                message: 'Internal server error',
+            });
+        }
     }
-  };
-  
-  
+};
+
+
 
 // Update Hospital Staff Profile
 exports.hospitalStaffUpdateProfile = async (req, res) => {
@@ -247,7 +247,7 @@ function validateHospitalStaffUpdateProfile(hospitalStaffData) {
         isValid: true,
         messages: [],
     };
-  
+
     const idValidation = dataValidator.isValidId(hospitalStaffData.hospitalStaffId);
     if (!idValidation.isValid) {
         validationResults.isValid = false;
@@ -279,14 +279,231 @@ function validateHospitalStaffUpdateProfile(hospitalStaffData) {
     }
 
     // Add additional validations as needed
-    
+
     return validationResults;
 }
 
 
-  
+// Hospital staff Register New Staff
+exports.patientRegister = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        jwt.verify(token, 'micstaff', async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({ error: 'Invalid token' });
+            }
+            const PatientImagesStorage = multer.diskStorage({
+                destination: function (req, file, cb) {
+                    cb(null, 'Files/PatientImages');
+                },
+                filename: function (req, file, cb) {
+                    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                    const ext = path.extname(file.originalname);
+
+                    if (file.fieldname === 'patientProfileImage') {
+                        const fileName = 'patientProfileImage-' + uniqueSuffix + ext;
+                        cb(null, fileName);
+                        req.patientProfileImageFileName = fileName;
+                    } else if (file.fieldname === 'patientIdProofImage') {
+                        const fileName = 'patientIdProofImage-' + uniqueSuffix + ext;
+                        cb(null, fileName);
+                        req.patientIdProofImageFileName = fileName;
+                    }
+                }
+            });
+
+            const uploadpatientImages = multer({ storage: PatientImagesStorage }).fields([
+                { name: 'patientProfileImage', maxCount: 1 },
+                { name: 'patientIdProofImage', maxCount: 1 }
+            ]);
+
+            uploadpatientImages(req, res, async function (err) {
+                if (err) {
+                    return res.status(400).json({ error: 'File upload failed', details: err.message });
+                }
+
+                const patientProfileImageFile = req.files && req.files['patientProfileImage'] ? req.files['patientProfileImage'][0] : null;
+                const patientIdProofImageFile = req.files && req.files['patientIdProofImage'] ? req.files['patientIdProofImage'][0] : null;
+
+                if (!patientProfileImageFile || !patientIdProofImageFile) {
+                    if (patientProfileImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientProfileImageFile.filename));
+                    }
+                    if (patientIdProofImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientIdProofImageFile.filename));
+                    }
+
+                    return res.status(400).json({ error: 'Both profile image and ID proof image are required for registration' });
+                }
+
+                const patientData = req.body;
+
+                const validationResults = validatePatientRegistration(patientData, patientProfileImageFile, patientIdProofImageFile);
+                if (!validationResults.isValid) {
+                    if (patientProfileImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientProfileImageFile.filename));
+                    }
+                    if (patientIdProofImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientIdProofImageFile.filename));
+                    }
+
+                    return res.status(400).json({ error: 'Validation failed', details: validationResults.messages });
+                }
+
+                const hospitalStaffIdFromToken = decoded.hospitalStaffId;
+
+                if (patientData.hospitalStaffId != hospitalStaffIdFromToken) {
+                    if (patientProfileImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientProfileImageFile.filename));
+                    }
+                    if (patientIdProofImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientIdProofImageFile.filename));
+                    }
+
+                    return res.status(401).json({ error: 'Unauthorized access to hospital data' });
+                }
+
+                const newPatient = {
+                    hospitalStaffId: patientData.hospitalStaffId,
+                    hospitalId: patientData.hospitalId,
+                    patientName: patientData.patientName,
+                    patientProfileImage: req.patientProfileImageFileName,
+                    patientIdProofImage: req.patientIdProofImageFileName,
+                    patientMobile: patientData.patientMobile,
+                    patientEmail: patientData.patientEmail,
+                    patientGender: patientData.patientGender,
+                    patientAge: patientData.patientAge,
+                    patientAddress: patientData.patientAddress,
+                    patientAadhar: patientData.patientAadhar,
+                    patientPassword: patientData.patientPassword,
+                    patientRegisteredDate: new Date(),
+                    patientDischargedDate: patientData.patientDischargedDate,
+                    updatedDate: null,
+                    dischargeStatus: 0,
+                    updateStatus: 0,
+                    passwordUpdateStatus: 0,
+                };
+
+                try {
+                    const registrationResponse = await HospitalStaff.registerPatient(newPatient);
+
+                    const responseData = {
+                        status: registrationResponse.status,
+                        message: registrationResponse.message,
+                        data: registrationResponse.data,
+                    };
+
+                    return res.status(201).json(responseData);
+
+                } catch (error) {
+                    if (patientProfileImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientProfileImageFile.filename));
+                    }
+                    if (patientIdProofImageFile) {
+                        fs.unlinkSync(path.join('Files/patientImages', patientIdProofImageFile.filename));
+                    }
+
+                    if (
+                        error.message === "Hospital staff does not exist" ||
+                        error.message === "Aadhar number already exists" ||
+                        error.message === "Email already exists"
+                    ) {
+                        return res.status(400).json({ error: error.message });
+                    } else {
+                        throw error;
+                    }
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Error during hospital patient registration:', error);
+        if (req.files) {
+            if (req.files['patientProfileImage'] && req.files['patientProfileImage'][0]) {
+                fs.unlinkSync(path.join('Files/patientImages', req.files['patientProfileImage'][0].filename));
+            }
+            if (req.files['patientIdProofImage'] && req.files['patientIdProofImage'][0]) {
+                fs.unlinkSync(path.join('Files/patientImages', req.files['patientIdProofImage'][0].filename));
+            }
+        }
+
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
+// Function to validate the Hospital patientr registration equest
+function validatePatientRegistration(patientData, patientProfileImageFile, patientIdProofImageFile) {
+    const validationResults = {
+        isValid: true,
+        messages: [],
+    };
+
+    const idValidation = dataValidator.isValidId(patientData.hospitalStaffId);
+    if (!idValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'hospitalStaffId', message: idValidation.message });
+    }
+
+    const nameValidation = dataValidator.isValidName(patientData.patientName);
+    if (!nameValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientName', message: nameValidation.message });
+    }
+
+    const emailValidation = dataValidator.isValidEmail(patientData.patientEmail);
+    if (!emailValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientEmail', message: emailValidation.message });
+    }
+
+    const ageValidation = dataValidator.isValidAge(patientData.patientAge);
+    if (!ageValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientAge', message: ageValidation.message });
+    }
+
+    const genderValidation = dataValidator.isValidGender(patientData.patientGender);
+    if (!genderValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientGender', message: genderValidation.message });
+    }
+
+    const aadharValidation = dataValidator.isValidAadharNumber(patientData.patientAadhar);
+    if (!aadharValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientAadhar', message: aadharValidation.message });
+    }
+
+    const mobileValidation = dataValidator.isValidMobileNumber(patientData.patientMobile);
+    if (!mobileValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientMobile', message: mobileValidation.message });
+    }
+    const addressValidation = dataValidator.isValidAddress(patientData.patientAddress);
+    if (!addressValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientAddress', message: addressValidation.message });
+    }
+    const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(patientProfileImageFile);
+    if (!profileImageValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientProfileImage', message: profileImageValidation.message });
+    }
+
+    const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(patientIdProofImageFile);
+    if (!idProofImageValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'patientIdProofImage', message: idProofImageValidation.message });
+    }
+
+    const passwordValidation = dataValidator.isValidPassword(patientData.patientPassword);
+    if (!passwordValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.messages.push({ field: 'hospitalPassword', message: passwordValidation.message });
+    }
+
+    return validationResults;
+}
 
 
-  
-  
-  
+
+
+

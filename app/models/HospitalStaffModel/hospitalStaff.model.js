@@ -27,7 +27,32 @@ const HospitalStaff = function (hospitalStaff) {
 };
 
 
-// Hospital Login
+// patients.model.js
+const Patients = function (patient) {
+    this.patientId = patient.patientId;
+    this.hospitalStaffId = patient.hospitalStaffId;
+    this.hospitalId = patient.hospitalId;
+    this.patientName = patient.patientName;
+    this.patientEmail = patient.patientEmail;
+    this.patientAadhar = patient.patientAadhar;
+    this.patientMobile = patient.patientMobile;
+    this.patientProfileImage = patient.patientProfileImage;
+    this.patientIdProofImage = patient.patientIdProofImage;
+    this.patientAddress = patient.patientAddress;
+    this.patientGender = patient.patientGender;
+    this.patientAge = patient.patientAge;
+    this.patientPassword = patient.patientPassword;
+    this.patientRegisteredDate = patient.patientRegisteredDate;
+    this.updatedDate = patient.updatedDate;
+    this.patientDischargedDate = patient.patientDischargedDate
+    this.passwordUpdateStatus = patient.passwordUpdateStatus;
+    this.dischargeStatus = patient.dischargeStatus;
+    this.updateStatus = patient.updateStatus;
+};
+
+
+
+// Hospital staff Login
 HospitalStaff.login = async (email, password) => {
     const query = "SELECT * FROM Hospital_Staffs WHERE BINARY hospitalStaffEmail = ?";
     try {
@@ -102,7 +127,7 @@ HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword)
 };
 
 
-// Hospital View Profile
+// Hospitalstaff update Profile
 HospitalStaff.viewProfile = async (hospitalStaffId) => {
     const query = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended= 0";
     try {
@@ -119,7 +144,7 @@ HospitalStaff.viewProfile = async (hospitalStaffId) => {
 };
 
 
-
+// Hospitalstaff update Profile
 HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
     const checkHospitalStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0";
 
@@ -169,6 +194,45 @@ HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
 };
 
 
+// Hospital staff Register New Staff
+HospitalStaff.registerPatient = async (newPatient) => {
+    try {
+        const checkHospitalStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=0";
+        const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar=? AND dischargeStatus = 0";
+        const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail=? AND dischargeStatus = 0";
+
+        const hospitalStaffResult = await dbQuery(checkHospitalStaffQuery, [newPatient.hospitalStaffId]);
+
+        if (hospitalStaffResult.length === 0) {
+            throw new Error("Hospital staff does not exist");
+        }
+
+        const aadharRes = await dbQuery(checkAadharQuery, [newPatient.patientAadhar]);
+        if (aadharRes.length > 0) {
+            throw new Error("Aadhar number already exists");
+        }
+
+        const emailRes = await dbQuery(checkEmailQuery, [newPatient.patientEmail]);
+        if (emailRes.length > 0) {
+            throw new Error("Email already exists");
+        }
+
+        const hospitalId = hospitalStaffResult[0].hospitalId;
+
+        newPatient.hospitalId = hospitalId;
+
+        const hashedPassword = await promisify(bcrypt.hash)(newPatient.patientPassword, 10);
+        newPatient.patientPassword = hashedPassword;
+
+        const insertQuery = "INSERT INTO Patients SET ?";
+        const insertRes = await dbQuery(insertQuery, newPatient);
+
+        return { status: "Success", message: 'Patient added successfully', data: { patientId: insertRes.insertId, ...newPatient } };
+    } catch (error) {
+        throw error;
+    }
+};
 
 
-module.exports = {HospitalStaff};
+
+module.exports = {HospitalStaff, Patients};

@@ -8,6 +8,7 @@ router.post("/hospitalStaffLogin", HospitalStaffController.hospitalStaffLogin);
 router.post("/hospitalStaffChangePassword", HospitalStaffController.hospitalStaffChangePassword);
 router.post("/hospitalStaffViewProfile", HospitalStaffController.hospitalStaffViewProfile);
 router.post("/hospitalStaffUpdateProfile", HospitalStaffController.hospitalStaffUpdateProfile);
+router.post("/patientRegister", HospitalStaffController.patientRegister);
 
 
 
