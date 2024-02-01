@@ -1,8 +1,10 @@
 //server.js
-
 const express = require('express');
 const cors = require('cors');
 const app = express();
+const HospitalRoutes = require('./app/routes/HospitalRoutes/hospital.routes');
+const HospitalStaffRoutes = require('./app/routes/HospitalStaffRoutes/hospitalStaff.routes')
+
 const allowedOrigins = ['*'];
 const corsOptions = {
     origin: function (origin, callback) {
@@ -19,6 +21,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 
+app.use('/api/mic/hospital', HospitalRoutes);
+app.use('/api/mic/hospitalStaff', HospitalStaffRoutes);
 
 
 app.listen(8080, '0.0.0.0', () => {
