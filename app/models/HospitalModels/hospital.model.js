@@ -270,6 +270,7 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     }
 };
 
+
 // Add this method to the HospitalStaff class
 Hospital.deleteStaff = async (hospitalStaffId) => {
     try {
@@ -309,7 +310,6 @@ Hospital.suspendStaff = async (hospitalStaffId) => {
     }
 };
 
-
 // Unsuspend Hospital Staff
 Hospital.unSuspendStaff = async (hospitalStaffId) => {
     try {
@@ -328,8 +328,6 @@ Hospital.unSuspendStaff = async (hospitalStaffId) => {
         throw error;
     }
 };
-
-
 
 
 // Update Hospital Staff
@@ -391,7 +389,6 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
 };
 
 
-
 // View All Hospital Staffs
 Hospital.viewAllStaffs = async (hospitalId) => {
     try {
@@ -403,8 +400,6 @@ Hospital.viewAllStaffs = async (hospitalId) => {
         throw error;
     }
 };
-
-
 
 
 // View One Hospital Staff
@@ -445,7 +440,16 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
     `;
 
     try {
-        const result = await dbQuery(query, [hospitalId, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`]);
+        const result = await dbQuery(query, [
+            hospitalId,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`
+        ]);
 
         return result;
     } catch (error) {

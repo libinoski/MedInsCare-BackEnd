@@ -234,7 +234,6 @@ HospitalStaff.registerPatient = async (newPatient) => {
 };
 
 
-
 // View All patients
 HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
     try {
@@ -250,8 +249,6 @@ HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
         throw error;
     }
 };
-
-
 
 
 // View One patient
@@ -275,6 +272,55 @@ HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
         throw error;
     }
 };
+
+
+
+
+// Hospital Search Patients
+HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
+    const query = `
+        SELECT * 
+        FROM Patients
+        WHERE hospitalId = (
+            SELECT hospitalId 
+            FROM Hospital_Staffs 
+            WHERE hospitalStaffId = ?
+        )
+        AND dischargeStatus = 0
+        AND (
+            patientId LIKE ? OR
+            patientName LIKE ? OR
+            patientMobile LIKE ? OR
+            patientEmail LIKE ? OR
+            patientGender LIKE ? OR
+            patientAge LIKE ? OR
+            patientAddress LIKE ? OR
+            patientAadhar LIKE ? OR
+            patientRegisteredDate LIKE ?
+        )
+    `;
+
+    try {
+        const result = await dbQuery(query, [
+            hospitalStaffId,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`
+        ]);
+
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
 
 
 

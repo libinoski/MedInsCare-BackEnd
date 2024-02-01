@@ -621,3 +621,75 @@ exports.viewOnePatient = async (req, res) => {
         });
     }
 };
+
+
+
+
+
+
+// Search Patients under the same hospital
+exports.searchPatients = async (req, res) => {
+    try {
+        const { hospitalStaffId, searchQuery } = req.body;
+        if (!searchQuery) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Search query is required',
+            });
+        }
+        const token = req.headers.token;
+        if (!token) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Token missing',
+            });
+        }
+
+        jwt.verify(token, 'micstaff', async (err, decoded) => {
+            if (err) {
+                return res.status(401).json({
+                    status: 'error',
+                    message: 'Invalid token',
+                });
+            }
+
+            if (decoded.hospitalStaffId != hospitalStaffId) {
+                return res.status(403).json({
+                    status: 'error',
+                    message: 'Unauthorized access to search patient details',
+                });
+            }
+
+            try {
+                const patientData = await HospitalStaff.searchPatients(hospitalStaffId, searchQuery);
+
+                if (patientData.length === 0) {
+                    // No patients found
+                    return res.status(200).json({
+                        status: 'failed',
+                        message: 'No patients found'
+                    });
+                }
+
+                return res.status(200).json({
+                    status: 'success',
+                    message: 'Patients retrieved successfully',
+                    data: patientData,
+                });
+            } catch (error) {
+                console.error('Error searching patients:', error);
+                return res.status(500).json({
+                    status: 'error',
+                    message: 'Internal server error',
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Error during searchPatients:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Internal server error',
+        });
+    }
+};
+

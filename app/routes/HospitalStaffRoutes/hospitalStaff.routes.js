@@ -11,6 +11,7 @@ router.post("/hospitalStaffUpdateProfile", HospitalStaffController.hospitalStaff
 router.post("/patientRegister", HospitalStaffController.patientRegister);
 router.post("/viewAllPatients", HospitalStaffController.viewAllPatients);
 router.post("/viewOnePatient", HospitalStaffController.viewOnePatient);
+router.post("/searchPatients", HospitalStaffController.searchPatients);
 
 
 
