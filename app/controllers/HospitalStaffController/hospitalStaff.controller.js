@@ -3,13 +3,13 @@ const multer = require('multer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const dataValidator = require('../../config/data.validate');
-const bcrypt = require('bcrypt');
 const fs = require('fs');
-const nodemailer = require('nodemailer');
-const emailConfig = require('../../config/emailConfig');
 const { HospitalStaff } = require('../../models/HospitalStaffModel/hospitalStaff.model');
 
 
+
+
+// HospitalStaff Login
 exports.hospitalStaffLogin = async (req, res) => {
     const { hospitalStaffEmail, hospitalStaffPassword } = req.body;
     const hospitalStaffData = req.body;
@@ -43,7 +43,6 @@ exports.hospitalStaffLogin = async (req, res) => {
         }
     }
 };
-
 
 
 // HospitalStaff Change Password Controller
@@ -116,8 +115,7 @@ function validateHospitalStaffChangePassword(passwordData) {
 }
 
 
-
-// View Hospital staff Profile
+// Hospital Staff View Profile
 exports.hospitalStaffViewProfile = async (req, res) => {
     const { hospitalStaffId } = req.body;
     const token = req.headers.token;
@@ -174,8 +172,7 @@ exports.hospitalStaffViewProfile = async (req, res) => {
 };
 
 
-
-// Update Hospital Staff Profile
+// Hospital Staff Update Profile
 exports.hospitalStaffUpdateProfile = async (req, res) => {
     const token = req.headers.token;
 
@@ -284,9 +281,7 @@ function validateHospitalStaffUpdateProfile(hospitalStaffData) {
 }
 
 
-
-
-// Hospital staff Register New Staff
+// Hospital staff Register New Patient
 exports.patientRegister = async (req, res) => {
     try {
         const token = req.headers.token;
@@ -431,7 +426,7 @@ exports.patientRegister = async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
-// Function to validate the Hospital patientr registration equest
+// Function to validate the hospital staff patient registration request
 function validatePatientRegistration(patientData, patientProfileImageFile, patientIdProofImageFile) {
     const validationResults = {
         isValid: true,
@@ -506,9 +501,7 @@ function validatePatientRegistration(patientData, patientProfileImageFile, patie
 }
 
 
-
-
-// View All Hospital Staffs
+// Hospital Staff View All Patients
 exports.viewAllPatients = async (req, res) => {
     try {
         const { hospitalStaffId } = req.body;
@@ -562,8 +555,7 @@ exports.viewAllPatients = async (req, res) => {
 };
 
 
-
-// View One Patient
+// Hospital Staff View One Patient
 exports.viewOnePatient = async (req, res) => {
     try {
         const { hospitalStaffId, patientId } = req.body;
@@ -623,11 +615,7 @@ exports.viewOnePatient = async (req, res) => {
 };
 
 
-
-
-
-
-// Search Patients under the same hospital
+// Hospital Staff Search Patients
 exports.searchPatients = async (req, res) => {
     try {
         const { hospitalStaffId, searchQuery } = req.body;

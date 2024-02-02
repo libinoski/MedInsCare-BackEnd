@@ -1,16 +1,19 @@
 // data.validate.js
-
 const path = require('path');
 
-// Check if a value is null or undefined
+
+
+
+
+// Determine if a value is vacant or devoid.
 function isNullOrUndefined(value) {
     return value === null || value === undefined;
 }
-
 const ID_REGEX = /^[0-9]+$/;
 const INVALID_ID_MESSAGE = `Must be a valid numeric ID.`;
 
-// Validate if a value is empty
+
+// Verify if a value is empty.
 function isEmpty(value, fieldName) {
     if (isNullOrUndefined(value) || value.trim() === "") {
         return {
@@ -23,7 +26,8 @@ function isEmpty(value, fieldName) {
     };
 }
 
-// Validate if an ID is valid
+
+// Verify the validity of an ID.
 function isValidId(id, idName) {
     if (isNullOrUndefined(id) || id.trim() === "") {
         return {
@@ -46,10 +50,7 @@ function isValidId(id, idName) {
     };
 }
 
-
-
-
-// Validate content with any characters, symbols, and numbers
+// Verify the validity of the content.
 function isValidContent(content, fieldName) {
     if (isNullOrUndefined(content) || content.trim() === "") {
         return {
@@ -57,8 +58,6 @@ function isValidContent(content, fieldName) {
             message: `${fieldName || 'Content'} cannot be empty. Warning: This field is required.`
         };
     }
-
-    // Modify this regex pattern based on your specific criteria for valid content
     const regex = /^[\w\s!@#$%^&*()-_=+[\]{}|;:'",.<>/?]*$/;
 
     return {
@@ -68,8 +67,7 @@ function isValidContent(content, fieldName) {
 }
 
 
-
-
+// Validate the title's correctness.
 function isValidTitle(title) {
     if (isNullOrUndefined(title) || title.trim() === "") {
         return {
@@ -88,7 +86,7 @@ function isValidTitle(title) {
 }
 
 
-
+// Confirm the image's suitability for news.
 function isValidNewsImage(file) {
     if (isNullOrUndefined(file)) {
         return {
@@ -97,7 +95,7 @@ function isValidNewsImage(file) {
         };
     }
 
-    const maxFileSize = 10 * 1024 * 1024; // Updated size constraint to 10 MB
+    const maxFileSize = 10 * 1024 * 1024;
 
     if (file.size > maxFileSize) {
         return {
@@ -123,23 +121,7 @@ function isValidNewsImage(file) {
 }
 
 
-
-// Validate if a phone number is valid
-function isValidPhoneNumber(phoneNumber) {
-    if (isNullOrUndefined(phoneNumber)) {
-        return {
-            isValid: true,
-            message: `Warning: Phone number is not provided.`
-        };
-    }
-
-    return {
-        isValid: /^\d{4,5}\s?\d{6,7}$/.test(phoneNumber),
-        message: "Phone number is invalid"
-    };
-}
-
-// Validate image with a 1 MB size constraint
+// Validate an image within a 1 MB size limit.
 function isValidImageWith1MBConstraint(file) {
     if (isNullOrUndefined(file)) {
         return {
@@ -147,10 +129,9 @@ function isValidImageWith1MBConstraint(file) {
             message: 'File is required. Warning: Please upload a file.'
         };
     }
-
     const allowedExtensions = /\.(jpg|jpeg|png|webp|heif)$/;
     const extensionIsValid = allowedExtensions.test(path.extname(file.filename.replace(/[^\w\-.]/g, '')).toLowerCase());
-    const maxFileSize = 1 * 1024 * 1024; // Updated size constraint to 1 MB
+    const maxFileSize = 1 * 1024 * 1024; 
     const sizeIsValid = file.size <= maxFileSize;
 
     if (!extensionIsValid && !sizeIsValid) {
@@ -176,7 +157,8 @@ function isValidImageWith1MBConstraint(file) {
     };
 }
 
-// Validate a mobile number
+
+// Verify the validity of a mobile number.
 function isValidMobileNumber(mobileNumber) {
     if (isNullOrUndefined(mobileNumber) || mobileNumber.trim() === "") {
         return {
@@ -184,14 +166,14 @@ function isValidMobileNumber(mobileNumber) {
             message: "Mobile Number cannot be empty"
         };
     }
-
     return {
         isValid: /^\+91[6-9]\d{9}$|^\+91\s?[6-9]\d{9}$|^[6-9]\d{9}$/.test(mobileNumber),
         message: "Invalid Mobile Number"
     };
 }
 
-// Validate an amount
+
+// Confirm the validity of an amount.
 function isValidAmount(amount) {
     if (isNullOrUndefined(amount) || amount.trim() === "") {
         return {
@@ -199,14 +181,14 @@ function isValidAmount(amount) {
             message: "Amount cannot be empty"
         };
     }
-
     return {
         isValid: amount > 0,
         message: "Value must be greater than zero"
     };
 }
 
-// Validate an address
+
+// Verify the correctness of an address.
 function isValidAddress(address) {
     if (isNullOrUndefined(address) || address.trim() === "") {
         return {
@@ -214,14 +196,14 @@ function isValidAddress(address) {
             message: "Address cannot be empty"
         };
     }
-
     return {
         isValid: address.trim().length <= 100,
         message: "Address should not exceed 100 characters"
     };
 }
 
-// Validate a website
+
+// Verify the legitimacy of a website.
 function isValidWebsite(website) {
     if (isNullOrUndefined(website) || website.trim() === "") {
         return {
@@ -229,16 +211,15 @@ function isValidWebsite(website) {
             message: "Website is empty or null. Warning: This field is required."
         };
     }
-
     const regex = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.([a-zA-Z]{2,})$/;
-
     return {
         isValid: regex.test(website),
         message: "Website must be in a valid format (e.g., http://www.example.com)"
     };
 }
 
-// Validate an email address
+
+// Confirm the validity of an email address.
 function isValidEmail(email) {
     if (isNullOrUndefined(email) || email.trim() === "") {
         return {
@@ -246,14 +227,14 @@ function isValidEmail(email) {
             message: "Email cannot be empty. Warning: This field is required."
         };
     }
-
     return {
         isValid: /^[a-z0-9._!#$%&'*+/=?^_`{|}~-]+@[a-z]+(\.[a-z]+)+$/.test(email),
         message: "Invalid Email! "
     };
 }
 
-// Validate a password
+
+// Verify the strength and validity of a password.
 function isValidPassword(password) {
     if (isNullOrUndefined(password) || password.trim() === "") {
         return {
@@ -261,13 +242,11 @@ function isValidPassword(password) {
             message: ["Password can't be empty. Warning: This field is required."]
         };
     }
-
     const hasLowerCase = /[a-z]/.test(password);
     const hasUpperCase = /[A-Z]/.test(password);
     const hasDigit = /\d/.test(password);
     const hasSpecialChar = /[\W_]/.test(password);
     const isLengthValid = /^[a-zA-Z\d\W_]{8,12}$/.test(password);
-
     const messages = [];
 
     if (!hasLowerCase) {
@@ -297,8 +276,7 @@ function isValidPassword(password) {
 }
 
 
-
-// Validate age (allow only numbers up to 3 digits)
+// Validate age (restrict to numbers with a maximum of 3 digits).
 function isValidAge(age) {
     if (isNullOrUndefined(age) || age.trim() === "") {
         return {
@@ -314,7 +292,7 @@ function isValidAge(age) {
 }
 
 
-// Validate a name
+// Confirm the validity of a name.
 function isValidName(name) {
     if (isNullOrUndefined(name) || name.trim() === "") {
         return {
@@ -329,55 +307,8 @@ function isValidName(name) {
     };
 }
 
-// Validate a date
-function isValidDate(date) {
-    if (isNullOrUndefined(date) || date.trim() === "") {
-        return {
-            isValid: false,
-            message: "Date cannot be empty. Warning: This field is required."
-        };
-    }
 
-    return {
-        isValid: /^([0-2][0-9]|3[0-1])\/(0[1-9]|1[0-2])\/\d{4}$/.test(date),
-        message: "Date must be in the format DD/MM/YYYY"
-    };
-}
-
-// Validate if a date is greater than today
-function isDateGreaterThanToday(date) {
-    if (isNullOrUndefined(date) || date.trim() === "") {
-        return {
-            isValid: false,
-            message: "Date cannot be empty. Warning: This field is required."
-        };
-    }
-
-    const inputDate = new Date(date.split('/').reverse().join('-'));
-    const currentDate = new Date();
-
-    return {
-        isValid: inputDate > currentDate,
-        message: "Select a date greater than today."
-    };
-}
-
-// Validate a time
-function isValidTime(time) {
-    if (isNullOrUndefined(time) || time.trim() === "") {
-        return {
-            isValid: false,
-            message: "Time cannot be empty. Warning: This field is required."
-        };
-    }
-
-    return {
-        isValid: /^\d{2}:\d{2}:\d{2}$/.test(time),
-        message: "Time must be in the format HH:MM:SS"
-    };
-}
-
-// Validate an Aadhar number
+// Verify the legitimacy of an Aadhar number.
 function isValidAadharNumber(aadharNumber) {
     if (isNullOrUndefined(aadharNumber) || aadharNumber.trim() === "") {
         return {
@@ -392,98 +323,8 @@ function isValidAadharNumber(aadharNumber) {
     };
 }
 
-// Validate a file
-function isValidFile(file) {
-    if (isNullOrUndefined(file)) {
-        return {
-            isValid: false,
-            message: 'File is required. Warning: Please upload a file.'
-        };
-    }
 
-    const allowedExtensions = /\.(pdf|docx)$/;
-    const extensionIsValid = allowedExtensions.test(path.extname(file.filename.replace(/[^\w\-.]/g, '')).toLowerCase());
-    const maxFileSize = 2 * 1024 * 1024;
-    const sizeIsValid = file.size <= maxFileSize;
-
-    if (!extensionIsValid && !sizeIsValid) {
-        return {
-            isValid: false,
-            message: 'Invalid file format and size exceeds the limit of 2 MB. Warning: Please upload a valid file within 2 MB size limit.'
-        };
-    } else if (!extensionIsValid) {
-        return {
-            isValid: false,
-            message: 'Invalid file format. Only PDF and DOCX files are allowed. Warning: Please upload a valid file.'
-        };
-    } else if (!sizeIsValid) {
-        return {
-            isValid: false,
-            message: 'File size exceeds the limit of 2 MB. Warning: Please upload a file within 2 MB size limit.'
-        };
-    }
-
-    return {
-        isValid: true,
-        message: 'File is valid'
-    };
-}
-
-// Check if one date is greater than or equal to another date after one year
-function isDate1GreaterThanDate2(date1, date2) {
-    if (isNullOrUndefined(date1) || date1.trim() === "" || isNullOrUndefined(date2) || date2.trim() === "") {
-        return {
-            isValid: false,
-            message: "Both dates are required. Warning: Please provide both dates."
-        };
-    }
-
-    const [day1, month1, year1] = date1.split('/').map(Number);
-    const inputDate1 = new Date(year1, month1 - 1, day1);
-
-    const [day2, month2, year2] = date2.split('/').map(Number);
-    const inputDate2 = new Date(year2, month2 - 1, day2);
-
-    const oneYearLater = new Date(inputDate1);
-    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-
-    return {
-        isValid: inputDate2 >= oneYearLater,
-        message: "Select a date greater than or equal to one year after the previous date."
-    };
-}
-
-// Validate Aadhar number for update
-function isValidAadharNumberUpdate(aadharNumber) {
-    if (isNullOrUndefined(aadharNumber)) {
-        return {
-            isValid: true,
-        };
-    }
-    return {
-        isValid: /^\d{12}$/.test(aadharNumber),
-        message: "Aadhar Number must be 12 digits"
-    };
-}
-
-// Accept only capital letters
-function acceptOnlyCapitalLetters(value) {
-    if (isNullOrUndefined(value) || value.trim() === "") {
-        return {
-            isValid: false,
-            message: "Code cannot be empty. Warning: This field is required."
-        };
-    }
-
-    return {
-        isValid: /^[A-Z]*$/.test(value),
-        message: "Invalid Code. It must contain only CAPITAL letters."
-    };
-}
-
-
-
-// Validate gender (allow only characters and can be null)
+// Validate gender (permit only alphabetical characters and allow null values).
 function isValidGender(gender) {
     if (isNullOrUndefined(gender)) {
         return {
@@ -499,6 +340,59 @@ function isValidGender(gender) {
 }
 
 
+// Validate text with a maximum length of 2000 characters.
+function isValidText(text) {
+    if (isNullOrUndefined(text)) {
+        return {
+            isValid: false,
+            message: "Text cannot be null. Warning: This field is required."
+        };
+    }
+
+    if (text.length > 2000) {
+        return {
+            isValid: false,
+            message: "Text exceeds the maximum length of 2000 characters."
+        };
+    }
+
+    return {
+        isValid: true,
+        message: "Text is valid."
+    };
+}
+
+
+// Verify the validity of a date in formats: dd/mm/yyyy, yyyy/mm/dd, dd-mm-yyyy, yyyy-mm-dd
+function isValidDate(dateString) {
+    if (isNullOrUndefined(dateString) || dateString.trim() === "") {
+        return {
+            isValid: false,
+            message: "Date cannot be empty. Warning: This field is required."
+        };
+    }
+
+    const dateFormats = [
+        /^\d{2}\/\d{2}\/\d{4}$/,   // dd/mm/yyyy
+        /^\d{4}\/\d{2}\/\d{2}$/,   // yyyy/mm/dd
+        /^\d{2}-\d{2}-\d{4}$/,     // dd-mm-yyyy
+        /^\d{4}-\d{2}-\d{2}$/      // yyyy-mm-dd
+    ];
+
+    for (const format of dateFormats) {
+        if (format.test(dateString)) {
+            return {
+                isValid: true,
+                message: "Date is valid."
+            };
+        }
+    }
+
+    return {
+        isValid: false,
+        message: "Invalid date format. Supported formats: dd/mm/yyyy, yyyy/mm/dd, dd-mm-yyyy, yyyy-mm-dd"
+    };
+}
 
 
 
@@ -506,26 +400,20 @@ function isValidGender(gender) {
 module.exports = {
     isEmpty,
     isValidId,
-    isValidPhoneNumber,
     isValidMobileNumber,
     isValidAddress,
     isValidWebsite,
     isValidEmail,
     isValidPassword,
     isValidName,
-    isValidDate,
-    isValidTime,
     isValidImageWith1MBConstraint,
     isValidAadharNumber,
     isValidAmount,
-    isDateGreaterThanToday,
-    isValidFile,
-    isDate1GreaterThanDate2,
-    isValidAadharNumberUpdate,
-    acceptOnlyCapitalLetters,
     isValidContent,
     isValidTitle,
     isValidNewsImage,
     isValidAge,
-    isValidGender
+    isValidGender,
+    isValidText,
+    isValidDate
 };

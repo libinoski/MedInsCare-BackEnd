@@ -1,14 +1,11 @@
 // hospital.controller.js
-//controller code for hospital activities
 const multer = require('multer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const { Hospital, HospitalNews } = require('../../models/HospitalModels/hospital.model');
 const dataValidator = require('../../config/data.validate');
-const bcrypt = require('bcrypt');
 const fs = require('fs');
-// const nodemailer = require('nodemailer');
-// const emailConfig = require('../../config/emailConfig');
+
 
 
 
@@ -145,7 +142,6 @@ function validateHospitalRegistration(hospitalData, hospitalImageFile) {
 
   return validationResults;
 }
-
 
 
 // Hospital Login
@@ -354,9 +350,8 @@ function validateHospitalImage(file) {
 }
 
 
-
-// View Hospital Profile
-exports.getHospitalProfile = async (req, res) => {
+// Hospital View Profile
+exports.hospitalViewProfile = async (req, res) => {
   const { hospitalId } = req.body;
   const token = req.headers.token;
 
@@ -412,9 +407,7 @@ exports.getHospitalProfile = async (req, res) => {
 };
 
 
-
-
-// Update Hospital Profile
+// Hospital Update Profile
 exports.hospitalUpdateProfile = async (req, res) => {
   const token = req.headers.token;
 
@@ -521,7 +514,7 @@ function validateHospitalUpdateProfile(hospitalData) {
 }
 
 
-
+// Hospital Register New Staff
 exports.hospitalStaffRegister = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -719,8 +712,7 @@ function validateHospitalStaffRegistration(staffData, staffProfileImageFile, sta
 }
 
 
-
-// Delete Hospital Staff
+// Hospital Delete Hospital Staff
 exports.deleteHospitalStaff = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -782,10 +774,7 @@ exports.deleteHospitalStaff = async (req, res) => {
 };
 
 
-
-
-
-// Suspend Hospital Staff
+// Hospital Suspend Hospital Staff
 exports.suspendHospitalStaff = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -847,7 +836,7 @@ exports.suspendHospitalStaff = async (req, res) => {
 };
 
 
-// Unsuspend Hospital Staff
+// Hospital Unsuspend Hospital Staff
 exports.unSuspendHospitalStaff = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -909,10 +898,7 @@ exports.unSuspendHospitalStaff = async (req, res) => {
 };
 
 
-
-
-
-// Update Hospital Staff
+// Hospital Update Hospital Staff
 exports.updateHospitalStaff = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -1020,9 +1006,7 @@ function validateHospitalStaffUpdate(hospitalStaffData) {
 }
 
 
-
-
-// View All Hospital Staffs
+// Hospital View All Hospital Staffs
 exports.viewAllHospitalStaffs = async (req, res) => {
   try {
     const { hospitalId } = req.body;
@@ -1076,9 +1060,7 @@ exports.viewAllHospitalStaffs = async (req, res) => {
 };
 
 
-
-
-// View One Hospital Staff
+// Hospital View One Hospital Staff
 exports.viewOneHospitalStaff = async (req, res) => {
   try {
     const { hospitalId, hospitalStaffId } = req.body;
@@ -1139,8 +1121,7 @@ exports.viewOneHospitalStaff = async (req, res) => {
 };
 
 
-
-// Hospital Search Staff
+//  Hospital Search Staff
 exports.searchHospitalStaff = async (req, res) => {
   try {
     const { hospitalId, searchQuery } = req.body;
@@ -1213,10 +1194,7 @@ exports.searchHospitalStaff = async (req, res) => {
 };
 
 
-
-
-
-// Add Hospital News
+// Hospital Add News
 exports.addHospitalNews = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -1338,7 +1316,6 @@ function validateNewsData(newsData, newsImageFile) {
 }
 
 
-
 // Hospital Delete News
 exports.deleteHospitalNews = async (req, res) => {
   try {
@@ -1399,11 +1376,7 @@ exports.deleteHospitalNews = async (req, res) => {
 };
 
 
-
-
-
-
-// Update Hospital News
+// Hospital Update News
 exports.updateHospitalNews = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -1500,12 +1473,6 @@ function validateUpdatedNewsData(newsData, newsImageFile) {
 }
 
 
-
-
-
-
-
-
 // Hospital Hide News
 exports.hideHospitalNews = async (req, res) => {
   try {
@@ -1580,8 +1547,6 @@ exports.hideHospitalNews = async (req, res) => {
 };
 
 
-
-
 // Hospital Unhide News
 exports.unhideHospitalNews = async (req, res) => {
   try {
@@ -1648,10 +1613,7 @@ exports.unhideHospitalNews = async (req, res) => {
 };
 
 
-
-
-
-// View All Hospital Staffs
+// Hospital View All Hospital Staffs
 exports.viewAllHospitalNews = async (req, res) => {
   try {
     const { hospitalId } = req.body;
