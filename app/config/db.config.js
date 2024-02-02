@@ -1,5 +1,4 @@
 //db.config.js
-
 module.exports = {
     host: 'localhost',
     user: 'root',

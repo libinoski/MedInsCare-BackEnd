@@ -17,9 +17,11 @@ const corsOptions = {
     optionsSuccessStatus: 200,
 };
 
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
+
 
 app.use('/api/mic/hospital', HospitalRoutes);
 app.use('/api/mic/hospitalStaff', HospitalStaffRoutes);

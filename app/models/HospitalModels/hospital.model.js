@@ -1,11 +1,14 @@
 // hospital.model.js
-//model code for hospital activities
 const bcrypt = require('bcrypt');
 const db = require('../db');
 const { promisify } = require('util');
 const dbQuery = promisify(db.query.bind(db));
 
-//Hospital Model 
+
+
+
+
+// Hospital Model 
 const Hospital = function (hospital) {
     this.hospitalId = hospital.hospitalId;
     this.hospitalName = hospital.hospitalName;
@@ -25,7 +28,7 @@ const Hospital = function (hospital) {
 };
 
 
-//Hospital Staff Model
+// Hospital Staff Model
 const HospitalStaff = function (hospitalStaff) {
     this.hospitalId = hospitalStaff.hospitalId;
     this.hospitalStaffName = hospitalStaff.hospitalStaffName;
@@ -45,6 +48,7 @@ const HospitalStaff = function (hospitalStaff) {
     this.passwordUpdateStatus = hospitalStaff.passwordUpdateStatus;
 };
 
+
 // Hospital News Model
 const HospitalNews = function (hospitalNews) {
     this.hospitalNewsId = hospitalNews.hospitalNewsId;
@@ -58,7 +62,6 @@ const HospitalNews = function (hospitalNews) {
     this.deleteStatus = hospitalNews.deleteStatus;
     this.isHided  = hospitalNews.isHided;   
 };
-
 
 
 // Hospital Register
@@ -270,7 +273,8 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     }
 };
 
-// Add this method to the HospitalStaff class
+
+// Hospital Delete Existing Staff
 Hospital.deleteStaff = async (hospitalStaffId) => {
     try {
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0";
@@ -290,7 +294,7 @@ Hospital.deleteStaff = async (hospitalStaffId) => {
 };
 
 
-// Suspend Hospital Staff
+// Hospital Suspend Hospital Staff
 Hospital.suspendStaff = async (hospitalStaffId) => {
     try {
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=0";
@@ -309,8 +313,7 @@ Hospital.suspendStaff = async (hospitalStaffId) => {
     }
 };
 
-
-// Unsuspend Hospital Staff
+// Hospital Unsuspend Hospital Staff
 Hospital.unSuspendStaff = async (hospitalStaffId) => {
     try {
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=1";
@@ -330,9 +333,7 @@ Hospital.unSuspendStaff = async (hospitalStaffId) => {
 };
 
 
-
-
-// Update Hospital Staff
+// Hospital Update Hospital Staff
 Hospital.updateStaff = async (updatedHospitalStaff) => {
     try {
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
@@ -391,8 +392,7 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
 };
 
 
-
-// View All Hospital Staffs
+// Hospital View All Hospital Staffs
 Hospital.viewAllStaffs = async (hospitalId) => {
     try {
         const viewAllStaffsQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalId = ? AND deleteStatus = 0";
@@ -405,9 +405,7 @@ Hospital.viewAllStaffs = async (hospitalId) => {
 };
 
 
-
-
-// View One Hospital Staff
+// Hospital View One Hospital Staff
 Hospital.viewOneStaff = async (hospitalStaffId) => {
     try {
         const viewStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0";
@@ -424,8 +422,7 @@ Hospital.viewOneStaff = async (hospitalStaffId) => {
 };
 
 
-
-// Hospital Search Staff
+// Hospital Search Hospital Staff
 Hospital.searchStaff = async (hospitalId, searchQuery) => {
     const query = `
         SELECT * 
@@ -445,14 +442,22 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
     `;
 
     try {
-        const result = await dbQuery(query, [hospitalId, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`, `%${searchQuery}%`]);
+        const result = await dbQuery(query, [
+            hospitalId,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`
+        ]);
 
         return result;
     } catch (error) {
         throw error;
     }
 };
-
 
 
 // Hospital Add News
@@ -474,7 +479,6 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
         throw error;
     }
 };
-
 
 
 // Hospital Delete News
@@ -564,7 +568,6 @@ Hospital.hideNews = async (hospitalNewsId, hospitalId) => {
 };
 
 
-
 // Hospital Unhide News
 Hospital.unhideNews = async (hospitalNewsId, hospitalId) => {
     try {
@@ -600,9 +603,6 @@ Hospital.unhideNews = async (hospitalNewsId, hospitalId) => {
         throw error;
     }
 };
-
-
-// Update Hospital News
 
 
 // View All Hospital News

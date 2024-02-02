@@ -7,7 +7,8 @@ const dbQuery = promisify(db.query.bind(db));
 
 
 
-//Hospital Staff Model
+
+// Hospital Staff Model
 const HospitalStaff = function (hospitalStaff) {
     this.hospitalId = hospitalStaff.hospitalId;
     this.hospitalStaffName = hospitalStaff.hospitalStaffName;
@@ -27,8 +28,8 @@ const HospitalStaff = function (hospitalStaff) {
 };
 
 
-// patients.model.js
-const Patients = function (patient) {
+// Patient Model
+const Patient = function (patient) {
     this.patientId = patient.patientId;
     this.hospitalStaffId = patient.hospitalStaffId;
     this.hospitalId = patient.hospitalId;
@@ -49,7 +50,6 @@ const Patients = function (patient) {
     this.dischargeStatus = patient.dischargeStatus;
     this.updateStatus = patient.updateStatus;
 };
-
 
 
 // Hospital staff Login
@@ -234,8 +234,7 @@ HospitalStaff.registerPatient = async (newPatient) => {
 };
 
 
-
-// View All patients
+// Hospital staff View All patients
 HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
     try {
         const viewAllPatientsQuery = `
@@ -252,9 +251,7 @@ HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
 };
 
 
-
-
-// View One patient
+// Hospital staff View One patient
 HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
     try {
         const viewOnePatientQuery = `
@@ -277,7 +274,55 @@ HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
 };
 
 
+// Hospital staff Search Patients
+HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
+    const query = `
+        SELECT * 
+        FROM Patients
+        WHERE hospitalId = (
+            SELECT hospitalId 
+            FROM Hospital_Staffs 
+            WHERE hospitalStaffId = ?
+        )
+        AND dischargeStatus = 0
+        AND (
+            patientId LIKE ? OR
+            patientName LIKE ? OR
+            patientMobile LIKE ? OR
+            patientEmail LIKE ? OR
+            patientGender LIKE ? OR
+            patientAge LIKE ? OR
+            patientAddress LIKE ? OR
+            patientAadhar LIKE ? OR
+            patientRegisteredDate LIKE ?
+        )
+    `;
+
+    try {
+        const result = await dbQuery(query, [
+            hospitalStaffId,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`
+        ]);
+
+        return result;
+    } catch (error) {
+        throw error;
+    }
+};
 
 
 
-module.exports = {HospitalStaff, Patients};
+
+
+
+
+
+module.exports = {HospitalStaff, Patient};
