@@ -9,6 +9,7 @@ const HospitalController = require('../../controllers/HospitalControllers/hospit
 
 router.post("/hospitalRegistration", HospitalController.hospitalRegister);
 router.post("/hospitalLogin", HospitalController.hospitalLogin);
+router.post("/hospitalChangePassword", HospitalController.hospitalChangePassword);
 router.post("/hospitalViewProfile", HospitalController.hospitalViewProfile);
 router.post("/hospitalUpdateProfile", HospitalController.hospitalUpdateProfile);
 router.post("/addHospitalStaff", HospitalController.hospitalStaffRegister);

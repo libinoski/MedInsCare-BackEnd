@@ -66,7 +66,9 @@ const HospitalNews = function (hospitalNews) {
 
 // Hospital Register
 Hospital.register = async (newHospital) => {
+
     try {
+
         const checkEmailQuery = "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
         const checkAadharQuery = "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND deleteStatus=0 AND isActive=1";
 
@@ -82,65 +84,74 @@ Hospital.register = async (newHospital) => {
 
         const hashedPassword = await promisify(bcrypt.hash)(newHospital.hospitalPassword, 10);
         newHospital.hospitalPassword = hashedPassword;
-
         const insertQuery = "INSERT INTO Hospitals SET ?";
         const insertRes = await dbQuery(insertQuery, newHospital);
 
         return { hospitalId: insertRes.insertId, ...newHospital };
+
     } catch (error) {
+
         console.error('Error during hospital registration in model:', error);
         throw error;
+    
     }
 };
 
 
 // Hospital Login
 Hospital.login = async (email, password) => {
-    const query = "SELECT * FROM Hospitals WHERE BINARY hospitalEmail = ?";
+    const query = "SELECT * FROM Hospitals WHERE hospitalEmail = ?";
+
     try {
-        const result = await dbQuery(query, [email]);
 
-        if (result.length === 0) {
-            throw new Error("Hospital not found");
-        }
-        const hospital = result[0];
-        if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
-            throw new Error("Hospital is not active or has been deleted");
-        }
+      const result = await dbQuery(query, [email]);
+  
+      if (result.length === 0) {
+        throw new Error("Hospital not found");
+      }
+      const hospital = result[0];
 
-        const isMatch = await promisify(bcrypt.compare)(password, hospital.hospitalPassword);
+      if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
+        throw new Error("Hospital is not active or has been deleted");
+      }
+  
+      const isMatch = await promisify(bcrypt.compare)(password, hospital.hospitalPassword);
+  
+      if (!isMatch) {
+        throw new Error("Invalid password");
+      }
+  
+      return hospital;
 
-        if (!isMatch) {
-            throw new Error("Invalid password");
-        }
-
-        return hospital;
     } catch (error) {
-        throw error;
+
+      throw error;
+
     }
-};
+  };
+  
 
 // Hospital Change Password
 Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
+
     const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
 
     try {
-        const selectRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
+        const selectRes = await dbQuery(checkHospitalQuery, [hospitalId]);
         if (selectRes.length === 0) {
+
             throw new Error("Hospital not found");
+
         }
 
         const hospital = selectRes[0];
-
         const isMatch = await promisify(bcrypt.compare)(oldPassword, hospital.hospitalPassword);
 
         if (!isMatch) {
             throw new Error("Invalid old password");
         }
-
         const hashedNewPassword = await promisify(bcrypt.hash)(newPassword, 10);
-
         const updatePasswordQuery = `
             UPDATE Hospitals
             SET
@@ -152,17 +163,17 @@ Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
                 passwordUpdatedStatus = 1
             WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1
         `;
-
         const updatePasswordValues = [
             hashedNewPassword,
             hospitalId,
         ];
 
         const updatePasswordRes = await dbQuery(updatePasswordQuery, updatePasswordValues);
-
         console.log("Hospital password updated successfully for hospitalId:", hospitalId);
         return { message: "Password updated successfully" };
+    
     } catch (error) {
+
         throw error;
     }
 };
@@ -170,8 +181,11 @@ Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
 
 // Hospital View Profile
 Hospital.getProfile = async (hospitalId) => {
+
     const query = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+
     try {
+
         const result = await dbQuery(query, [hospitalId]);
 
         if (result.length === 0) {
@@ -179,30 +193,33 @@ Hospital.getProfile = async (hospitalId) => {
         }
 
         return result[0];
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Update Profile
 Hospital.updateProfile = async (updatedHospital) => {
+
     const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
 
     try {
+
         const selectRes = await dbQuery(checkHospitalQuery, [updatedHospital.hospitalId]);
 
         if (selectRes.length === 0) {
             throw new Error("Hospital not found");
         }
-
         const checkAadharQuery = "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND hospitalId != ? AND deleteStatus = 0 AND isActive = 1";
         const aadharRes = await dbQuery(checkAadharQuery, [updatedHospital.hospitalAadhar, updatedHospital.hospitalId]);
 
         if (aadharRes.length > 0) {
             throw new Error("Aadhar Number Already Exists.");
         }
-
         const updateQuery = `
             UPDATE Hospitals
             SET
@@ -228,23 +245,27 @@ Hospital.updateProfile = async (updatedHospital) => {
         ];
 
         const updateRes = await dbQuery(updateQuery, updateValues);
-
         const responseData = { ...updatedHospital };
         console.log("Updated hospital details:", { id: updatedHospital.hospitalId, ...updatedHospital });
+        
         return responseData;
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Register New Staff
 Hospital.registerStaff = async (newHospitalStaff) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus=0 AND isActive=1";
         const checkAadharQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar=? AND deleteStatus=0 AND isSuspended = 0";
         const checkEmailQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail=? AND deleteStatus=0 AND isSuspended = 0";
-
         const hospitalResult = await dbQuery(checkHospitalQuery, [newHospitalStaff.hospitalId]);
 
         if (hospitalResult.length === 0) {
@@ -253,110 +274,132 @@ Hospital.registerStaff = async (newHospitalStaff) => {
 
         const aadharRes = await dbQuery(checkAadharQuery, [newHospitalStaff.hospitalStaffAadhar]);
         if (aadharRes.length > 0) {
+
             throw new Error("Aadhar number already exists");
-        }
 
+        }
         const emailRes = await dbQuery(checkEmailQuery, [newHospitalStaff.hospitalStaffEmail]);
-        if (emailRes.length > 0) {
-            throw new Error("Email already exists");
-        }
 
+        if (emailRes.length > 0) {
+
+            throw new Error("Email already exists");
+
+        }
         const hashedPassword = await promisify(bcrypt.hash)(newHospitalStaff.hospitalStaffPassword, 10);
         newHospitalStaff.hospitalStaffPassword = hashedPassword;
-
         const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
         const insertRes = await dbQuery(insertQuery, newHospitalStaff);
 
         return { status: "Success", message: 'Hospital Staff added successfully', data: { hospitalStaffId: insertRes.insertId, ...newHospitalStaff } };
+    
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Delete Existing Staff
 Hospital.deleteStaff = async (hospitalStaffId) => {
+
     try {
+
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0";
         const checkStaffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
 
         if (checkStaffResult.length === 0) {
             throw new Error("Hospital Staff not found or already deleted");
         }
-
         const deleteQuery = "UPDATE Hospital_Staffs SET deleteStatus = 1 WHERE hospitalStaffId = ?";
         await dbQuery(deleteQuery, [hospitalStaffId]);
 
         return { status: "Success", message: 'Hospital Staff deleted successfully', data: { hospitalStaffId } };
+    
     } catch (error) {
+
         throw error;
+    
     }
 };
 
 
 // Hospital Suspend Hospital Staff
 Hospital.suspendStaff = async (hospitalStaffId) => {
+
     try {
+
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=0";
         const checkStaffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
 
         if (checkStaffResult.length === 0) {
             throw new Error("Hospital Staff not found, already deleted, or already suspended");
         }
-
         const suspendQuery = "UPDATE Hospital_Staffs SET isSuspended = 1 WHERE hospitalStaffId = ?";
         await dbQuery(suspendQuery, [hospitalStaffId]);
 
         return { status: "Success", message: 'Hospital Staff suspended successfully', data: { hospitalStaffId } };
+   
     } catch (error) {
+
         throw error;
+
     }
 };
 
 // Hospital Unsuspend Hospital Staff
 Hospital.unSuspendStaff = async (hospitalStaffId) => {
+    
     try {
+
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=1";
         const checkStaffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
 
         if (checkStaffResult.length === 0) {
             throw new Error("Hospital Staff not found, already deleted, or not suspended");
         }
-
         const unsuspendQuery = "UPDATE Hospital_Staffs SET isSuspended = 0 WHERE hospitalStaffId = ?";
         await dbQuery(unsuspendQuery, [hospitalStaffId]);
 
         return { status: "Success", message: 'Hospital Staff unsuspended successfully', data: { hospitalStaffId } };
+    
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Update Hospital Staff
 Hospital.updateStaff = async (updatedHospitalStaff) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [updatedHospitalStaff.hospitalId]);
 
         if (checkHospitalRes.length === 0) {
-            throw new Error("Hospital not found, is not active, or has been deleted");
-        }
 
+            throw new Error("Hospital not found");
+
+        }
         const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND deleteStatus = 0 AND isSuspended = 0";
         const checkStaffRes = await dbQuery(checkStaffQuery, [updatedHospitalStaff.hospitalStaffId, updatedHospitalStaff.hospitalId]);
 
         if (checkStaffRes.length === 0) {
-            throw new Error("Hospital Staff not found, is not active, or has been deleted");
-        }
 
+            throw new Error("Hospital staff not found");
+
+        }
         const checkAadharQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar = ? AND hospitalId = ? AND hospitalStaffId != ? AND deleteStatus = 0 AND isSuspended = 0";
         const aadharRes = await dbQuery(checkAadharQuery, [updatedHospitalStaff.hospitalStaffAadhar, updatedHospitalStaff.hospitalId, updatedHospitalStaff.hospitalStaffId]);
 
         if (aadharRes.length > 0) {
-            throw new Error("Aadhar Number Already Exists.");
-        }
 
+            throw new Error("Aadhar number already exists");
+
+        }
         const updateQuery = `
             UPDATE Hospital_Staffs 
             SET 
@@ -379,51 +422,65 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
             updatedHospitalStaff.hospitalStaffId,
             updatedHospitalStaff.hospitalId
         ];
-
         await dbQuery(updateQuery, updateValues);
-
         const fetchUpdatedDataQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ?";
         const fetchRes = await dbQuery(fetchUpdatedDataQuery, [updatedHospitalStaff.hospitalStaffId, updatedHospitalStaff.hospitalId]);
 
         return { message: "Hospital Staff updated successfully", updatedData: fetchRes[0] };
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital View All Hospital Staffs
 Hospital.viewAllStaffs = async (hospitalId) => {
+
     try {
+
         const viewAllStaffsQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalId = ? AND deleteStatus = 0";
         const allStaffs = await dbQuery(viewAllStaffsQuery, [hospitalId]);
 
         return { status: "Success", message: 'All Hospital Staffs retrieved successfully', data: allStaffs };
+    
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital View One Hospital Staff
 Hospital.viewOneStaff = async (hospitalStaffId) => {
+
     try {
+
         const viewStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0";
         const staffDetails = await dbQuery(viewStaffQuery, [hospitalStaffId]);
 
         if (staffDetails.length === 0) {
+
             throw new Error("Hospital Staff not found or already deleted");
+
         }
 
         return { status: "Success", message: 'Hospital Staff details retrieved successfully', data: staffDetails[0] };
+    
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Search Hospital Staff
 Hospital.searchStaff = async (hospitalId, searchQuery) => {
+
     const query = `
         SELECT * 
         FROM Hospital_Staffs 
@@ -442,6 +499,7 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
     `;
 
     try {
+
         const result = await dbQuery(query, [
             hospitalId,
             `%${searchQuery}%`,
@@ -454,166 +512,213 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
         ]);
 
         return result;
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Add News
 Hospital.addNews = async (hospitalId, newHospitalNews) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
         if (checkHospitalRes.length === 0) {
-            throw new Error("Hospital not found, is not active, or has been deleted");
-        }
 
+            throw new Error("Hospital not found");
+
+        }
         newHospitalNews.hospitalId = hospitalId;
         const insertQuery = "INSERT INTO Hospital_News SET ?";
         const insertRes = await dbQuery(insertQuery, newHospitalNews);
-
         return { hospitalNewsId: insertRes.insertId, ...newHospitalNews };
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Delete News
 Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
-        const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
+        const [checkHospitalRes] = await dbQuery(checkHospitalQuery, [hospitalId]);
 
-        if (checkHospitalRes.length === 0) {
-            return { status: 'error', message: "Hospital not found, is not active, or has been deleted" };
+        if (!checkHospitalRes) {
+
+            return { status: 'error', message: "Hospital not found" };
+
         }
-
         const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
-        const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
+        const [checkNewsRes] = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
 
-        if (checkNewsRes.length === 0) {
-            return { status: 'error', message: "Hospital News not found or has been deleted" };
+        if (!checkNewsRes) {
+
+            return { status: 'error', message: "Hospital news not found" };
+
         }
-
         const deleteQuery = "UPDATE Hospital_News SET deleteStatus = 1, isHided = 0 WHERE hospitalNewsId = ? AND hospitalId = ?";
         await dbQuery(deleteQuery, [hospitalNewsId, hospitalId]);
 
         return { status: 'success', message: "Hospital News deleted successfully" };
+
     } catch (error) {
-        return { status: 'error', message: error.message }; // You can include additional details if needed
+
+        throw error;
+
     }
 };
 
 
 // Hospital Update News
 Hospital.updateNews = async (hospitalNewsId, hospitalId, updatedHospitalNews) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
   
         if (checkHospitalRes.length === 0) {
-            throw new Error("Hospital not found, is not active, or has been deleted");
+
+            throw new Error("Hospital not found");
+
         }
-  
         const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
         const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
   
         if (checkNewsRes.length === 0) {
-            throw new Error("Hospital News not found or has been deleted");
+
+            throw new Error("Hospital news not found");
+
         }
-  
         const updateQuery = "UPDATE Hospital_News SET ? WHERE hospitalNewsId = ? AND hospitalId = ?";
         await dbQuery(updateQuery, [updatedHospitalNews, hospitalNewsId, hospitalId]);
   
-        return { message: "Hospital News updated successfully" };
+        return { message: "Hospital news updated successfully" };
+
     } catch (error) {
+
         throw error;
+
     }
   };
 
 
 // Hospital Hide News
 Hospital.hideNews = async (hospitalNewsId, hospitalId) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
         if (checkHospitalRes.length === 0) {
-            throw new Error("Hospital not found, is not active, or has been deleted");
+
+            throw new Error("Hospital not found");
+
         }
 
         const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
         const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
 
         if (checkNewsRes.length === 0) {
-            throw new Error("Hospital News not found or has been deleted");
-        }
 
+            throw new Error("Hospital news not found");
+
+        }
         const isAlreadyHidden = checkNewsRes[0].isHided;
 
         if (isAlreadyHidden) {
-            return { message: "Hospital News is already hidden" };
-        }
 
+            return { message: "Hospital news is already hidden" };
+
+        }
         const hideQuery = "UPDATE Hospital_News SET isHided = 1 WHERE hospitalNewsId = ? AND hospitalId = ?";
         await dbQuery(hideQuery, [hospitalNewsId, hospitalId]);
 
-        return { message: "Hospital News hidden successfully" };
+        return { message: "Hospital news hided successfully" };
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // Hospital Unhide News
 Hospital.unhideNews = async (hospitalNewsId, hospitalId) => {
+
     try {
+
         const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
         const checkHospitalRes = await dbQuery(checkHospitalQuery, [hospitalId]);
 
         if (checkHospitalRes.length === 0) {
-            throw new Error("Hospital not found, is not active, or has been deleted");
-        }
 
+            throw new Error("Hospital not found");
+
+        }
         const checkNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0";
         const checkNewsRes = await dbQuery(checkNewsQuery, [hospitalNewsId, hospitalId]);
 
         if (checkNewsRes.length === 0) {
-            throw new Error("Hospital News not found or has been deleted");
+
+            throw new Error("Hospital news not found");
+
         }
 
         const isNotHidden = !checkNewsRes[0].isHided;
 
         if (isNotHidden) {
-            return { message: "Hospital News is not hidden" };
-        }
 
+            return { message: "Hospital news is not hidden" };
+
+        }
         const unhideQuery = "UPDATE Hospital_News SET isHided = 0 WHERE hospitalNewsId = ? AND hospitalId = ?";
         const unhideRes = await dbQuery(unhideQuery, [hospitalNewsId, hospitalId]);
 
         if (unhideRes.affectedRows === 0) {
-            throw new Error("Failed to unhide Hospital News");
+
+            throw new Error("Failed to unhide hospital news");
+
         }
 
-        return { message: "Hospital News unhided successfully" };
+        return { message: "Hospital news unhided successfully" };
+
     } catch (error) {
+
         throw error;
+
     }
 };
 
 
 // View All Hospital News
 Hospital.viewAllNews = async (hospitalId) => {
+
     try {
+
         const viewAllNewsQuery = "SELECT * FROM Hospital_News WHERE hospitalId = ? AND deleteStatus = 0";
         const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
 
-        return { status: "Success", message: 'All news are retrieved successfully', data: allNews };
+        return { status: "Success", message: 'All hospital news are retrieved successfully', data: allNews };
+    
     } catch (error) {
+
         throw error;
+    
     }
 };
 

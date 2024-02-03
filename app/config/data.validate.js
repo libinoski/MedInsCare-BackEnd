@@ -160,32 +160,42 @@ function isValidImageWith1MBConstraint(file) {
 
 // Verify the validity of a mobile number.
 function isValidMobileNumber(mobileNumber) {
-    if (isNullOrUndefined(mobileNumber) || mobileNumber.trim() === "") {
+    // Remove spaces from the mobile number
+    const sanitizedMobileNumber = mobileNumber.replace(/\s/g, '');
+
+    if (isNullOrUndefined(sanitizedMobileNumber) || sanitizedMobileNumber === "") {
         return {
             isValid: false,
             message: "Mobile Number cannot be empty"
         };
     }
+
     return {
-        isValid: /^\+91[6-9]\d{9}$|^\+91\s?[6-9]\d{9}$|^[6-9]\d{9}$/.test(mobileNumber),
+        isValid: /^\+91[6-9]\d{9}$|^[6-9]\d{9}$/.test(sanitizedMobileNumber),
         message: "Invalid Mobile Number"
     };
 }
 
 
+
+
 // Confirm the validity of an amount.
 function isValidAmount(amount) {
-    if (isNullOrUndefined(amount) || amount.trim() === "") {
+    const sanitizedAmount = amount.replace(/\s/g, "");
+
+    if (isNullOrUndefined(sanitizedAmount) || sanitizedAmount === "") {
         return {
             isValid: false,
             message: "Amount cannot be empty"
         };
     }
+
     return {
-        isValid: amount > 0,
+        isValid: sanitizedAmount > 0,
         message: "Value must be greater than zero"
     };
 }
+
 
 
 // Verify the correctness of an address.
@@ -211,12 +221,17 @@ function isValidWebsite(website) {
             message: "Website is empty or null. Warning: This field is required."
         };
     }
+    
+    // Remove spaces before the first letter or symbol
+    website = website.replace(/^\s+/g, '');
+
     const regex = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.([a-zA-Z]{2,})$/;
     return {
         isValid: regex.test(website),
         message: "Website must be in a valid format (e.g., http://www.example.com)"
     };
 }
+
 
 
 // Confirm the validity of an email address.
@@ -310,7 +325,10 @@ function isValidName(name) {
 
 // Verify the legitimacy of an Aadhar number.
 function isValidAadharNumber(aadharNumber) {
-    if (isNullOrUndefined(aadharNumber) || aadharNumber.trim() === "") {
+    // Remove spaces from the Aadhar number
+    const sanitizedAadharNumber = aadharNumber.replace(/\s/g, '');
+
+    if (isNullOrUndefined(sanitizedAadharNumber) || sanitizedAadharNumber === "") {
         return {
             isValid: false,
             message: "Aadhar Number cannot be empty. Warning: This field is required."
@@ -318,10 +336,11 @@ function isValidAadharNumber(aadharNumber) {
     }
 
     return {
-        isValid: /^\d{12}$/.test(aadharNumber),
+        isValid: /^\d{12}$/.test(sanitizedAadharNumber),
         message: "Aadhar Number must be of 12 digits"
     };
 }
+
 
 
 // Validate gender (permit only alphabetical characters and allow null values).
