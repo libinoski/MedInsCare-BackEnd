@@ -197,13 +197,6 @@ exports.hospitalLogin = async (req, res) => {
   try {
     const hospital = await Hospital.login(hospitalEmail, hospitalPassword);
 
-    if (!hospital) {
-      return res.status(401).json({
-        status: 'Login failed',
-        data: 'Hospital not found',
-      });
-    }
-
     const token = jwt.sign(
       { hospitalId: hospital.hospitalId, hospitalEmail: hospital.hospitalEmail },
       process.env.JWT_SECRET_KEY_HOSPITAL,
@@ -221,16 +214,26 @@ exports.hospitalLogin = async (req, res) => {
       });
     }
 
-    if (error.message === "Invalid password") {
+    if (error.message === "Wrong password") {
       return res.status(401).json({
         status: 'Login failed',
-        data: 'Invalid password',
+        data: 'Wrong password',
+      });
+    }
+
+    if (error.message === "Hospital not found") { // Handle "Hospital not found" separately
+      return res.status(404).json({
+        status: 'Login failed',
+        data: 'Hospital not found',
       });
     }
 
     return res.status(500).json({ status: 'Internal server error' });
   }
 };
+
+
+
 
 
 

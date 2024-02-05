@@ -96,40 +96,30 @@ Hospital.register = async (newHospital) => {
 
 // Hospital Login
 Hospital.login = async (email, password) => {
-
     const query = "SELECT * FROM Hospitals WHERE hospitalEmail = ?";
   
     try {
-
       const result = await dbQuery(query, [email]);
   
       if (result.length === 0) {
-
-        throw new Error("Hospital not found");
-
+        throw new Error("Hospital not found"); // The error message should be thrown only if no hospital with the given email is found
       }
   
       const hospital = result[0];
   
       if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
-
-        throw new Error("Access to the login feature is restricted");
-
+        throw new Error("Access to the login feature is restricted"); // Ensure that isActive and deleteStatus are checked correctly
       }
+  
       const isMatch = await promisify(bcrypt.compare)(password, hospital.hospitalPassword);
   
       if (!isMatch) {
-
-        throw new Error("Invalid password");
-
+        throw new Error("Wrong password");
       }
   
       return hospital;
-
     } catch (error) {
-
       throw error;
-
     }
   };
   

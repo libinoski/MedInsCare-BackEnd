@@ -32,7 +32,7 @@ function isValidPassword(password) {
     if (isNullOrUndefined(password) || password.trim() === "") {
         return {
             isValid: false,
-            message: "Password can't be empty. Warning: This field is required."
+            message: "Password can't be empty."
         };
     }
     const hasLowerCase = /[a-z]/.test(password);
@@ -43,30 +43,31 @@ function isValidPassword(password) {
     const messages = [];
 
     if (!hasLowerCase) {
-        messages.push("Password must contain at least one lowercase letter.");
+        messages.push("Include at least one lowercase letter.");
     }
 
     if (!hasUpperCase) {
-        messages.push("Password must contain at least one uppercase letter.");
+        messages.push("Include at least one uppercase letter.");
     }
 
     if (!hasDigit) {
-        messages.push("Password must contain at least one digit.");
+        messages.push("Include at least one digit.");
     }
 
     if (!hasSpecialChar) {
-        messages.push("Password must contain at least one special character.");
+        messages.push("Include at least one special character.");
     }
 
     if (!isLengthValid) {
-        messages.push("Password must be between 8 and 12 characters long.");
+        messages.push("Should be 8 to 12 characters long.");
     }
 
     return {
         isValid: messages.length === 0,
-        message: messages.join('\n')
+        message: messages.join(' ')
     };
 }
+
 
 
 
