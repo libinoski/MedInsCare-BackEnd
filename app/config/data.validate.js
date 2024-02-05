@@ -210,7 +210,7 @@ function isValidMobileNumber(mobileNumber) {
     if (isNullOrUndefined(sanitizedMobileNumber) || sanitizedMobileNumber === "") {
         return {
             isValid: false,
-            message: "Mobile Number cannot be empty"
+            message: "Mobile number cannot be empty. Warning: This field is required."
         };
     }
 
@@ -247,7 +247,7 @@ function isValidAddress(address) {
     if (isNullOrUndefined(address) || address.trim() === "") {
         return {
             isValid: false,
-            message: "Address cannot be empty"
+            message: "Address cannot be empty. Warning: This field is required."
         };
     }
     return {
@@ -336,7 +336,7 @@ function isValidAadharNumber(aadharNumber) {
     if (isNullOrUndefined(sanitizedAadharNumber) || sanitizedAadharNumber === "") {
         return {
             isValid: false,
-            message: "Aadhar Number cannot be empty. Warning: This field is required."
+            message: "Aadhar number cannot be empty. Warning: This field is required."
         };
     }
 
