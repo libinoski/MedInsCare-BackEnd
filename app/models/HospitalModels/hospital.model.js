@@ -66,59 +66,62 @@ const HospitalNews = function (hospitalNews) {
 
 // Hospital Register
 Hospital.register = async (newHospital) => {
-
     try {
-
-        const checkEmailQuery = "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
-        const checkAadharQuery = "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND deleteStatus=0 AND isActive=1";
-
-        const emailRes = await dbQuery(checkEmailQuery, [newHospital.hospitalEmail]);
-        if (emailRes.length > 0) {
-            throw new Error("Hospital email already exists");
-        }
-
-        const aadharRes = await dbQuery(checkAadharQuery, [newHospital.hospitalAadhar]);
-        if (aadharRes.length > 0) {
-            throw new Error("Aadhar number already exists");
-        }
-
-        const hashedPassword = await promisify(bcrypt.hash)(newHospital.hospitalPassword, 10);
-        newHospital.hospitalPassword = hashedPassword;
-        const insertQuery = "INSERT INTO Hospitals SET ?";
-        const insertRes = await dbQuery(insertQuery, newHospital);
-
-        return { hospitalId: insertRes.insertId, ...newHospital };
-
+      const checkEmailQuery = "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
+      const checkAadharQuery = "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND deleteStatus=0 AND isActive=1";
+  
+      const emailRes = await dbQuery(checkEmailQuery, [newHospital.hospitalEmail]);
+      if (emailRes.length > 0) {
+        throw new Error("Email already exists");
+      }
+  
+      const aadharRes = await dbQuery(checkAadharQuery, [newHospital.hospitalAadhar]);
+      if (aadharRes.length > 0) {
+        throw new Error("Aadhar number already exists");
+      }
+  
+      const hashedPassword = await promisify(bcrypt.hash)(newHospital.hospitalPassword, 10);
+      newHospital.hospitalPassword = hashedPassword;
+      const insertQuery = "INSERT INTO Hospitals SET ?";
+      const insertRes = await dbQuery(insertQuery, newHospital);
+  
+      return { hospitalId: insertRes.insertId, ...newHospital };
     } catch (error) {
-
-        console.error('Error during hospital registration in model:', error);
-        throw error;
-    
+      console.error('Error during hospital registration in model:', error);
+      throw error;
     }
-};
+  };
+  
 
 
 // Hospital Login
 Hospital.login = async (email, password) => {
-    const query = "SELECT * FROM Hospitals WHERE hospitalEmail = ?";
 
+    const query = "SELECT * FROM Hospitals WHERE hospitalEmail = ?";
+  
     try {
 
       const result = await dbQuery(query, [email]);
   
       if (result.length === 0) {
-        throw new Error("Hospital not found");
-      }
-      const hospital = result[0];
 
-      if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
-        throw new Error("Hospital is not active or has been deleted");
+        throw new Error("Hospital not found");
+
       }
   
+      const hospital = result[0];
+  
+      if (hospital.isActive !== 1 || hospital.deleteStatus !== 0) {
+
+        throw new Error("Access to the login feature is restricted");
+
+      }
       const isMatch = await promisify(bcrypt.compare)(password, hospital.hospitalPassword);
   
       if (!isMatch) {
+
         throw new Error("Invalid password");
+
       }
   
       return hospital;
@@ -189,6 +192,7 @@ Hospital.getProfile = async (hospitalId) => {
         const result = await dbQuery(query, [hospitalId]);
 
         if (result.length === 0) {
+            
             throw new Error("Hospital not found");
         }
 

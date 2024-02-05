@@ -27,6 +27,50 @@ function isEmpty(value, fieldName) {
 }
 
 
+
+function isValidPassword(password) {
+    if (isNullOrUndefined(password) || password.trim() === "") {
+        return {
+            isValid: false,
+            message: "Password can't be empty. Warning: This field is required."
+        };
+    }
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const hasSpecialChar = /[\W_]/.test(password);
+    const isLengthValid = /^[a-zA-Z\d\W_]{8,12}$/.test(password);
+    const messages = [];
+
+    if (!hasLowerCase) {
+        messages.push("Password must contain at least one lowercase letter.");
+    }
+
+    if (!hasUpperCase) {
+        messages.push("Password must contain at least one uppercase letter.");
+    }
+
+    if (!hasDigit) {
+        messages.push("Password must contain at least one digit.");
+    }
+
+    if (!hasSpecialChar) {
+        messages.push("Password must contain at least one special character.");
+    }
+
+    if (!isLengthValid) {
+        messages.push("Password must be between 8 and 12 characters long.");
+    }
+
+    return {
+        isValid: messages.length === 0,
+        message: messages.join('\n')
+    };
+}
+
+
+
+
 // Verify the validity of an ID.
 function isValidId(id, idName) {
     if (isNullOrUndefined(id) || id.trim() === "") {
@@ -249,46 +293,7 @@ function isValidEmail(email) {
 }
 
 
-// Verify the strength and validity of a password.
-function isValidPassword(password) {
-    if (isNullOrUndefined(password) || password.trim() === "") {
-        return {
-            isValid: false,
-            message: ["Password can't be empty. Warning: This field is required."]
-        };
-    }
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasDigit = /\d/.test(password);
-    const hasSpecialChar = /[\W_]/.test(password);
-    const isLengthValid = /^[a-zA-Z\d\W_]{8,12}$/.test(password);
-    const messages = [];
 
-    if (!hasLowerCase) {
-        messages.push("Password must contain at least one lowercase letter.");
-    }
-
-    if (!hasUpperCase) {
-        messages.push("Password must contain at least one uppercase letter.");
-    }
-
-    if (!hasDigit) {
-        messages.push("Password must contain at least one digit.");
-    }
-
-    if (!hasSpecialChar) {
-        messages.push("Password must contain at least one special character.");
-    }
-
-    if (!isLengthValid) {
-        messages.push("Password must be between 8 and 12 characters long.");
-    }
-
-    return {
-        isValid: messages.length === 0,
-        message: messages
-    };
-}
 
 
 // Validate age (restrict to numbers with a maximum of 3 digits).

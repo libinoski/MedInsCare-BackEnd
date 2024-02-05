@@ -11,9 +11,7 @@ const fs = require('fs');
 
 // Hospital Register
 exports.hospitalRegister = async (req, res) => {
-
   try {
-
     const hospitalImageStorage = multer.diskStorage({
       destination: function (req, file, cb) {
         cb(null, 'Files/HospitalImages');
@@ -28,7 +26,6 @@ exports.hospitalRegister = async (req, res) => {
     const uploadHospitalImage = multer({ storage: hospitalImageStorage }).single('hospitalImage');
 
     uploadHospitalImage(req, res, async function (err) {
-
       if (err) {
         return res.status(400).json({ error: 'File upload failed', details: err.message });
       }
@@ -99,7 +96,6 @@ exports.hospitalRegister = async (req, res) => {
         }
 
         return validationResults;
-
       }
 
       const validationResults = validateHospitalRegistration();
@@ -109,9 +105,7 @@ exports.hospitalRegister = async (req, res) => {
           const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
           fs.unlinkSync(imagePath);
         }
-
         return res.status(400).json({ error: 'Validation failed', details: validationResults.messages });
-     
       }
 
       const newHospital = {
@@ -131,32 +125,27 @@ exports.hospitalRegister = async (req, res) => {
       };
 
       try {
-
         const registrationResponse = await Hospital.register(newHospital);
         return res.status(201).json({ message: 'Hospital registered successfully', data: registrationResponse });
-
       } catch (error) {
-
-        if (error.message === "Hospital email already exists" || error.message === "Aadhar number already exists") {
+        if (error.message === 'Email already exists' || error.message === 'Aadhar number already exists') {
+          // Clean up image if needed
           if (hospitalImageFile) {
             const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
             fs.unlinkSync(imagePath);
           }
           return res.status(400).json({ error: error.message });
-       
         } else {
+          // Clean up image if needed
           if (hospitalImageFile) {
             const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
             fs.unlinkSync(imagePath);
           }
-
           throw error;
         }
       }
     });
-
   } catch (error) {
-
     console.error('Error during hospital registration:', error);
 
     if (req.file) {
@@ -165,27 +154,47 @@ exports.hospitalRegister = async (req, res) => {
     }
 
     return res.status(500).json({ error: 'Internal server error' });
-
   }
 };
 
 
 // Hospital Login
 exports.hospitalLogin = async (req, res) => {
-
   const { hospitalEmail, hospitalPassword } = req.body;
-  const emailValidation = dataValidator.isValidEmail(hospitalEmail);
-  const passwordValidation = dataValidator.isValidPassword(hospitalPassword);
 
-  if (!emailValidation.isValid || !passwordValidation.isValid) {
+  // Function to validate hospital login data
+  function validateHospitalLogin() {
+    const validationResults = {
+      isValid: true,
+      messages: [],
+    };
+
+    const emailValidation = dataValidator.isValidEmail(hospitalEmail);
+    const passwordValidation = dataValidator.isValidPassword(hospitalPassword);
+
+    if (!emailValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.messages.push({ field: 'hospitalEmail', message: emailValidation.message });
+    }
+
+    if (!passwordValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.messages.push({ field: 'hospitalPassword', message: passwordValidation.message });
+    }
+
+    return validationResults;
+  }
+
+  const loginValidation = validateHospitalLogin();
+
+  if (!loginValidation.isValid) {
     return res.status(400).json({
       status: 'Validation failed',
-      details: [...emailValidation.message, ...passwordValidation.message],
+      details: loginValidation.messages,
     });
   }
 
   try {
-
     const hospital = await Hospital.login(hospitalEmail, hospitalPassword);
 
     if (!hospital) {
@@ -197,27 +206,32 @@ exports.hospitalLogin = async (req, res) => {
 
     const token = jwt.sign(
       { hospitalId: hospital.hospitalId, hospitalEmail: hospital.hospitalEmail },
-      'micadmin', // secret key for hospital activities
+      process.env.JWT_SECRET_KEY_HOSPITAL,
       { expiresIn: '1h' }
     );
 
     return res.status(200).json({ status: 'Login successful', data: { token, hospital } });
-
   } catch (error) {
-
     console.error('Error during hospital login:', error);
 
-    if (error.message === "Hospital is not active or has been deleted") {
+    if (error.message === "Access to the login feature is restricted") {
       return res.status(401).json({
         status: 'Login failed',
-        data: 'Hospital is not active or has been deleted',
+        data: 'Access to the login is not authorized for you',
+      });
+    }
+
+    if (error.message === "Invalid password") {
+      return res.status(401).json({
+        status: 'Login failed',
+        data: 'Invalid password',
       });
     }
 
     return res.status(500).json({ status: 'Internal server error' });
-
   }
 };
+
 
 
 // Hospital Change Password
@@ -240,7 +254,7 @@ exports.hospitalChangePassword = async (req, res) => {
 
   try {
 
-    jwt.verify(token, "micadmin", async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         
@@ -339,7 +353,7 @@ exports.hospitalChangeImage = async (req, res) => {
 
   try {
 
-    jwt.verify(token, "micadmin", async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
       if (err) {
 
         return res.status(401).json({ status: "Invalid token" });
@@ -462,7 +476,7 @@ exports.hospitalViewProfile = async (req, res) => {
 
   try {
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -521,7 +535,7 @@ exports.hospitalUpdateProfile = async (req, res) => {
 
   try {
 
-    jwt.verify(token, "micadmin", async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -670,7 +684,7 @@ exports.hospitalStaffRegister = async (req, res) => {
 
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -905,7 +919,7 @@ exports.deleteHospitalStaff = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -990,7 +1004,7 @@ exports.suspendHospitalStaff = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -1073,7 +1087,7 @@ exports.unSuspendHospitalStaff = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -1153,7 +1167,7 @@ exports.updateHospitalStaff = async (req, res) => {
       });
     }
 
-    jwt.verify(token, "micadmin", async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -1278,7 +1292,7 @@ exports.viewAllHospitalStaffs = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -1353,7 +1367,7 @@ exports.viewOneHospitalStaff = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -1436,7 +1450,7 @@ exports.searchHospitalStaff = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -1497,7 +1511,7 @@ exports.addHospitalNews = async (req, res) => {
 
     const token = req.headers.token;
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -1657,7 +1671,7 @@ exports.deleteHospitalNews = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -1733,7 +1747,7 @@ exports.updateHospitalNews = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
 
@@ -1863,7 +1877,7 @@ exports.hideHospitalNews = async (req, res) => {
       });
     }
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -1939,7 +1953,7 @@ exports.unhideHospitalNews = async (req, res) => {
 
   try {
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({
@@ -2024,7 +2038,7 @@ exports.viewAllHospitalNews = async (req, res) => {
 
   try {
 
-    jwt.verify(token, 'micadmin', async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
 
       if (err) {
         return res.status(401).json({

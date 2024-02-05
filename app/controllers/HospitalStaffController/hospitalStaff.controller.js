@@ -9,40 +9,48 @@ const { HospitalStaff } = require('../../models/HospitalStaffModel/hospitalStaff
 
 
 
-// HospitalStaff Login
 exports.hospitalStaffLogin = async (req, res) => {
     const { hospitalStaffEmail, hospitalStaffPassword } = req.body;
-    const hospitalStaffData = req.body;
 
-    const emailValidation = dataValidator.isValidEmail(hospitalStaffData.hospitalStaffEmail); // Change this line
-    if (!emailValidation.isValid) {
-        return res.status(400).json({ status: 'Validation failed', details: emailValidation.message });
-    }
+    // Validate email and password
+    const emailValidation = dataValidator.isValidEmail(hospitalStaffEmail);
+    const passwordValidation = dataValidator.isValidPassword(hospitalStaffPassword);
 
-    const passwordValidation = dataValidator.isValidPassword(hospitalStaffData.hospitalStaffPassword);
-    if (!passwordValidation.isValid) {
-        return res.status(400).json({ status: 'Validation failed', details: passwordValidation.message });
+    if (!emailValidation.isValid || !passwordValidation.isValid) {
+        return res.status(400).json({
+            status: 'Validation failed',
+            details: [...emailValidation.message, ...passwordValidation.message],
+        });
     }
 
     try {
         const hospitalStaff = await HospitalStaff.login(hospitalStaffEmail, hospitalStaffPassword);
 
+        if (!hospitalStaff) {
+            return res.status(401).json({
+                status: 'Login failed',
+                data: 'Hospital staff not found or login credentials are incorrect',
+            });
+        }
+
+        // Access the secret key from environment variables
         const token = jwt.sign(
             { hospitalStaffId: hospitalStaff.hospitalStaffId, hospitalStaffEmail: hospitalStaff.hospitalStaffEmail },
-            'micstaff', //secret key
+            process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, 
             { expiresIn: '1h' }
         );
 
-        return res.status(200).json({ status: 'Login successful', data: { token, hospitalStaff } });  // Change this line
+        return res.status(200).json({ status: 'Login successful', data: { token, hospitalStaff } });
     } catch (error) {
-        if (error.message === "Hospital staff not found" || error.message === "Hospital staff is not active or has been deleted or is in suspension" || error.message === "Invalid password") {
+        if (error.message === "Hospital staff not found" || error.message === "You are not permitted to login" || error.message === "Invalid password") {
             return res.status(401).json({ status: 'Login failed', data: error.message });
         } else {
-            console.error('Error during hospital login:', error);
+            console.error('Error during hospital staff login:', error);
             return res.status(500).json({ status: 'Internal server error' });
         }
     }
 };
+
 
 
 // HospitalStaff Change Password Controller

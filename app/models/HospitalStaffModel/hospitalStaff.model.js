@@ -54,7 +54,7 @@ const Patient = function (patient) {
 
 // Hospital staff Login
 HospitalStaff.login = async (email, password) => {
-    const query = "SELECT * FROM Hospital_Staffs WHERE BINARY hospitalStaffEmail = ?";
+    const query = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail = ?";
     try {
         const result = await dbQuery(query, [email]);
 
@@ -63,7 +63,7 @@ HospitalStaff.login = async (email, password) => {
         }
         const hospitalStaff = result[0];
         if (hospitalStaff.deleteStatus !== 0 || hospitalStaff.isSuspended !== 0) {
-            throw new Error("Hospital staff is not active or has been deleted or is in suspension");
+            throw new Error("You are not permitted to login");
         }
 
         const isMatch = await promisify(bcrypt.compare)(password, hospitalStaff.hospitalStaffPassword);
