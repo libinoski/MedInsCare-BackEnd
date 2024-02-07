@@ -27,6 +27,51 @@ function isEmpty(value, fieldName) {
 }
 
 
+
+function isValidPassword(password) {
+    if (isNullOrUndefined(password) || password.trim() === "") {
+        return {
+            isValid: false,
+            message: "Password can't be empty."
+        };
+    }
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const hasSpecialChar = /[\W_]/.test(password);
+    const isLengthValid = /^[a-zA-Z\d\W_]{8,12}$/.test(password);
+    const messages = [];
+
+    if (!hasLowerCase) {
+        messages.push("Include at least one lowercase letter.");
+    }
+
+    if (!hasUpperCase) {
+        messages.push("Include at least one uppercase letter.");
+    }
+
+    if (!hasDigit) {
+        messages.push("Include at least one digit.");
+    }
+
+    if (!hasSpecialChar) {
+        messages.push("Include at least one special character.");
+    }
+
+    if (!isLengthValid) {
+        messages.push("Should be 8 to 12 characters long.");
+    }
+
+    return {
+        isValid: messages.length === 0,
+        message: messages.join(' ')
+    };
+}
+
+
+
+
+
 // Verify the validity of an ID.
 function isValidId(id, idName) {
     if (isNullOrUndefined(id) || id.trim() === "") {
@@ -160,32 +205,42 @@ function isValidImageWith1MBConstraint(file) {
 
 // Verify the validity of a mobile number.
 function isValidMobileNumber(mobileNumber) {
-    if (isNullOrUndefined(mobileNumber) || mobileNumber.trim() === "") {
+    // Remove spaces from the mobile number
+    const sanitizedMobileNumber = mobileNumber.replace(/\s/g, '');
+
+    if (isNullOrUndefined(sanitizedMobileNumber) || sanitizedMobileNumber === "") {
         return {
             isValid: false,
-            message: "Mobile Number cannot be empty"
+            message: "Mobile number cannot be empty. Warning: This field is required."
         };
     }
+
     return {
-        isValid: /^\+91[6-9]\d{9}$|^\+91\s?[6-9]\d{9}$|^[6-9]\d{9}$/.test(mobileNumber),
+        isValid: /^\+91[6-9]\d{9}$|^[6-9]\d{9}$/.test(sanitizedMobileNumber),
         message: "Invalid Mobile Number"
     };
 }
 
 
+
+
 // Confirm the validity of an amount.
 function isValidAmount(amount) {
-    if (isNullOrUndefined(amount) || amount.trim() === "") {
+    const sanitizedAmount = amount.replace(/\s/g, "");
+
+    if (isNullOrUndefined(sanitizedAmount) || sanitizedAmount === "") {
         return {
             isValid: false,
             message: "Amount cannot be empty"
         };
     }
+
     return {
-        isValid: amount > 0,
+        isValid: sanitizedAmount > 0,
         message: "Value must be greater than zero"
     };
 }
+
 
 
 // Verify the correctness of an address.
@@ -193,7 +248,7 @@ function isValidAddress(address) {
     if (isNullOrUndefined(address) || address.trim() === "") {
         return {
             isValid: false,
-            message: "Address cannot be empty"
+            message: "Address cannot be empty. Warning: This field is required."
         };
     }
     return {
@@ -211,12 +266,17 @@ function isValidWebsite(website) {
             message: "Website is empty or null. Warning: This field is required."
         };
     }
+    
+    // Remove spaces before the first letter or symbol
+    website = website.replace(/^\s+/g, '');
+
     const regex = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.([a-zA-Z]{2,})$/;
     return {
         isValid: regex.test(website),
         message: "Website must be in a valid format (e.g., http://www.example.com)"
     };
 }
+
 
 
 // Confirm the validity of an email address.
@@ -234,46 +294,7 @@ function isValidEmail(email) {
 }
 
 
-// Verify the strength and validity of a password.
-function isValidPassword(password) {
-    if (isNullOrUndefined(password) || password.trim() === "") {
-        return {
-            isValid: false,
-            message: ["Password can't be empty. Warning: This field is required."]
-        };
-    }
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasDigit = /\d/.test(password);
-    const hasSpecialChar = /[\W_]/.test(password);
-    const isLengthValid = /^[a-zA-Z\d\W_]{8,12}$/.test(password);
-    const messages = [];
 
-    if (!hasLowerCase) {
-        messages.push("Password must contain at least one lowercase letter.");
-    }
-
-    if (!hasUpperCase) {
-        messages.push("Password must contain at least one uppercase letter.");
-    }
-
-    if (!hasDigit) {
-        messages.push("Password must contain at least one digit.");
-    }
-
-    if (!hasSpecialChar) {
-        messages.push("Password must contain at least one special character.");
-    }
-
-    if (!isLengthValid) {
-        messages.push("Password must be between 8 and 12 characters long.");
-    }
-
-    return {
-        isValid: messages.length === 0,
-        message: messages
-    };
-}
 
 
 // Validate age (restrict to numbers with a maximum of 3 digits).
@@ -310,18 +331,22 @@ function isValidName(name) {
 
 // Verify the legitimacy of an Aadhar number.
 function isValidAadharNumber(aadharNumber) {
-    if (isNullOrUndefined(aadharNumber) || aadharNumber.trim() === "") {
+    // Remove spaces from the Aadhar number
+    const sanitizedAadharNumber = aadharNumber.replace(/\s/g, '');
+
+    if (isNullOrUndefined(sanitizedAadharNumber) || sanitizedAadharNumber === "") {
         return {
             isValid: false,
-            message: "Aadhar Number cannot be empty. Warning: This field is required."
+            message: "Aadhar number cannot be empty. Warning: This field is required."
         };
     }
 
     return {
-        isValid: /^\d{12}$/.test(aadharNumber),
+        isValid: /^\d{12}$/.test(sanitizedAadharNumber),
         message: "Aadhar Number must be of 12 digits"
     };
 }
+
 
 
 // Validate gender (permit only alphabetical characters and allow null values).
