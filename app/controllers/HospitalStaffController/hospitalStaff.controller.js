@@ -8,117 +8,128 @@ const { HospitalStaff } = require('../../models/HospitalStaffModel/hospitalStaff
 
 
 
-
+//Hospial Staff Login
 exports.hospitalStaffLogin = async (req, res) => {
     const { hospitalStaffEmail, hospitalStaffPassword } = req.body;
 
-    // Validate email and password
     const emailValidation = dataValidator.isValidEmail(hospitalStaffEmail);
     const passwordValidation = dataValidator.isValidPassword(hospitalStaffPassword);
 
-    if (!emailValidation.isValid || !passwordValidation.isValid) {
-        return res.status(400).json({
-            status: 'Validation failed',
-            details: [...emailValidation.message, ...passwordValidation.message],
-        });
+    const validationResults = {
+        isValid: true,
+        errors: [],
+    };
+
+    if (!passwordValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.errors.push({ field: 'hospitalStaffPassword', message: passwordValidation.message });
+    }
+
+    if (!emailValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.errors.push({ field: 'hospitalStaffEmail', message: emailValidation.message });
+    }
+
+    if (!validationResults.isValid) {
+        return res.status(400).json({status: 'Validation failed',message: 'Invalid input data',details: validationResults.errors});
     }
 
     try {
         const hospitalStaff = await HospitalStaff.login(hospitalStaffEmail, hospitalStaffPassword);
 
-        if (!hospitalStaff) {
-            return res.status(401).json({
-                status: 'Login failed',
-                data: 'Hospital staff not found or login credentials are incorrect',
-            });
-        }
-
-        // Access the secret key from environment variables
         const token = jwt.sign(
             { hospitalStaffId: hospitalStaff.hospitalStaffId, hospitalStaffEmail: hospitalStaff.hospitalStaffEmail },
-            process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, 
+            process.env.JWT_SECRET_KEY_HOSPITAL_STAFF,
             { expiresIn: '1h' }
         );
 
-        return res.status(200).json({ status: 'Login successful', data: { token, hospitalStaff } });
+        return res.status(200).json({
+            status: 'Success',message: 'Login successful',data: { token, hospitalStaff }});
     } catch (error) {
-        if (error.message === "Hospital staff not found" || error.message === "You are not permitted to login" || error.message === "Invalid password") {
-            return res.status(401).json({ status: 'Login failed', data: error.message });
+        if (error.message === "Hospital staff not found" ||
+            error.message === "You are not permitted to login" ||
+            error.message === "Invalid password" ||
+            error.message === "Hospital staff account is deleted") {
+            return res.status(401).json({status: 'Failure',message: 'Authentication failed',details: error.message});
+        } else if (error.message === "The associated hospital is not active" ||
+            error.message === "The associated hospital is deleted") {
+            return res.status(401).json({status: 'Failure',message: 'Authentication failed',details: error.message});
         } else {
             console.error('Error during hospital staff login:', error);
-            return res.status(500).json({ status: 'Internal server error' });
+            return res.status(500).json({status: 'Error',message: 'Internal server error',details: 'An internal server error occurred during login'});
         }
     }
 };
+
 
 
 
 
 exports.hospitalStaffChangePassword = async (req, res) => {
     try {
-      const token = req.headers.token;
-      const { hospitalStaffId, oldPassword, newPassword } = req.body;
-  
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
-  
-        if (!token || !decoded || !hospitalStaffId || (decoded.hospitalStaffId != hospitalStaffId)) {
-          return res.status(403).json({ status: 'Unauthorized access', message: 'Unauthorized access to change the staff password' });
-        }
-  
-        function validateHospitalStaffChangePassword(passwordData) {
-          const validationResults = {
-            isValid: true,
-            messages: [],
-          };
-  
-          const passwordValidation = dataValidator.isValidPassword(passwordData.oldPassword);
-          if (!passwordValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.messages.push({ field: 'oldPassword', message: passwordValidation.message });
-          }
-  
-          const newPasswordValidation = dataValidator.isValidPassword(passwordData.newPassword);
-          if (!newPasswordValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.messages.push({ field: 'newPassword', message: newPasswordValidation.message });
-          }
-  
-          return validationResults;
-        }
-  
-        const validationResults = validateHospitalStaffChangePassword({ oldPassword, newPassword });
-  
-        if (!validationResults.isValid) {
-          return res.status(400).json({ status: 'Validation failed', data: validationResults.messages });
-        }
-  
+        const token = req.headers.token;
+        const { hospitalStaffId, oldPassword, newPassword } = req.body;
+
         try {
-          await HospitalStaff.changePassword(hospitalStaffId, oldPassword, newPassword);
-  
-          return res.status(200).json({ status: 'Success', message: 'Password changed successfully' });
+            const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
+
+            if (!token || !decoded || !hospitalStaffId || (decoded.hospitalStaffId != hospitalStaffId)) {
+                return res.status(403).json({ status: 'Failure', message: 'Unauthorized access to change the staff password' });
+            }
+
+            function validateHospitalStaffChangePassword(passwordData) {
+                const validationResults = {
+                    isValid: true,
+                    messages: [],
+                };
+
+                const passwordValidation = dataValidator.isValidPassword(passwordData.oldPassword);
+                if (!passwordValidation.isValid) {
+                    validationResults.isValid = false;
+                    validationResults.messages.push({ field: 'oldPassword', message: passwordValidation.message });
+                }
+
+                const newPasswordValidation = dataValidator.isValidPassword(passwordData.newPassword);
+                if (!newPasswordValidation.isValid) {
+                    validationResults.isValid = false;
+                    validationResults.messages.push({ field: 'newPassword', message: newPasswordValidation.message });
+                }
+
+                return validationResults;
+            }
+
+            const validationResults = validateHospitalStaffChangePassword({ oldPassword, newPassword });
+
+            if (!validationResults.isValid) {
+                return res.status(400).json({ status: 'Failure', message: 'Validation failed', data: validationResults.messages });
+            }
+
+            try {
+                await HospitalStaff.changePassword(hospitalStaffId, oldPassword, newPassword);
+
+                return res.status(200).json({ status: 'Success', message: 'Password changed successfully' });
+            } catch (error) {
+                if (error.message === 'Staff not found' || error.message === 'Invalid old password') {
+                    return res.status(404).json({ status: 'Failure', message: error.message });
+                } else {
+                    console.error('Error changing staff password:', error);
+                    return res.status(500).json({ status: 'Error', message: 'Failed to change password', error: error.message });
+                }
+            }
         } catch (error) {
-          if (error.message === 'Staff not found' || error.message === 'Invalid old password') {
-            return res.status(404).json({ status: 'Error', message: error.message });
-          } else {
-            console.error('Error changing staff password:', error);
-            return res.status(500).json({ status: 'Failed to change password', message: 'Internal server error', error: error.message });
-          }
+            if (error.name === 'JsonWebTokenError') {
+                return res.status(401).json({ status: 'Failure', message: 'Invalid token', error: 'Token verification failed' });
+            } else {
+                console.error('Error changing staff password:', error);
+                return res.status(500).json({ status: 'Error', message: 'Failed to change password', error: error.message });
+            }
         }
-      } catch (error) {
-        if (error.name === 'JsonWebTokenError') {
-          return res.status(401).json({ status: 'Invalid token', message: 'Token verification failed' });
-        } else {
-          console.error('Error changing staff password:', error);
-          return res.status(500).json({ status: 'Failed to change password', message: 'Internal server error', error: error.message });
-        }
-      }
     } catch (error) {
-      console.error('Error changing staff password:', error);
-      return res.status(500).json({ status: 'Failed to change password', message: 'Internal server error', error: error.message });
+        console.error('Error changing staff password:', error);
+        return res.status(500).json({ status: 'Error', message: 'Failed to change password', error: error.message });
     }
 };
-  
+
 
 
 

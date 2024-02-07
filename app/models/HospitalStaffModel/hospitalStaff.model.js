@@ -54,16 +54,27 @@ const Patient = function (patient) {
 
 // Hospital staff Login
 HospitalStaff.login = async (email, password) => {
-    const query = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail = ?";
+    const query = `
+        SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
+        FROM Hospital_Staffs HS
+        JOIN Hospitals H ON HS.hospitalId = H.hospitalId
+        WHERE HS.hospitalStaffEmail = ? AND HS.deleteStatus = 0 AND HS.isSuspended = 0 AND H.deleteStatus = 0
+    `;
     try {
         const result = await dbQuery(query, [email]);
 
         if (result.length === 0) {
             throw new Error("Hospital staff not found");
         }
+
         const hospitalStaff = result[0];
-        if (hospitalStaff.deleteStatus !== 0 || hospitalStaff.isSuspended !== 0) {
-            throw new Error("You are not permitted to login");
+
+        if (!hospitalStaff.hospitalIsActive) {
+            throw new Error("The associated hospital is not active");
+        }
+
+        if (hospitalStaff.hospitalDeleteStatus !== 0) {
+            throw new Error("The associated hospital is deleted");
         }
 
         const isMatch = await promisify(bcrypt.compare)(password, hospitalStaff.hospitalStaffPassword);
@@ -79,9 +90,16 @@ HospitalStaff.login = async (email, password) => {
 };
 
 
+
+
 // HospitalStaff Change Password
 HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword) => {
-    const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0";
+    const checkStaffQuery = `
+        SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
+        FROM Hospital_Staffs HS
+        JOIN Hospitals H ON HS.hospitalId = H.hospitalId
+        WHERE HS.hospitalStaffId = ? AND HS.deleteStatus = 0 AND HS.isSuspended = 0 AND H.deleteStatus = 0
+    `;
 
     try {
         const selectRes = await dbQuery(checkStaffQuery, [hospitalStaffId]);
@@ -91,6 +109,14 @@ HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword)
         }
 
         const hospitalStaff = selectRes[0];
+
+        if (!hospitalStaff.hospitalIsActive) {
+            throw new Error("The associated hospital is not active");
+        }
+
+        if (hospitalStaff.hospitalDeleteStatus !== 0) {
+            throw new Error("The associated hospital is deleted");
+        }
 
         const isMatch = await promisify(bcrypt.compare)(oldPassword, hospitalStaff.hospitalStaffPassword);
 
@@ -116,15 +142,16 @@ HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword)
             hashedNewPassword,
             hospitalStaffId,
         ];
-
         const updatePasswordRes = await dbQuery(updatePasswordQuery, updatePasswordValues);
-
+        console.log("Password update query result:", updatePasswordRes);
         console.log("Staff password updated successfully for hospitalStaffId:", hospitalStaffId);
         return { message: "Password updated successfully" };
     } catch (error) {
         throw error;
     }
 };
+
+
 
 
 // Hospitalstaff update Profile
