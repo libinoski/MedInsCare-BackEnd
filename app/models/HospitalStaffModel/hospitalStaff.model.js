@@ -274,6 +274,7 @@ HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
 };
 
 
+
 // Hospital staff Search Patients
 HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
     const query = `
