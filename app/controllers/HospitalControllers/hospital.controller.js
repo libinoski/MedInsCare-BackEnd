@@ -141,7 +141,7 @@ exports.hospitalRegister = async (req, res) => {
             // Clean up image if needed
             if (hospitalImageFile) {
               const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
-              fs.unlinkSync(imagePath);
+              fs.unlinkSync(imagePath);     
             }
             console.error('Error during hospital registration:', error);
             return res.status(500).json({ error: 'Failed to register hospital' });
