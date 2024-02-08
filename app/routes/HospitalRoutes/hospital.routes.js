@@ -7,25 +7,25 @@ const HospitalController = require('../../controllers/HospitalControllers/hospit
 
 
 
-router.post("/hospitalRegistration", HospitalController.hospitalStaffRegister);
-router.post("/hospitalLogin", HospitalController.hospitalLogin);
-router.post("/hospitalChangePassword", HospitalController.hospitalChangePassword);
-router.post("/hospitalChangeImage", HospitalController.hospitalChangeImage);
-router.post("/hospitalViewProfile", HospitalController.hospitalViewProfile);
-router.post("/hospitalUpdateProfile", HospitalController.hospitalUpdateProfile);
-router.post("/hospitalStaffRegister", HospitalController.hospitalStaffRegister);
-router.post("/deleteHospitalStaff", HospitalController.deleteHospitalStaff);
-router.post("/updateHospitalStaff", HospitalController.updateHospitalStaff);
-router.post("/suspendHospitalStaff", HospitalController.suspendHospitalStaff);
-router.post("/unSuspendHospitalStaff", HospitalController.unSuspendHospitalStaff);
-router.post("/viewAllHospitalStaffs", HospitalController.viewAllHospitalStaffs);
-router.post("/viewOneHospitalStaff", HospitalController.viewOneHospitalStaff);
-router.post("/searchHospitalStaff", HospitalController.searchHospitalStaff);
-router.post("/addHospitalNews", HospitalController.addHospitalNews);
-router.post("/deleteHospitalNews", HospitalController.deleteHospitalNews);
-router.post("/updateHospitalNews", HospitalController.updateHospitalNews);
-router.post("/viewAllHospitalNews", HospitalController.viewAllHospitalNews);
-router.post("/viewOneHospitalNews", HospitalController.viewOneHospitalNews);
+router.post("/hospitalRegistration", HospitalController.register);
+router.post("/hospitalLogin", HospitalController.login);
+router.post("/hospitalChangePassword", HospitalController.changePassword);
+router.post("/hospitalChangeImage", HospitalController.changeImage);
+router.post("/hospitalViewProfile", HospitalController.viewProfile);
+router.post("/hospitalUpdateProfile", HospitalController.updateProfile);
+router.post("/hospitalStaffRegister", HospitalController.staffRegister);
+router.post("/deleteHospitalStaff", HospitalController.deleteStaff);
+router.post("/updateHospitalStaff", HospitalController.updateStaff);
+router.post("/suspendHospitalStaff", HospitalController.suspendStaff);
+router.post("/unSuspendHospitalStaff", HospitalController.unsuspendStaff);
+router.post("/viewAllHospitalStaffs", HospitalController.viewAllStaffs);
+router.post("/viewOneHospitalStaff", HospitalController.viewOneStaff);
+router.post("/searchHospitalStaff", HospitalController.searchStaffs);
+router.post("/addHospitalNews", HospitalController.addNews);
+router.post("/deleteHospitalNews", HospitalController.deleteNews);
+router.post("/updateHospitalNews", HospitalController.updateNews);
+router.post("/viewAllHospitalNews", HospitalController.viewAllNews);
+router.post("/viewOneHospitalNews", HospitalController.viewOneNews);
 
 
 

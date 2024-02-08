@@ -92,6 +92,9 @@ HospitalStaff.login = async (email, password) => {
 
 
 
+
+
+
 // HospitalStaff Change Password
 HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword) => {
     const checkStaffQuery = `
@@ -145,11 +148,14 @@ HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword)
         const updatePasswordRes = await dbQuery(updatePasswordQuery, updatePasswordValues);
         console.log("Password update query result:", updatePasswordRes);
         console.log("Staff password updated successfully for hospitalStaffId:", hospitalStaffId);
-        return { message: "Password updated successfully" };
+        return true; // Just returning true to indicate success
     } catch (error) {
         throw error;
     }
 };
+
+
+
 
 
 
@@ -164,11 +170,16 @@ HospitalStaff.viewProfile = async (hospitalStaffId) => {
             throw new Error("Hospital staff not found");
         }
 
-        return result[0];
+        return result[0]; 
     } catch (error) {
         throw error;
     }
 };
+
+
+
+
+
 
 
 // Hospitalstaff update Profile
@@ -210,18 +221,23 @@ HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
             updatedHospitalStaff.hospitalStaffId,
         ];
 
-        const updateRes = await dbQuery(updateQuery, updateValues);
+        await dbQuery(updateQuery, updateValues);
 
-        const responseData = { ...updatedHospitalStaff };
         console.log("Updated hospital staff details:", { id: updatedHospitalStaff.hospitalStaffId, ...updatedHospitalStaff });
-        return responseData;
+        return updatedHospitalStaff; // Returning the updated data without additional status and message
     } catch (error) {
         throw error;
     }
 };
 
 
-// Hospital staff Register New Staff
+
+
+
+
+
+
+// Hospital staff Register new patient
 HospitalStaff.registerPatient = async (newPatient) => {
     try {
         const checkHospitalStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=0";
@@ -254,11 +270,17 @@ HospitalStaff.registerPatient = async (newPatient) => {
         const insertQuery = "INSERT INTO Patients SET ?";
         const insertRes = await dbQuery(insertQuery, newPatient);
 
-        return { status: "Success", message: 'Patient added successfully', data: { patientId: insertRes.insertId, ...newPatient } };
+        return { patientId: insertRes.insertId, ...newPatient }; // Return patient data without status and message
     } catch (error) {
         throw error;
     }
 };
+
+
+
+
+
+
 
 
 // Hospital staff View All patients
@@ -271,11 +293,15 @@ HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
         `;
         const allPatients = await dbQuery(viewAllPatientsQuery, [hospitalStaffId]);
 
-        return { status: "Success", message: 'All patients are retrieved successfully', data: allPatients };
+        return allPatients; 
     } catch (error) {
         throw error;
     }
 };
+
+
+
+
 
 
 // Hospital staff View One patient
@@ -294,11 +320,15 @@ HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
             throw new Error("Patient not found");
         }
 
-        return { status: "Success", message: 'Patient retrieved successfully', data: patient[0] };
+        return patient[0]; 
     } catch (error) {
         throw error;
     }
 };
+
+
+
+
 
 
 
@@ -340,11 +370,12 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
             `%${searchQuery}%`
         ]);
 
-        return result;
+        return result; 
     } catch (error) {
         throw error;
     }
 };
+
 
 
 

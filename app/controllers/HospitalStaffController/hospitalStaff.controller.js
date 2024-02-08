@@ -8,8 +8,11 @@ const { HospitalStaff } = require('../../models/HospitalStaffModel/hospitalStaff
 
 
 
-//Hospial Staff Login
-exports.hospitalStaffLogin = async (req, res) => {
+
+
+
+// Hospital Staff Login
+exports.login = async (req, res) => {
     const { hospitalStaffEmail, hospitalStaffPassword } = req.body;
 
     const emailValidation = dataValidator.isValidEmail(hospitalStaffEmail);
@@ -17,21 +20,21 @@ exports.hospitalStaffLogin = async (req, res) => {
 
     const validationResults = {
         isValid: true,
-        errors: [],
+        errors: {},
     };
 
     if (!passwordValidation.isValid) {
         validationResults.isValid = false;
-        validationResults.errors.push({ field: 'hospitalStaffPassword', message: passwordValidation.message });
+        validationResults.errors['hospitalStaffPassword'] = [passwordValidation.message];
     }
 
     if (!emailValidation.isValid) {
         validationResults.isValid = false;
-        validationResults.errors.push({ field: 'hospitalStaffEmail', message: emailValidation.message });
+        validationResults.errors['hospitalStaffEmail'] = [emailValidation.message];
     }
 
     if (!validationResults.isValid) {
-        return res.status(400).json({status: 'Validation failed',message: 'Invalid input data',details: validationResults.errors});
+        return res.status(400).json({ status: 'Validation failed', message: 'Invalid input data', details: validationResults.errors });
     }
 
     try {
@@ -44,19 +47,22 @@ exports.hospitalStaffLogin = async (req, res) => {
         );
 
         return res.status(200).json({
-            status: 'Success',message: 'Login successful',data: { token, hospitalStaff }});
+            status: 'Success',
+            message: 'Login successful',
+            data: { token, hospitalStaff }
+        });
     } catch (error) {
         if (error.message === "Hospital staff not found" ||
             error.message === "You are not permitted to login" ||
             error.message === "Invalid password" ||
             error.message === "Hospital staff account is deleted") {
-            return res.status(401).json({status: 'Failure',message: 'Authentication failed',details: error.message});
+            return res.status(401).json({ status: 'Failure', message: 'Authentication failed', details: error.message });
         } else if (error.message === "The associated hospital is not active" ||
             error.message === "The associated hospital is deleted") {
-            return res.status(401).json({status: 'Failure',message: 'Authentication failed',details: error.message});
+            return res.status(401).json({ status: 'Failure', message: 'Authentication failed', details: error.message });
         } else {
             console.error('Error during hospital staff login:', error);
-            return res.status(500).json({status: 'Error',message: 'Internal server error',details: 'An internal server error occurred during login'});
+            return res.status(500).json({ status: 'Error', message: 'Internal server error', details: 'An internal server error occurred during login' });
         }
     }
 };
@@ -65,7 +71,8 @@ exports.hospitalStaffLogin = async (req, res) => {
 
 
 
-exports.hospitalStaffChangePassword = async (req, res) => {
+// Hospital Staff Change Password
+exports.changePassword = async (req, res) => {
     try {
         const token = req.headers.token;
         const { hospitalStaffId, oldPassword, newPassword } = req.body;
@@ -74,25 +81,25 @@ exports.hospitalStaffChangePassword = async (req, res) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
             if (!token || !decoded || !hospitalStaffId || (decoded.hospitalStaffId != hospitalStaffId)) {
-                return res.status(403).json({ status: 'Failure', message: 'Unauthorized access to change the staff password' });
+                return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
             }
 
             function validateHospitalStaffChangePassword(passwordData) {
                 const validationResults = {
                     isValid: true,
-                    messages: [],
+                    errors: {},
                 };
 
                 const passwordValidation = dataValidator.isValidPassword(passwordData.oldPassword);
                 if (!passwordValidation.isValid) {
                     validationResults.isValid = false;
-                    validationResults.messages.push({ field: 'oldPassword', message: passwordValidation.message });
+                    validationResults.errors['oldPassword'] = passwordValidation.message;
                 }
 
                 const newPasswordValidation = dataValidator.isValidPassword(passwordData.newPassword);
                 if (!newPasswordValidation.isValid) {
                     validationResults.isValid = false;
-                    validationResults.messages.push({ field: 'newPassword', message: newPasswordValidation.message });
+                    validationResults.errors['newPassword'] = newPasswordValidation.message;
                 }
 
                 return validationResults;
@@ -101,32 +108,32 @@ exports.hospitalStaffChangePassword = async (req, res) => {
             const validationResults = validateHospitalStaffChangePassword({ oldPassword, newPassword });
 
             if (!validationResults.isValid) {
-                return res.status(400).json({ status: 'Failure', message: 'Validation failed', data: validationResults.messages });
+                return res.status(400).json({ status: 'failed', message: 'Validation failed', errors: validationResults.errors });
             }
 
             try {
                 await HospitalStaff.changePassword(hospitalStaffId, oldPassword, newPassword);
 
-                return res.status(200).json({ status: 'Success', message: 'Password changed successfully' });
+                return res.status(200).json({ status: 'success', message: 'Password changed successfully' });
             } catch (error) {
                 if (error.message === 'Staff not found' || error.message === 'Invalid old password') {
-                    return res.status(404).json({ status: 'Failure', message: error.message });
+                    return res.status(404).json({ status: 'failed', message: error.message });
                 } else {
                     console.error('Error changing staff password:', error);
-                    return res.status(500).json({ status: 'Error', message: 'Failed to change password', error: error.message });
+                    return res.status(500).json({ status: 'error', message: 'Failed to change password', error: error.message });
                 }
             }
         } catch (error) {
             if (error.name === 'JsonWebTokenError') {
-                return res.status(401).json({ status: 'Failure', message: 'Invalid token', error: 'Token verification failed' });
+                return res.status(401).json({ status: 'failed', message: 'Invalid token', error: 'Token verification failed' });
             } else {
                 console.error('Error changing staff password:', error);
-                return res.status(500).json({ status: 'Error', message: 'Failed to change password', error: error.message });
+                return res.status(500).json({ status: 'error', message: 'Failed to change password', error: error.message });
             }
         }
     } catch (error) {
         console.error('Error changing staff password:', error);
-        return res.status(500).json({ status: 'Error', message: 'Failed to change password', error: error.message });
+        return res.status(500).json({ status: 'error', message: 'Failed to change password', error: error.message });
     }
 };
 
@@ -134,8 +141,9 @@ exports.hospitalStaffChangePassword = async (req, res) => {
 
 
 
+
 // Hospital Staff View Profile
-exports.hospitalStaffViewProfile = async (req, res) => {
+exports.viewProfile = async (req, res) => {
     const token = req.headers.token;
     const { hospitalStaffId } = req.body;
 
@@ -143,12 +151,12 @@ exports.hospitalStaffViewProfile = async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
         if (!token || !hospitalStaffId || !decoded || (decoded.hospitalStaffId != hospitalStaffId)) {
-            return res.status(403).json({ status: 'error', message: 'Unauthorized access to the hospital staff profile' });
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
         }
 
         try {
-            const result = await HospitalStaff.viewProfile(hospitalStaffId);
-            return res.status(200).json({ status: 'success', message: 'Hospital staff profile retrieved successfully', data: result });
+            const staffProfileData = await HospitalStaff.viewProfile(hospitalStaffId);
+            return res.status(200).json({ status: 'success', message: 'Hospital staff profile retrieved successfully', data: staffProfileData });
         } catch (error) {
             if (error.message === "Hospital staff not found") {
                 return res.status(404).json({ status: 'error', message: 'Hospital staff not found' });
@@ -171,57 +179,54 @@ exports.hospitalStaffViewProfile = async (req, res) => {
 
 
 
+
 // Hospital Staff Update Profile
-exports.hospitalStaffUpdateProfile = async (req, res) => {
+exports.updateProfile = async (req, res) => {
     const token = req.headers.token;
     const { hospitalStaffId, hospitalStaffName, hospitalStaffMobile, hospitalStaffAddress, hospitalStaffAadhar } = req.body;
-
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
-
         if (!token || !hospitalStaffId || !decoded || (decoded.hospitalStaffId != hospitalStaffId)) {
-            return res.status(403).json({ status: 'error', message: 'Unauthorized access to update hospital staff profile' });
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
         }
 
-        // Function to validate the hospital staff update profile request
         function validateHospitalStaffUpdateProfile(hospitalStaffData) {
             const validationResults = {
                 isValid: true,
-                messages: [],
+                errors: {},
             };
 
             const idValidation = dataValidator.isValidId(hospitalStaffData.hospitalStaffId);
             if (!idValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalStaffId', message: idValidation.message });
+                validationResults.errors['hospitalStaffId'] = idValidation.message;
             }
 
             const nameValidation = dataValidator.isValidName(hospitalStaffData.hospitalStaffName);
             if (!nameValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalStaffName', message: nameValidation.message });
+                validationResults.errors['hospitalStaffName'] = nameValidation.message;
             }
 
             const aadharValidation = dataValidator.isValidAadharNumber(hospitalStaffData.hospitalStaffAadhar);
             if (!aadharValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalStaffAadhar', message: aadharValidation.message });
+                validationResults.errors['hospitalStaffAadhar'] = aadharValidation.message;
             }
 
             const mobileValidation = dataValidator.isValidMobileNumber(hospitalStaffData.hospitalStaffMobile);
             if (!mobileValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalStaffMobile', message: mobileValidation.message });
+                validationResults.errors['hospitalStaffMobile'] = mobileValidation.message;
             }
 
             const addressValidation = dataValidator.isValidAddress(hospitalStaffData.hospitalStaffAddress);
             if (!addressValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalStaffAddress', message: addressValidation.message });
+                validationResults.errors['hospitalStaffAddress'] = addressValidation.message;
             }
-
 
             return validationResults;
         }
@@ -235,7 +240,7 @@ exports.hospitalStaffUpdateProfile = async (req, res) => {
         });
 
         if (!validationResults.isValid) {
-            return res.status(400).json({ status: "Validation failed", data: validationResults.messages });
+            return res.status(400).json({ status: "Validation failed", message: "One or more fields failed validation", errors: validationResults.errors });
         }
 
         try {
@@ -250,20 +255,20 @@ exports.hospitalStaffUpdateProfile = async (req, res) => {
             return res.status(200).json({ status: "success", message: "Hospital staff updated successfully", data });
         } catch (error) {
             if (error.message === "Hospital Staff not found") {
-                return res.status(404).json({ status: error.message });
+                return res.status(404).json({ status: error.message, message: "Hospital staff not found" });
             } else if (error.message === "Aadhar Number Already Exists.") {
-                return res.status(409).json({ status: error.message });
+                return res.status(409).json({ status: "error", message: error.message});
             } else {
                 console.error('Error updating hospital staff profile:', error);
-                return res.status(500).json({ status: "Failed to edit hospital staff profile", error: error.message });
+                return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
             }
         }
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ status: "Invalid token" });
+            return res.status(401).json({ status: "Invalid token", message: "Failed to verify the access token" });
         } else {
             console.error('Error during token verification:', error);
-            return res.status(500).json({ status: "Failed to verify token", error: error.message });
+            return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
         }
     }
 };
@@ -274,96 +279,86 @@ exports.hospitalStaffUpdateProfile = async (req, res) => {
 
 
 // Hospital staff Register New Patient
-exports.patientRegister = async (req, res) => {
+exports.registerPatient = async (req, res) => {
     const token = req.headers.token;
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
         if (!token || !req.body.hospitalStaffId || !decoded || (decoded.hospitalStaffId != req.body.hospitalStaffId)) {
-            return res.status(403).json({ status: 'error', message: 'Unauthorized access to update hospital staff profile' });
+            return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
         }
 
         // Function to validate the hospital staff patient registration request
         function validatePatientRegistration(patientData, patientProfileImageFile, patientIdProofImageFile) {
             const validationResults = {
                 isValid: true,
-                messages: [],
+                messages: {},
             };
 
             const idValidation = dataValidator.isValidId(patientData.hospitalStaffId);
             if (!idValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalStaffId', message: idValidation.message });
+                validationResults.messages['hospitalStaffId'] = idValidation.message;
             }
 
             const nameValidation = dataValidator.isValidName(patientData.patientName);
             if (!nameValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientName', message: nameValidation.message });
+                validationResults.messages['patientName'] = nameValidation.message;
             }
 
             const emailValidation = dataValidator.isValidEmail(patientData.patientEmail);
             if (!emailValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientEmail', message: emailValidation.message });
+                validationResults.messages['patientEmail'] = emailValidation.message;
             }
 
             const ageValidation = dataValidator.isValidAge(patientData.patientAge);
             if (!ageValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientAge', message: ageValidation.message });
+                validationResults.messages['patientAge'] = ageValidation.message;
             }
 
             const genderValidation = dataValidator.isValidGender(patientData.patientGender);
             if (!genderValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientGender', message: genderValidation.message });
+                validationResults.messages['patientGender'] = genderValidation.message;
             }
 
             const aadharValidation = dataValidator.isValidAadharNumber(patientData.patientAadhar);
             if (!aadharValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientAadhar', message: aadharValidation.message });
+                validationResults.messages['patientAadhar'] = aadharValidation.message;
             }
 
             const mobileValidation = dataValidator.isValidMobileNumber(patientData.patientMobile);
             if (!mobileValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientMobile', message: mobileValidation.message });
+                validationResults.messages['patientMobile'] = mobileValidation.message;
             }
 
             const addressValidation = dataValidator.isValidAddress(patientData.patientAddress);
             if (!addressValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientAddress', message: addressValidation.message });
+                validationResults.messages['patientAddress'] = addressValidation.message;
             }
 
             const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(patientProfileImageFile);
             if (!profileImageValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientProfileImage', message: profileImageValidation.message });
-
-                // Delete uploaded images on validation failure
-                if (patientProfileImageFile) {
-                    fs.unlinkSync(path.join('Files/PatientImages', patientProfileImageFile.filename));
-                }
+                validationResults.messages['patientProfileImage'] = profileImageValidation.message;
             }
 
             const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(patientIdProofImageFile);
             if (!idProofImageValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'patientIdProofImage', message: idProofImageValidation.message });
-
-                // Delete uploaded images on validation failure
-                if (patientIdProofImageFile) {
-                    fs.unlinkSync(path.join('Files/PatientImages', patientIdProofImageFile.filename));
-                }
+                validationResults.messages['patientIdProofImage'] = idProofImageValidation.message;
             }
 
             const passwordValidation = dataValidator.isValidPassword(patientData.patientPassword);
             if (!passwordValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages.push({ field: 'hospitalPassword', message: passwordValidation.message });
+                validationResults.messages['hospitalPassword'] = passwordValidation.message;
             }
 
             return validationResults;
@@ -501,13 +496,13 @@ exports.viewAllPatients = async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
         if (!token || !hospitalStaffId || !decoded || (decoded.hospitalStaffId != hospitalStaffId)) {
-            return res.status(403).json({ status: 'error', message: 'Unauthorized access to view patient details' });
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
         }
 
         try {
-            const allPatients = await HospitalStaff.viewAllPatients(hospitalStaffId);
+            const allPatientsData = await HospitalStaff.viewAllPatients(hospitalStaffId);
 
-            return res.status(200).json({ status: 'success', message: 'All patients are retrieved successfully', data: allPatients.data });
+            return res.status(200).json({ status: 'success', message: 'All patients are retrieved successfully', data: allPatientsData });
         } catch (error) {
             console.error('Error viewing all patients:', error);
             return res.status(500).json({ status: 'error', message: 'Internal server error' });
@@ -522,6 +517,7 @@ exports.viewAllPatients = async (req, res) => {
 
 
 
+
 // Hospital staff view one Patient
 exports.viewOnePatient = async (req, res) => {
     try {
@@ -530,17 +526,17 @@ exports.viewOnePatient = async (req, res) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
-        if (!token || decoded.hospitalStaffId !== hospitalStaffId) {
-            return res.status(403).json({ status: 'error', message: 'Unauthorized access to view patient details' });
+        if (!hospitalStaffId || !patientId || !token || (decoded.hospitalStaffId != hospitalStaffId)) {
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
         }
 
         try {
             const patientData = await HospitalStaff.viewOnePatient(hospitalStaffId, patientId);
 
-            return res.status(200).json({ status: 'success', message: 'Patient retrieved successfully', data: patientData.data });
+            return res.status(200).json({ status: 'success', message: 'Patient retrieved successfully', data: patientData });
         } catch (error) {
             if (error.message === "Patient not found") {
-                return res.status(404).json({ status: 'error', message: 'Patient not found' });
+                return res.status(404).json({ status: 'error', message: error.message });
             }
             console.error('Error viewing one patient:', error);
             return res.status(500).json({ status: 'error', message: 'Internal server error' });
@@ -555,6 +551,8 @@ exports.viewOnePatient = async (req, res) => {
 
 
 
+
+
 // Hospital Staff Search Patients
 exports.searchPatients = async (req, res) => {
     try {
@@ -563,12 +561,12 @@ exports.searchPatients = async (req, res) => {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
 
-        if (!token || !decoded || (decoded.hospitalStaffId != hospitalStaffId)) {
-            return res.status(403).json({ status: 'error', message: 'Unauthorized access to search patient details' });
+        if (!token || !decoded || !hospitalStaffId || (decoded.hospitalStaffId != hospitalStaffId)) {
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
         }
 
         if (searchQuery === undefined || searchQuery === null || searchQuery.trim() === '') {
-            return res.status(400).json({ status: 'error', message: 'Search query is required' });
+            return res.status(400).json({ status: 'failed', message: 'Search query is required' });
         }
 
         try {
@@ -588,4 +586,3 @@ exports.searchPatients = async (req, res) => {
         return res.status(500).json({ status: 'error', message: 'Internal server error' });
     }
 };
-

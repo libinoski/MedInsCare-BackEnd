@@ -27,7 +27,7 @@ function isEmpty(value, fieldName) {
 }
 
 
-
+//Validate password
 function isValidPassword(password) {
     if (isNullOrUndefined(password) || password.trim() === "") {
         return {
@@ -67,6 +67,12 @@ function isValidPassword(password) {
         message: messages.join(' ')
     };
 }
+
+
+
+
+
+
 
 
 
