@@ -158,6 +158,72 @@ HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword)
 
 
 
+// HospitalStaff Update ID Proof Image
+HospitalStaff.changeIdProofImage = async (hospitalStaffId, newIdProofImageFilename) => {
+    const verifyQuery = `
+        SELECT hospitalStaffId
+        FROM Hospital_Staffs
+        WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
+    `;
+
+    try {
+        const verifyResult = await dbQuery(verifyQuery, [hospitalStaffId]);
+
+        if (verifyResult.length === 0) {
+            throw new Error("Hospital staff not found");
+        }
+
+        const updateQuery = `
+            UPDATE Hospital_Staffs
+            SET 
+                hospitalStaffIdProofImage = ?,
+                updateStatus = 1, 
+                updatedDate = CURRENT_TIMESTAMP()
+            WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
+        `;
+
+        await dbQuery(updateQuery, [newIdProofImageFilename, hospitalStaffId]);
+
+        return true;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+
+
+
+
+// HospitalStaff Update Profile Image
+HospitalStaff.changeProfileImage = async (hospitalStaffId, newProfileImageFilename) => {
+    const query = `
+        UPDATE Hospital_Staffs
+        SET
+            hospitalStaffProfileImage = ?,
+            updateStatus = 1,
+            updatedDate = CURRENT_TIMESTAMP()
+        WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
+    `;
+
+    try {
+        const result = await dbQuery(query, [newProfileImageFilename, hospitalStaffId]);
+        if (result.affectedRows === 0) {
+            throw new Error("Failed to update profile image or staff not found.");
+        }
+        console.log(`Profile image updated successfully for hospitalStaffId: ${hospitalStaffId}`);
+        return true; // Indicates success
+    } catch (error) {
+        console.error('Error updating profile image:', error);
+        throw error;
+    }
+};
+
+
+
+
+
+
 
 
 // Hospitalstaff update Profile
@@ -375,6 +441,7 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
         throw error;
     }
 };
+
 
 
 

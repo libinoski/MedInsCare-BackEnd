@@ -1,4 +1,4 @@
-// hospital.controller.js
+// hospitalStaff.controller.js
 const multer = require('multer');
 const path = require('path');
 const jwt = require('jsonwebtoken');
@@ -137,6 +137,161 @@ exports.changePassword = async (req, res) => {
     }
 };
 
+
+
+
+
+
+
+// HospitalStaff Update ID Proof Image
+exports.changeIdProofImage = async (req, res) => {
+    const token = req.headers.token;
+    const { hospitalStaffId } = req.body;
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
+
+        if (!token || !decoded || !hospitalStaffId || (decoded.hospitalStaffId != hospitalStaffId)) {
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+        }
+
+        const idProofImageStorage = multer.diskStorage({
+            destination: function (req, file, cb) {
+                cb(null, 'Files/HospitalStaffIdProofImages');
+            },
+            filename: function (req, file, cb) {
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                const ext = path.extname(file.originalname);
+                cb(null, `hospitalStaffIdProof-${uniqueSuffix}${ext}`);
+            }
+        });
+
+        const uploadIdProofImage = multer({ storage: idProofImageStorage }).single('hospitalStaffIdProofImage');
+
+        uploadIdProofImage(req, res, async (err) => {
+            if (err || !req.file) {
+                return res.status(400).json({ status: 'error', message: 'File upload failed', details: err ? err.message : "File is required." });
+            }
+
+            function validateIdProofImage(file) {
+                const validationResults = {
+                    isValid: true,
+                    errors: {},
+                };
+
+                const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+                if (!imageValidation.isValid) {
+                    validationResults.isValid = false;
+                    validationResults.errors['hospitalStaffIdProofImage'] = imageValidation.message;
+                }
+
+                return validationResults;
+            }
+
+            const validationResults = validateIdProofImage(req.file);
+            if (!validationResults.isValid) {
+                fs.unlinkSync(req.file.path);
+                return res.status(400).json({ status: 'error', message: 'Invalid image file', details: validationResults.errors });
+            }
+
+            try {
+                await HospitalStaff.changeIdProofImage(hospitalStaffId, req.file.filename);
+                return res.status(200).json({ status: 'success', message: 'ID proof image updated successfully' });
+            } catch (error) {
+                if (error.message === "Hospital staff not found") {
+                    return res.status(404).json({ status: 'error', message: error.message });
+                } else {
+                    fs.unlinkSync(req.file.path);
+                    console.error('Error updating ID proof image:', error);
+                    return res.status(500).json({ status: 'error', message: 'Failed to update ID proof image', error: error.message });
+                }
+            }
+        });
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ status: 'error', message: 'Invalid token', error: 'Token verification failed' });
+        } else {
+            console.error('Error during ID proof image change:', error);
+            return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+        }
+    }
+};
+
+
+
+
+
+
+exports.changeProfileImage = async (req, res) => {
+    const token = req.headers.token;
+    const { hospitalStaffId } = req.body;
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF);
+        if (!token || !decoded || !hospitalStaffId || (decoded.hospitalStaffId != hospitalStaffId)){
+            return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+        }
+
+        const profileImageStorage = multer.diskStorage({
+            destination: (req, file, cb) => cb(null, 'Files/HospitalStaffProfileImages'),
+            filename: (req, file, cb) => {
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                const ext = path.extname(file.originalname);
+                cb(null, `hospitalStaffProfile-${uniqueSuffix}${ext}`);
+            }
+        });
+
+        const uploadProfileImage = multer({ storage: profileImageStorage }).single('hospitalStaffProfileImage');
+
+        uploadProfileImage(req, res, async (err) => {
+            if (err || !req.file) {
+                return res.status(400).json({ status: 'error', message: 'File upload failed', details: err ? err.message : "File is required." });
+            }
+
+            // Validate the profile image file
+            function validateProfileImage(file) {
+                const validationResults = {
+                    isValid: true,
+                    errors: {},
+                };
+
+                const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+                if (!imageValidation.isValid) {
+                    validationResults.isValid = false;
+                    validationResults.errors['hospitalStaffProfileImage'] = imageValidation.message;
+                }
+
+                return validationResults;
+            }
+
+            const validationResults = validateProfileImage(req.file);
+            if (!validationResults.isValid) {
+                fs.unlinkSync(req.file.path); // Cleanup uploaded file
+                return res.status(400).json({ status: 'error', message: 'Invalid image file', details: validationResults.errors });
+            }
+
+            try {
+                await HospitalStaff.changeProfileImage(hospitalStaffId, req.file.filename);
+                return res.status(200).json({ status: 'success', message: 'Profile image updated successfully' });
+            } catch (error) {
+                if (error.message === "Failed to update profile image or staff not found.") { // Check for specific error message
+                    return res.status(404).json({ status: 'error', message: error.message });
+                } else {
+                    fs.unlinkSync(req.file.path); // Cleanup on error
+                    console.error('Error updating profile image:', error);
+                    return res.status(500).json({ status: 'error', message: 'Failed to update profile image', error: error.message });
+                }
+            }
+        });
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ status: 'failed', message: 'Invalid token', error: 'Token verification failed' });
+        } else {
+            console.error('Error during profile image change:', error);
+            return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+        }
+    }
+};
 
 
 
@@ -586,3 +741,7 @@ exports.searchPatients = async (req, res) => {
         return res.status(500).json({ status: 'error', message: 'Internal server error' });
     }
 };
+
+
+
+
