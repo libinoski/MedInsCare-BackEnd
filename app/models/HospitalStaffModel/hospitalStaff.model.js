@@ -310,20 +310,26 @@ HospitalStaff.registerPatient = async (newPatient) => {
         const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar=? AND dischargeStatus = 0";
         const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail=? AND dischargeStatus = 0";
 
+        const errors = {};
+
         const hospitalStaffResult = await dbQuery(checkHospitalStaffQuery, [newPatient.hospitalStaffId]);
 
         if (hospitalStaffResult.length === 0) {
-            throw new Error("Hospital staff does not exist");
+            errors['hospitalStaffId'] = "Hospital staff does not exist";
         }
 
         const aadharRes = await dbQuery(checkAadharQuery, [newPatient.patientAadhar]);
         if (aadharRes.length > 0) {
-            throw new Error("Aadhar number already exists");
+            errors['patientAadhar'] = "Aadhar number already exists";
         }
 
         const emailRes = await dbQuery(checkEmailQuery, [newPatient.patientEmail]);
         if (emailRes.length > 0) {
-            throw new Error("Email already exists");
+            errors['patientEmail'] = "Email already exists";
+        }
+
+        if (Object.keys(errors).length > 0) {
+            throw { name: "ValidationError", errors: errors };
         }
 
         const hospitalId = hospitalStaffResult[0].hospitalId;
@@ -336,7 +342,7 @@ HospitalStaff.registerPatient = async (newPatient) => {
         const insertQuery = "INSERT INTO Patients SET ?";
         const insertRes = await dbQuery(insertQuery, newPatient);
 
-        return { patientId: insertRes.insertId, ...newPatient }; // Return patient data without status and message
+        return { patientId: insertRes.insertId, ...newPatient }; 
     } catch (error) {
         throw error;
     }

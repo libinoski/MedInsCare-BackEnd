@@ -443,7 +443,6 @@ exports.registerPatient = async (req, res) => {
             return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
         }
 
-        // Function to validate the hospital staff patient registration request
         function validatePatientRegistration(patientData, patientProfileImageFile, patientIdProofImageFile) {
             const validationResults = {
                 isValid: true,
@@ -513,7 +512,7 @@ exports.registerPatient = async (req, res) => {
             const passwordValidation = dataValidator.isValidPassword(patientData.patientPassword);
             if (!passwordValidation.isValid) {
                 validationResults.isValid = false;
-                validationResults.messages['hospitalPassword'] = passwordValidation.message;
+                validationResults.messages['patientPassword'] = passwordValidation.message;
             }
 
             return validationResults;
@@ -570,9 +569,10 @@ exports.registerPatient = async (req, res) => {
                 return res.status(400).json({ status: 'error', message: 'Validation failed', details: validationResults.messages });
             }
 
+            const hashedPassword = await bcrypt.hash(patientData.patientPassword, 10);
+
             const newPatient = {
                 hospitalStaffId: patientData.hospitalStaffId,
-                hospitalId: patientData.hospitalId,
                 patientName: patientData.patientName,
                 patientProfileImage: req.patientProfileImageFileName,
                 patientIdProofImage: req.patientIdProofImageFileName,
@@ -582,7 +582,7 @@ exports.registerPatient = async (req, res) => {
                 patientAge: patientData.patientAge,
                 patientAddress: patientData.patientAddress,
                 patientAadhar: patientData.patientAadhar,
-                patientPassword: patientData.patientPassword,
+                patientPassword: hashedPassword,
                 patientRegisteredDate: new Date(),
                 patientDischargedDate: patientData.patientDischargedDate,
                 updatedDate: null,
@@ -592,17 +592,8 @@ exports.registerPatient = async (req, res) => {
             };
 
             try {
-                // Attempt to register patient
                 const registrationResponse = await HospitalStaff.registerPatient(newPatient);
-
-                // Response data
-                const responseData = {
-                    status: registrationResponse.status,
-                    message: registrationResponse.message,
-                    data: registrationResponse.data,
-                };
-
-                return res.status(201).json(responseData);
+                return res.status(201).json({ status: 'success', message: 'Patient registered successfully', data: registrationResponse });
             } catch (error) {
                 if (patientProfileImageFile) {
                     fs.unlinkSync(path.join('Files/PatientImages', patientProfileImageFile.filename));
@@ -611,12 +602,8 @@ exports.registerPatient = async (req, res) => {
                     fs.unlinkSync(path.join('Files/PatientImages', patientIdProofImageFile.filename));
                 }
 
-                if (
-                    error.message === 'Hospital staff does not exist' ||
-                    error.message === 'Aadhar number already exists' ||
-                    error.message === 'Email already exists'
-                ) {
-                    return res.status(400).json({ status: 'error', message: error.message });
+                if (error.name === 'ValidationError') {
+                    return res.status(400).json({ status: 'error', message: 'Validation failed', details: error.errors });
                 } else {
                     throw error;
                 }
@@ -624,19 +611,10 @@ exports.registerPatient = async (req, res) => {
         });
     } catch (error) {
         console.error('Error during hospital patient registration:', error);
-
-        if (req.files) {
-            if (req.files['patientProfileImage'] && req.files['patientProfileImage'][0]) {
-                fs.unlinkSync(path.join('Files/PatientImages', req.files['patientProfileImage'][0].filename));
-            }
-            if (req.files['patientIdProofImage'] && req.files['patientIdProofImage'][0]) {
-                fs.unlinkSync(path.join('Files/PatientImages', req.files['patientIdProofImage'][0].filename));
-            }
-        }
-
         return res.status(500).json({ status: 'error', message: 'Internal server error' });
     }
 };
+
 
 
 

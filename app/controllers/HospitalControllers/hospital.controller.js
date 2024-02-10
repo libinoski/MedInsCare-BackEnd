@@ -32,7 +32,7 @@ exports.register = async (req, res) => {
     uploadHospitalImage(req, res, async function (err) {
       try {
         if (err) {
-          return res.status(400).json({ status: 'validation failed', errors: { file: 'File upload failed', details: err.message } });
+          return res.status(400).json({ status: 'validation failed', results: { file: 'File upload failed', details: err.message } });
         }
 
         const hospitalData = req.body;
@@ -102,7 +102,7 @@ exports.register = async (req, res) => {
             const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
             fs.unlinkSync(imagePath);
           }
-          return res.status(400).json({ status: 'validation failed', errors: validationResults.errors });
+          return res.status(400).json({ status: 'validation failed', results: validationResults.errors });
         }
 
         const newHospital = {
@@ -113,7 +113,7 @@ exports.register = async (req, res) => {
           hospitalMobile: hospitalData.hospitalMobile.replace(/\s/g, ''),
           hospitalAddress: hospitalData.hospitalAddress,
           hospitalImage: hospitalImageFile ? hospitalImageFile.filename : null,
-          hospitalPassword: hospitalData.hospitalPassword,
+          hospitalPassword: hospitalData.hospitalPassword, // Send plain text password
           registeredDate: new Date(),
           isActive: 1,
           deleteStatus: 0,
@@ -122,21 +122,14 @@ exports.register = async (req, res) => {
         };
 
         try {
-          const registrationResponse = await Hospital.register(newHospital);
+          const registrationResponse = await Hospital.register(newHospital); // Using new model method
           return res.status(201).json({ status: 'success', message: 'Hospital registered successfully', data: registrationResponse });
         } catch (error) {
-          if (error.message === 'Email already exists' || error.message === 'Aadhar number already exists') {
-            if (hospitalImageFile) {
-              const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
-              fs.unlinkSync(imagePath);
-            }
-            return res.status(400).json({ status: 'failed', message: error.message });
+          console.error('Error during hospital registration:', error);
+
+          if (error.name === "ValidationError") {
+            return res.status(400).json({ status: "failed", results: error.errors });
           } else {
-            if (hospitalImageFile) {
-              const imagePath = path.join('Files/HospitalImages', hospitalImageFile.filename);
-              fs.unlinkSync(imagePath);     
-            }
-            console.error('Error during hospital registration:', error);
             return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
           }
         }
@@ -150,6 +143,10 @@ exports.register = async (req, res) => {
     return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
+
+
+
 
 
 
@@ -677,14 +674,10 @@ exports.staffRegister = async (req, res) => {
                   fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
               }
 
-              if (
-                  error.message === 'Hospital not found' ||
-                  error.message === 'Aadhar number already exists' ||
-                  error.message === 'Email already exists'
-              ) {
-                  return res.status(400).json({ status: 'error', error: error.message });
+              if (error.name === "ValidationError") {
+                return res.status(400).json({ status: "failed", results: error.errors });
               } else {
-                  throw error;
+                return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
               }
           }
       });
@@ -703,6 +696,11 @@ exports.staffRegister = async (req, res) => {
       return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };
+
+
+
+
+
 
 
 

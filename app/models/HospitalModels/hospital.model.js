@@ -8,6 +8,7 @@ const dbQuery = promisify(db.query.bind(db));
 
 
 
+
 // Hospital Model 
 const Hospital = function (hospital) {
     this.hospitalId = hospital.hospitalId;
@@ -69,14 +70,20 @@ Hospital.register = async (newHospital) => {
       const checkEmailQuery = "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
       const checkAadharQuery = "SELECT * FROM Hospitals WHERE hospitalAadhar = ? AND deleteStatus=0 AND isActive=1";
   
+      const errors = {};
+  
       const emailRes = await dbQuery(checkEmailQuery, [newHospital.hospitalEmail]);
       if (emailRes.length > 0) {
-        throw new Error("Email already exists");
+        errors['email'] = "Email already exists";
       }
   
       const aadharRes = await dbQuery(checkAadharQuery, [newHospital.hospitalAadhar]);
       if (aadharRes.length > 0) {
-        throw new Error("Aadhar number already exists");
+        errors['aadhar'] = "Aadhar number already exists";
+      }
+  
+      if (Object.keys(errors).length > 0) {
+        throw { name: "ValidationError", errors: errors };
       }
   
       const hashedPassword = await promisify(bcrypt.hash)(newHospital.hospitalPassword, 10);
@@ -90,6 +97,7 @@ Hospital.register = async (newHospital) => {
       throw error;
     }
 };
+  
   
 
 
@@ -302,31 +310,38 @@ Hospital.registerStaff = async (newHospitalStaff) => {
         const checkAadharQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar=? AND deleteStatus=0 AND isSuspended = 0";
         const checkEmailQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail=? AND deleteStatus=0 AND isSuspended = 0";
         const hospitalResult = await dbQuery(checkHospitalQuery, [newHospitalStaff.hospitalId]);
-
+  
         if (hospitalResult.length === 0) {
             throw new Error("Hospital not found");
         }
-
+  
+        const errors = {};
+  
         const aadharRes = await dbQuery(checkAadharQuery, [newHospitalStaff.hospitalStaffAadhar]);
         if (aadharRes.length > 0) {
-            throw new Error("Aadhar number already exists");
+            errors['aadhar'] = "Aadhar number already exists";
         }
-
+  
         const emailRes = await dbQuery(checkEmailQuery, [newHospitalStaff.hospitalStaffEmail]);
         if (emailRes.length > 0) {
-            throw new Error("Email already exists");
+            errors['email'] = "Email already exists";
         }
-
+  
+        if (Object.keys(errors).length > 0) {
+            throw { name: "ValidationError", errors: errors };
+        }
+  
         const hashedPassword = await promisify(bcrypt.hash)(newHospitalStaff.hospitalStaffPassword, 10);
         newHospitalStaff.hospitalStaffPassword = hashedPassword;
         const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
         const insertRes = await dbQuery(insertQuery, newHospitalStaff);
-
+  
         return insertRes.insertId;
     } catch (error) {
         throw error;
     }
 };
+
 
 
 
