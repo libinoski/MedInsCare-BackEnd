@@ -182,7 +182,7 @@ exports.login = async (req, res) => {
 
   const validationResults = validateHospitalLogin();
   if (!validationResults.isValid) {
-    return res.status(400).json({ status: 'validation failed', errors: validationResults.errors });
+    return res.status(400).json({ status: 'validation failed', results: validationResults.errors });
   }
 
   try {

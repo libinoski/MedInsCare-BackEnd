@@ -83,7 +83,7 @@ function isValidId(id, idName) {
     if (isNullOrUndefined(id) || id.trim() === "") {
         return {
             isValid: false,
-            message: `ID can't be empty. Warning: This field is required.`
+            message: `ID can't be empty.`
         };
     }
 
@@ -106,7 +106,7 @@ function isValidContent(content, fieldName) {
     if (isNullOrUndefined(content) || content.trim() === "") {
         return {
             isValid: false,
-            message: `${fieldName || 'Content'} cannot be empty. Warning: This field is required.`
+            message: `Content cannot be empty.`
         };
     }
     const regex = /^[\w\s!@#$%^&*()-_=+[\]{}|;:'",.<>/?]*$/;
@@ -123,7 +123,7 @@ function isValidTitle(title) {
     if (isNullOrUndefined(title) || title.trim() === "") {
         return {
             isValid: false,
-            message: "Title cannot be empty. Warning: This field is required."
+            message: "Title cannot be empty."
         };
     }
 
@@ -137,39 +137,6 @@ function isValidTitle(title) {
 }
 
 
-// Confirm the image's suitability for news.
-function isValidNewsImage(file) {
-    if (isNullOrUndefined(file)) {
-        return {
-            isValid: true,
-            message: 'Image is not provided. Warning: You can leave this field empty.'
-        };
-    }
-
-    const maxFileSize = 10 * 1024 * 1024;
-
-    if (file.size > maxFileSize) {
-        return {
-            isValid: false,
-            message: 'File size exceeds the limit of 10 MB. Warning: Please upload an image within 10 MB size limit.'
-        };
-    }
-
-    const allowedExtensions = /\.(jpg|jpeg|png|webp|heif)$/i;
-    const extensionIsValid = allowedExtensions.test(path.extname(file.filename.replace(/[^\w\-.]/g, '')).toLowerCase());
-
-    if (!extensionIsValid) {
-        return {
-            isValid: false,
-            message: 'Invalid file format. Only JPG, JPEG, PNG, WEBP, and HEIF files are allowed. Warning: Please upload a valid image file.'
-        };
-    }
-
-    return {
-        isValid: true,
-        message: 'Image is valid'
-    };
-}
 
 
 // Validate an image within a 1 MB size limit.
@@ -177,7 +144,7 @@ function isValidImageWith1MBConstraint(file) {
     if (isNullOrUndefined(file)) {
         return {
             isValid: false,
-            message: 'File is required. Warning: Please upload a file.'
+            message: 'Please upload a file.'
         };
     }
     const allowedExtensions = /\.(jpg|jpeg|png|webp|heif)$/;
@@ -217,7 +184,7 @@ function isValidMobileNumber(mobileNumber) {
     if (isNullOrUndefined(sanitizedMobileNumber) || sanitizedMobileNumber === "") {
         return {
             isValid: false,
-            message: "Mobile number cannot be empty. Warning: This field is required."
+            message: "Mobile number cannot be empty."
         };
     }
 
@@ -254,7 +221,7 @@ function isValidAddress(address) {
     if (isNullOrUndefined(address) || address.trim() === "") {
         return {
             isValid: false,
-            message: "Address cannot be empty. Warning: This field is required."
+            message: "Address cannot be empty."
         };
     }
     return {
@@ -269,7 +236,7 @@ function isValidWebsite(website) {
     if (isNullOrUndefined(website) || website.trim() === "") {
         return {
             isValid: false,
-            message: "Website is empty or null. Warning: This field is required."
+            message: "Website is empty or null."
         };
     }
     
@@ -290,7 +257,7 @@ function isValidEmail(email) {
     if (isNullOrUndefined(email) || email.trim() === "") {
         return {
             isValid: false,
-            message: "Email cannot be empty. Warning: This field is required."
+            message: "Email cannot be empty."
         };
     }
     return {
@@ -308,7 +275,7 @@ function isValidAge(age) {
     if (isNullOrUndefined(age) || age.trim() === "") {
         return {
             isValid: false,
-            message: "Age cannot be empty. Warning: This field is required."
+            message: "Age cannot be empty."
         };
     }
 
@@ -324,7 +291,7 @@ function isValidName(name) {
     if (isNullOrUndefined(name) || name.trim() === "") {
         return {
             isValid: false,
-            message: "Name cannot be empty. Warning: This field is required."
+            message: "Name cannot be empty."
         };
     }
 
@@ -343,7 +310,7 @@ function isValidAadharNumber(aadharNumber) {
     if (isNullOrUndefined(sanitizedAadharNumber) || sanitizedAadharNumber === "") {
         return {
             isValid: false,
-            message: "Aadhar number cannot be empty. Warning: This field is required."
+            message: "Aadhar number cannot be empty."
         };
     }
 
@@ -360,7 +327,7 @@ function isValidGender(gender) {
     if (isNullOrUndefined(gender)) {
         return {
             isValid: true,
-            message: "Gender is not provided. Warning: You can leave this field null."
+            message: "Gender is not provided."
         };
     }
 
@@ -376,7 +343,7 @@ function isValidText(text) {
     if (isNullOrUndefined(text)) {
         return {
             isValid: false,
-            message: "Text cannot be null. Warning: This field is required."
+            message: "Text cannot be null."
         };
     }
 
@@ -399,7 +366,7 @@ function isValidDate(dateString) {
     if (isNullOrUndefined(dateString) || dateString.trim() === "") {
         return {
             isValid: false,
-            message: "Date cannot be empty. Warning: This field is required."
+            message: "Date cannot be empty."
         };
     }
 
@@ -442,7 +409,6 @@ module.exports = {
     isValidAmount,
     isValidContent,
     isValidTitle,
-    isValidNewsImage,
     isValidAge,
     isValidGender,
     isValidText,
