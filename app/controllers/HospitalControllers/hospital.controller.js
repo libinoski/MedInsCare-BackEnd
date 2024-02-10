@@ -221,147 +221,148 @@ exports.changePassword = async (req, res) => {
   const token = req.headers.token;
   const { hospitalId, oldPassword, newPassword } = req.body;
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
-
-    if (!token || !decoded || !hospitalId || decoded.hospitalId != hospitalId) {
-      return res.status(401).json({ status: 'failed', message: 'Unauthorized access' });
-    }
-
-    function validateHospitalChangePassword() {
-      const validationResults = {
-        isValid: true,
-        errors: {}, 
-      };
-
-      // Validate old password
-      const passwordValidation = dataValidator.isValidPassword(oldPassword);
-      if (!passwordValidation.isValid) {
-        validationResults.isValid = false;
-        validationResults.errors['oldPassword'] = passwordValidation.message;
-      }
-
-      // Validate new password
-      const newPasswordValidation = dataValidator.isValidPassword(newPassword);
-      if (!newPasswordValidation.isValid) {
-        validationResults.isValid = false;
-        validationResults.errors['newPassword'] = newPasswordValidation.message;
-      }
-
-      return validationResults;
-    }
-
-    const validationResults = validateHospitalChangePassword();
-    if (!validationResults.isValid) {
-      return res.status(400).json({ status: 'failed', message: 'Validation failed', errors: validationResults.errors });
-    }
-
-    await Hospital.changePassword(hospitalId, oldPassword, newPassword);
-    return res.status(200).json({ status: 'success', message: 'Password changed successfully' });
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ status: 'error', message: 'Invalid token' });
-    } else if (error.message === 'Hospital not found' || error.message === 'Invalid old password') {
-      return res.status(404).json({ status: 'error', message: error.message });
-    } else {
-      console.error('Error changing hospital password:', error);
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-    }
+  // Check if token is missing
+  if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
   }
-};
 
+  // Check if hospitalId is missing
+  if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+  }
 
-
-
-
-
-// Hospital Image Changing
-exports.changeImage = async (req, res) => {
-  const token = req.headers.token;
-  const { hospitalId } = req.body;
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
-
-    if (!token || !decoded || !hospitalId || decoded.hospitalId != hospitalId) {
-      return res.status(401).json({ status: "failed", message: "Unauthorized access" });
-    }
-
-    const hospitalImageStorage = multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, 'Files/HospitalImages');
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, 'hospitalImage-' + uniqueSuffix + ext);
-      }
-    });
-
-    const uploadHospitalImage = multer({ storage: hospitalImageStorage }).single('hospitalImage');
-
-    uploadHospitalImage(req, res, async function (err) {
+  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
       if (err) {
-        return res.status(400).json({ status: 'failed', message: 'File upload failed', errors: { file: err.message } });
+          return res.status(401).json({ status: 'failed', message: 'Invalid token' });
       }
 
-      function validateHospitalImage(file) {
-        const validationResults = {
-          isValid: true,
-          errors: {},
-        };
-
-        if (!file) {
-          validationResults.isValid = false;
-          validationResults.errors['hospitalImage'] = 'Hospital image is required';
-        }
-
-        const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-
-        if (!imageValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors['hospitalImage'] = imageValidation.message;
-        }
-
-        return validationResults;
-      }
-
-      const imageValidation = validateHospitalImage(req.file);
-
-      if (!imageValidation.isValid) {
-        const imagePath = path.join('Files/HospitalImages', req.file.filename);
-        fs.unlinkSync(imagePath); // Cleanup uploaded file
-        return res.status(400).json({ status: 'failed', message: 'Validation failed', errors: imageValidation.errors });
+      if (!decoded || decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
       }
 
       try {
-        const newImageFilename = req.file.filename;
-        await Hospital.changeImage(hospitalId, newImageFilename);
-        return res.status(200).json({ status: 'success', message: 'Image changed successfully' });
+          function validateHospitalChangePassword() {
+              const validationResults = {
+                  isValid: true,
+                  errors: {}, 
+              };
+
+              // Validate old password
+              const passwordValidation = dataValidator.isValidPassword(oldPassword);
+              if (!passwordValidation.isValid) {
+                  validationResults.isValid = false;
+                  validationResults.errors['oldPassword'] = passwordValidation.message;
+              }
+
+              // Validate new password
+              const newPasswordValidation = dataValidator.isValidPassword(newPassword);
+              if (!newPasswordValidation.isValid) {
+                  validationResults.isValid = false;
+                  validationResults.errors['newPassword'] = newPasswordValidation.message;
+              }
+
+              return validationResults;
+          }
+
+          const validationResults = validateHospitalChangePassword();
+          if (!validationResults.isValid) {
+              return res.status(400).json({ status: 'failed', message: 'Validation failed', errors: validationResults.errors });
+          }
+
+          await Hospital.changePassword(hospitalId, oldPassword, newPassword);
+          return res.status(200).json({ status: 'success', message: 'Password changed successfully' });
       } catch (error) {
-        if (error.message === "Hospital not found") {
-          const imagePath = path.join('Files/HospitalImages', req.file.filename);
-          fs.unlinkSync(imagePath); // Cleanup uploaded file
-          return res.status(404).json({ status: 'error', message: error.message });
-        } else if (error.message === "Failed to update hospital image") {
-          const imagePath = path.join('Files/HospitalImages', req.file.filename);
-          fs.unlinkSync(imagePath); // Cleanup uploaded file
-          return res.status(500).json({ status: 'error', message: error.message });
-        } else {
-          console.error('Error changing hospital image:', error);
-          return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-        }
+          if (error.name === 'JsonWebTokenError') {
+              return res.status(401).json({ status: 'error', message: 'Invalid token' });
+          } else if (error.message === 'Hospital not found' || error.message === 'Invalid old password') {
+              return res.status(404).json({ status: 'error', message: error.message });
+          } else {
+              console.error('Error changing hospital password:', error);
+              return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+          }
       }
-    });
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ status: 'failed', message: 'Invalid token' });
-    } else {
-      console.error('Error changing hospital image:', error);
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-    }
-  }
+  });
 };
+
+
+
+
+
+
+
+
+
+exports.updateImage = async (req, res) => {
+  const token = req.headers.token;
+  const { hospitalId } = req.body;
+
+  // Check if token is missing
+  if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+  }
+
+  // Check if hospitalId is missing
+  if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+          return res.status(401).json({ status: 'failed', message: 'Invalid token' });
+      }
+
+      if (!decoded || decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      }
+
+      try {
+          // Multer configuration and file upload
+          const hospitalImageStorage = multer.diskStorage({
+              destination: function (req, file, cb) {
+                  cb(null, 'Files/HospitalImages');
+              },
+              filename: function (req, file, cb) {
+                  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                  const ext = path.extname(file.originalname);
+                  cb(null, 'hospitalImage-' + uniqueSuffix + ext);
+              }
+          });
+
+          const uploadHospitalImage = multer({ storage: hospitalImageStorage }).single('hospitalImage');
+
+          uploadHospitalImage(req, res, async function (err) {
+              try {
+                  if (err) {
+                      return res.status(400).json({ status: 'validation failed', results: { file: 'File upload failed', details: err.message } });
+                  }
+
+                  const hospitalImageFile = req.file;
+
+                  if (!hospitalImageFile) {
+                      return res.status(400).json({ status: 'validation failed', message: 'Hospital image file is required' });
+                  }
+
+                  // Update hospital image in database
+                  await Hospital.updateImage(hospitalId, hospitalImageFile.filename);
+
+                  return res.status(200).json({ status: 'success', message: 'Hospital image updated successfully' });
+              } catch (error) {
+                  if (error.message === 'Hospital not found') {
+                      return res.status(404).json({ status: 'error', message: error.message });
+                  } else {
+                      console.error('Error updating hospital image:', error);
+                      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+                  }
+              }
+          });
+      } catch (error) {
+          console.error('Error updating hospital image:', error);
+          return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+      }
+  });
+};
+
+
 
 
 
@@ -374,27 +375,49 @@ exports.viewProfile = async (req, res) => {
   const token = req.headers.token;
   const { hospitalId } = req.body;
 
+  // Check if token is missing
+  if (!token) {
+    return res.status(401).json({ status: "failed", message: "Token is missing" });
+  }
+
+  // Check if hospitalId is missing
+  if (!hospitalId) {
+    return res.status(400).json({ status: "failed", message: "Hospital ID is missing" });
+  }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: "failed", message: "Invalid token" });
+      }
 
-    if (!token || !decoded || !hospitalId || decoded.hospitalId != hospitalId) {
-      return res.status(401).json({ status: "failed", message: "Unauthorized access" });
-    }
+      if (!decoded || decoded.hospitalId !== hospitalId) {
+        return res.status(401).json({ status: "failed", message: "Unauthorized access" });
+      }
 
-    const result = await Hospital.getProfile(hospitalId);
-    return res.status(200).json({ status: "success", data: result });
-
+      // Token is valid, proceed to fetch hospital profile
+      try {
+        const result = await Hospital.getProfile(hospitalId);
+        return res.status(200).json({ status: "success", data: result });
+      } catch (error) {
+        if (error.message === "Hospital not found") {
+          return res.status(404).json({ status: "error", error: error.message });
+        } else {
+          console.error('Error fetching hospital profile:', error);
+          return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+        }
+      }
+    });
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ status: "error", message: "Invalid token" });
-    } else if (error.message === "Hospital not found") {
-      return res.status(404).json({ status: "error", error: error.message });
-    } else {
-      console.error('Error fetching hospital profile:', error);
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-    }
+    console.error('Error verifying token:', error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
+
+
+
 
 
 
@@ -406,11 +429,21 @@ exports.updateProfile = async (req, res) => {
   const token = req.headers.token;
   const { hospitalId } = req.body;
 
-  try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+  if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+  }
 
-      if (!token || !hospitalId || !decoded || decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ status: "failed", message: "Unauthorized access" });
+  if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+          return res.status(401).json({ status: 'failed', message: 'Invalid token' });
+      }
+
+      if (!decoded || decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
       }
 
       const {
@@ -489,22 +522,16 @@ exports.updateProfile = async (req, res) => {
               return res.status(404).json({ status: "error", error: error.message });
           } else if (error.message === "Error fetching updated hospital details.") {
               return res.status(500).json({ status: "failed", message: error.message });
-          } else if (error.name === 'JsonWebTokenError') {
-              return res.status(401).json({ status: "error", message: "Invalid token" });
           } else {
               return res.status(500).json({ status: "failed", message: "Internal server error", error: error.message });
           }
       }
-
-  } catch (error) {
-      console.error('Error during token verification:', error);
-      if (error.name === 'JsonWebTokenError') {
-          return res.status(401).json({ status: "error", message: "Invalid token" });
-      } else {
-          return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-      }
-  }
+  });
 };
+
+
+
+
 
 
 
@@ -518,170 +545,180 @@ exports.staffRegister = async (req, res) => {
       const token = req.headers.token;
       const { hospitalId } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
-
-      if (!token || !hospitalId || !decoded || decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      if (!token) {
+          return res.status(401).json({ status: 'failed', message: 'Token is missing' });
       }
 
-      const hospitalStaffData = req.body;
+      if (!hospitalId) {
+          return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+      }
 
-      const staffImagesStorage = multer.diskStorage({
-          destination: function (req, file, cb) {
-              cb(null, 'Files/HospitalStaffImages');
-          },
-          filename: function (req, file, cb) {
-              const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-              const ext = path.extname(file.originalname);
-
-              if (file.fieldname === 'hospitalStaffProfileImage') {
-                  const fileName = 'hospitalStaffProfileImage-' + uniqueSuffix + ext;
-                  cb(null, fileName);
-                  req.hospitalStaffProfileImageFileName = fileName;
-              } else if (file.fieldname === 'hospitalStaffIdProofImage') {
-                  const fileName = 'hospitalStaffIdProofImage-' + uniqueSuffix + ext;
-                  cb(null, fileName);
-                  req.hospitalStaffIdProofImageFileName = fileName;
-              }
-          }
-      });
-
-      const uploadStaffImages = multer({ storage: staffImagesStorage }).fields([
-          { name: 'hospitalStaffProfileImage', maxCount: 1 },
-          { name: 'hospitalStaffIdProofImage', maxCount: 1 }
-      ]);
-
-      uploadStaffImages(req, res, async function (err) {
+      jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
           if (err) {
-              return res.status(400).json({ status: 'error', message: 'File upload failed', details: err.message });
+              return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
           }
 
-          const staffProfileImageFile = req.files['hospitalStaffProfileImage'] ? req.files['hospitalStaffProfileImage'][0] : null;
-          const staffIdProofImageFile = req.files['hospitalStaffIdProofImage'] ? req.files['hospitalStaffIdProofImage'][0] : null;
+          if (decoded.hospitalId != hospitalId) {
+              return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+          }
 
-          function validateHospitalStaffRegistration() {
-              const validationResults = {
-                  isValid: true,
-                  errors: {},
+          const staffImagesStorage = multer.diskStorage({
+              destination: function (req, file, cb) {
+                  cb(null, 'Files/HospitalStaffImages');
+              },
+              filename: function (req, file, cb) {
+                  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                  const ext = path.extname(file.originalname);
+
+                  if (file.fieldname === 'hospitalStaffProfileImage') {
+                      const fileName = 'hospitalStaffProfileImage-' + uniqueSuffix + ext;
+                      cb(null, fileName);
+                      req.hospitalStaffProfileImageFileName = fileName;
+                  } else if (file.fieldname === 'hospitalStaffIdProofImage') {
+                      const fileName = 'hospitalStaffIdProofImage-' + uniqueSuffix + ext;
+                      cb(null, fileName);
+                      req.hospitalStaffIdProofImageFileName = fileName;
+                  }
+              }
+          });
+
+          const uploadStaffImages = multer({ storage: staffImagesStorage }).fields([
+              { name: 'hospitalStaffProfileImage', maxCount: 1 },
+              { name: 'hospitalStaffIdProofImage', maxCount: 1 }
+          ]);
+
+          uploadStaffImages(req, res, async function (err) {
+              if (err) {
+                  return res.status(400).json({ status: 'error', message: 'File upload failed', details: err.message });
+              }
+
+              const staffProfileImageFile = req.files['hospitalStaffProfileImage'] ? req.files['hospitalStaffProfileImage'][0] : null;
+              const staffIdProofImageFile = req.files['hospitalStaffIdProofImage'] ? req.files['hospitalStaffIdProofImage'][0] : null;
+
+              function validateHospitalStaffRegistration() {
+                  const validationResults = {
+                      isValid: true,
+                      errors: {},
+                  };
+
+                  const nameValidation = dataValidator.isValidName(hospitalStaffData.hospitalStaffName);
+                  if (!nameValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffName'] = [nameValidation.message];
+                  }
+
+                  const emailValidation = dataValidator.isValidEmail(hospitalStaffData.hospitalStaffEmail);
+                  if (!emailValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffEmail'] = [emailValidation.message];
+                  }
+
+                  const aadharValidation = dataValidator.isValidAadharNumber(hospitalStaffData.hospitalStaffAadhar);
+                  if (!aadharValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffAadhar'] = [aadharValidation.message];
+                  }
+
+                  const mobileValidation = dataValidator.isValidMobileNumber(hospitalStaffData.hospitalStaffMobile);
+                  if (!mobileValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffMobile'] = [mobileValidation.message];
+                  }
+
+                  const addressValidation = dataValidator.isValidAddress(hospitalStaffData.hospitalStaffAddress);
+                  if (!addressValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffAddress'] = [addressValidation.message];
+                  }
+
+                  const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(staffProfileImageFile);
+                  if (!profileImageValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffProfileImage'] = [profileImageValidation.message];
+                  }
+
+                  const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(staffIdProofImageFile);
+                  if (!idProofImageValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffIdProofImage'] = [idProofImageValidation.message];
+                  }
+
+                  const passwordValidation = dataValidator.isValidPassword(hospitalStaffData.hospitalStaffPassword);
+                  if (!passwordValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors['hospitalStaffPassword'] = [passwordValidation.message];
+                  }
+
+                  return validationResults;
+              }
+
+              const validationResults = validateHospitalStaffRegistration();
+
+              if (!validationResults.isValid) {
+                  if (staffProfileImageFile) {
+                      fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+                  }
+
+                  if (staffIdProofImageFile) {
+                      fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
+                  }
+
+                  return res.status(400).json({ status: 'failed', message: 'Validation failed', errors: validationResults.errors });
+              }
+
+              const hospitalIdFromToken = decoded.hospitalId;
+
+              if (hospitalStaffData.hospitalId != hospitalIdFromToken) {
+                  if (staffProfileImageFile) {
+                      fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+                  }
+
+                  if (staffIdProofImageFile) {
+                      fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
+                  }
+
+                  return res.status(401).json({ status: 'failed', message: 'Unauthorized access' });
+              }
+
+              const newHospitalStaff = {
+                  hospitalId: hospitalStaffData.hospitalId,
+                  hospitalStaffName: hospitalStaffData.hospitalStaffName,
+                  hospitalStaffProfileImage: req.hospitalStaffProfileImageFileName,
+                  hospitalStaffIdProofImage: req.hospitalStaffIdProofImageFileName,
+                  hospitalStaffMobile: hospitalStaffData.hospitalStaffMobile,
+                  hospitalStaffEmail: hospitalStaffData.hospitalStaffEmail,
+                  hospitalStaffAddress: hospitalStaffData.hospitalStaffAddress,
+                  hospitalStaffAadhar: hospitalStaffData.hospitalStaffAadhar,
+                  hospitalStaffPassword: hospitalStaffData.hospitalStaffPassword,
+                  addedDate: new Date(),
+                  updatedDate: null,
+                  deleteStatus: 0,
+                  isSuspended: 0,
+                  updateStatus: 0,
+                  passwordUpdateStatus: 0,
               };
 
-              const nameValidation = dataValidator.isValidName(hospitalStaffData.hospitalStaffName);
-              if (!nameValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffName'] = [nameValidation.message];
+              try {
+                  const registrationResponse = await Hospital.registerStaff(newHospitalStaff);
+                  return res.status(201).json({ status: 'success', message: 'Hospital Staff registered successfully', data: { hospitalStaffId: registrationResponse, ...newHospitalStaff } });
+              } catch (error) {
+                  if (staffProfileImageFile) {
+                      fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
+                  }
+
+                  if (staffIdProofImageFile) {
+                      fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
+                  }
+
+                  if (error.name === "ValidationError") {
+                      return res.status(400).json({ status: "failed", results: error.errors });
+                  } else {
+                      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+                  }
               }
+          });
 
-              const emailValidation = dataValidator.isValidEmail(hospitalStaffData.hospitalStaffEmail);
-              if (!emailValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffEmail'] = [emailValidation.message];
-              }
-
-              const aadharValidation = dataValidator.isValidAadharNumber(hospitalStaffData.hospitalStaffAadhar);
-              if (!aadharValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffAadhar'] = [aadharValidation.message];
-              }
-
-              const mobileValidation = dataValidator.isValidMobileNumber(hospitalStaffData.hospitalStaffMobile);
-              if (!mobileValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffMobile'] = [mobileValidation.message];
-              }
-
-              const addressValidation = dataValidator.isValidAddress(hospitalStaffData.hospitalStaffAddress);
-              if (!addressValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffAddress'] = [addressValidation.message];
-              }
-
-              const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(staffProfileImageFile);
-              if (!profileImageValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffProfileImage'] = [profileImageValidation.message];
-              }
-
-              const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(staffIdProofImageFile);
-              if (!idProofImageValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffIdProofImage'] = [idProofImageValidation.message];
-              }
-
-              const passwordValidation = dataValidator.isValidPassword(hospitalStaffData.hospitalStaffPassword);
-              if (!passwordValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalStaffPassword'] = [passwordValidation.message];
-              }
-
-              return validationResults;
-          }
-
-          const validationResults = validateHospitalStaffRegistration();
-
-          if (!validationResults.isValid) {
-              if (staffProfileImageFile) {
-                  fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
-              }
-
-              if (staffIdProofImageFile) {
-                  fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
-              }
-
-              return res.status(400).json({ status: 'failed', message: 'Validation failed', errors: validationResults.errors });
-          }
-
-          const hospitalIdFromToken = decoded.hospitalId;
-
-          if (hospitalStaffData.hospitalId != hospitalIdFromToken) {
-              if (staffProfileImageFile) {
-                  fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
-              }
-
-              if (staffIdProofImageFile) {
-                  fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
-              }
-
-              return res.status(401).json({ status: 'failed', message: 'Unauthorized access' });
-          }
-
-          const newHospitalStaff = {
-              hospitalId: hospitalStaffData.hospitalId,
-              hospitalStaffName: hospitalStaffData.hospitalStaffName,
-              hospitalStaffProfileImage: req.hospitalStaffProfileImageFileName,
-              hospitalStaffIdProofImage: req.hospitalStaffIdProofImageFileName,
-              hospitalStaffMobile: hospitalStaffData.hospitalStaffMobile,
-              hospitalStaffEmail: hospitalStaffData.hospitalStaffEmail,
-              hospitalStaffAddress: hospitalStaffData.hospitalStaffAddress,
-              hospitalStaffAadhar: hospitalStaffData.hospitalStaffAadhar,
-              hospitalStaffPassword: hospitalStaffData.hospitalStaffPassword,
-              addedDate: new Date(),
-              updatedDate: null,
-              deleteStatus: 0,
-              isSuspended: 0,
-              updateStatus: 0,
-              passwordUpdateStatus: 0,
-          };
-
-          try {
-              const registrationResponse = await Hospital.registerStaff(newHospitalStaff);
-              return res.status(201).json({ status: 'success', message: 'Hospital Staff registered successfully', data: { hospitalStaffId: registrationResponse, ...newHospitalStaff } });
-          } catch (error) {
-              if (staffProfileImageFile) {
-                  fs.unlinkSync(path.join('Files/HospitalStaffImages', staffProfileImageFile.filename));
-              }
-
-              if (staffIdProofImageFile) {
-                  fs.unlinkSync(path.join('Files/HospitalStaffImages', staffIdProofImageFile.filename));
-              }
-
-              if (error.name === "ValidationError") {
-                return res.status(400).json({ status: "failed", results: error.errors });
-              } else {
-                return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-              }
-          }
       });
-
   } catch (error) {
       if (req.files) {
           if (req.files['hospitalStaffProfileImage'] && req.files['hospitalStaffProfileImage'][0]) {
@@ -704,39 +741,58 @@ exports.staffRegister = async (req, res) => {
 
 
 
-
-
-
-
 // Staff Removal
 exports.deleteStaff = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalId, hospitalStaffId } = req.body;
+    const token = req.headers.token;
+    const { hospitalId, hospitalStaffId } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!token || !decoded || !hospitalId || !hospitalStaffId || (decoded.hospitalId != hospitalId)) {
-          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    if (!hospitalStaffId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital Staff ID is missing' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
       }
 
-      const deletionStatus = await Hospital.deleteStaff(hospitalStaffId, hospitalId);
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      }
 
-      if (deletionStatus) {
+      try {
+        const deletionStatus = await Hospital.deleteStaff(hospitalStaffId, hospitalId);
+
+        if (deletionStatus) {
           return res.status(200).json({ status: 'success', message: 'Hospital Staff deleted successfully', data: { hospitalStaffId } });
-      } else {
+        } else {
           throw new Error("Error deleting hospital staff");
-      }
-  } catch (error) {
-      console.error('Error deleting hospital staff:', error);
+        }
+      } catch (error) {
+        console.error('Error deleting hospital staff:', error);
 
-      if (error.message === 'Hospital Staff not found' || error.message === "Hospital not found") {
+        if (error.message === 'Hospital Staff not found' || error.message === "Hospital not found") {
           return res.status(404).json({ status: 'error', error: error.message });
-      }
+        }
 
-      return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+        return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting hospital staff:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };
+
+
 
 
 
@@ -746,32 +802,54 @@ exports.deleteStaff = async (req, res) => {
 // Suspend Staff
 exports.suspendStaff = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalId, hospitalStaffId } = req.body;
+    const token = req.headers.token;
+    const { hospitalId, hospitalStaffId } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!hospitalId || !decoded || (decoded.hospitalId != hospitalId) || !hospitalStaffId) {
-          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    if (!hospitalStaffId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital Staff ID is missing' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
       }
 
-      const suspensionStatus = await Hospital.suspendStaff(hospitalStaffId, hospitalId);
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      }
 
-      if (suspensionStatus) {
+      try {
+        const suspensionStatus = await Hospital.suspendStaff(hospitalStaffId, hospitalId);
+
+        if (suspensionStatus) {
           return res.status(200).json({ status: 'success', message: 'Hospital Staff suspended successfully', data: { hospitalStaffId } });
-      } else {
+        } else {
           throw new Error("Error suspending hospital staff");
-      }
-  } catch (error) {
-      console.error('Error suspending hospital staff:', error);
+        }
+      } catch (error) {
+        console.error('Error suspending hospital staff:', error);
 
-      if (error.message === 'Hospital Staff not found' || error.message === "Hospital not found") {
+        if (error.message === 'Hospital Staff not found' || error.message === "Hospital not found") {
           return res.status(404).json({ status: 'error', error: error.message });
-      }
+        }
 
-      return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+        return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+      }
+    });
+  } catch (error) {
+    console.error('Error suspending hospital staff:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };
+
 
 
 
@@ -781,32 +859,55 @@ exports.suspendStaff = async (req, res) => {
 // Unsuspend Staff
 exports.unsuspendStaff = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalId, hospitalStaffId } = req.body;
+    const token = req.headers.token;
+    const { hospitalId, hospitalStaffId } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!hospitalId || !decoded || (decoded.hospitalId != hospitalId) || !hospitalStaffId) {
-          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    if (!hospitalStaffId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital Staff ID is missing' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
       }
 
-      const unsuspensionStatus = await Hospital.unSuspendStaff(hospitalStaffId, hospitalId);
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      }
 
-      if (unsuspensionStatus) {
+      try {
+        const unsuspensionStatus = await Hospital.unSuspendStaff(hospitalStaffId, hospitalId);
+
+        if (unsuspensionStatus) {
           return res.status(200).json({ status: 'success', message: 'Hospital Staff unsuspended successfully', data: { hospitalStaffId } });
-      } else {
+        } else {
           throw new Error("Error unsuspending hospital staff");
-      }
-  } catch (error) {
-      console.error('Error unsuspending hospital staff:', error);
+        }
+      } catch (error) {
+        console.error('Error unsuspending hospital staff:', error);
 
-      if (error.message === 'Hospital Staff not found' || error.message === "Hospital not found") {
+        if (error.message === 'Hospital Staff not found' || error.message === "Hospital not found") {
           return res.status(404).json({ status: 'error', error: error.message });
-      }
+        }
 
-      return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+        return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+      }
+    });
+  } catch (error) {
+    console.error('Error unsuspending hospital staff:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };
+
+
 
 
 
@@ -816,82 +917,99 @@ exports.unsuspendStaff = async (req, res) => {
 // Update Staff
 exports.updateStaff = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalStaffId, hospitalId, hospitalStaffName, hospitalStaffMobile, hospitalStaffAddress, hospitalStaffAadhar } = req.body;
+    const token = req.headers.token;
+    const { hospitalStaffId, hospitalId, hospitalStaffName, hospitalStaffMobile, hospitalStaffAddress, hospitalStaffAadhar } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!hospitalId || !decoded || (decoded.hospitalId != hospitalId) || !hospitalStaffId) {
-          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    if (!hospitalStaffId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital Staff ID is missing' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      }
+
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
       }
 
       const updatedHospitalStaff = {
-          hospitalStaffId,
-          hospitalId,
-          hospitalStaffName,
-          hospitalStaffMobile,
-          hospitalStaffAddress,
-          hospitalStaffAadhar,
+        hospitalStaffId,
+        hospitalId,
+        hospitalStaffName,
+        hospitalStaffMobile,
+        hospitalStaffAddress,
+        hospitalStaffAadhar,
       };
 
       function validateHospitalStaffUpdate() {
-          const validationResults = {
-              isValid: true,
-              errors: {},
-          };
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
 
-          const nameValidation = dataValidator.isValidName(updatedHospitalStaff.hospitalStaffName);
+        const nameValidation = dataValidator.isValidName(updatedHospitalStaff.hospitalStaffName);
 
-          if (!nameValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors['hospitalStaffName'] = [nameValidation.message];
-          }
+        if (!nameValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors['hospitalStaffName'] = [nameValidation.message];
+        }
 
-          const mobileValidation = dataValidator.isValidMobileNumber(updatedHospitalStaff.hospitalStaffMobile);
+        const mobileValidation = dataValidator.isValidMobileNumber(updatedHospitalStaff.hospitalStaffMobile);
 
-          if (!mobileValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors['hospitalStaffMobile'] = [mobileValidation.message];
-          }
+        if (!mobileValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors['hospitalStaffMobile'] = [mobileValidation.message];
+        }
 
-          const addressValidation = dataValidator.isValidAddress(updatedHospitalStaff.hospitalStaffAddress);
+        const addressValidation = dataValidator.isValidAddress(updatedHospitalStaff.hospitalStaffAddress);
 
-          if (!addressValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors['hospitalStaffAddress'] = [addressValidation.message];
-          }
+        if (!addressValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors['hospitalStaffAddress'] = [addressValidation.message];
+        }
 
-          const aadharValidation = dataValidator.isValidAadharNumber(updatedHospitalStaff.hospitalStaffAadhar);
+        const aadharValidation = dataValidator.isValidAadharNumber(updatedHospitalStaff.hospitalStaffAadhar);
 
-          if (!aadharValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors['hospitalStaffAadhar'] = [aadharValidation.message];
-          }
+        if (!aadharValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors['hospitalStaffAadhar'] = [aadharValidation.message];
+        }
 
-          return validationResults;
+        return validationResults;
       }
 
       const validationResults = validateHospitalStaffUpdate();
 
       if (!validationResults.isValid) {
-          return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validationResults.errors });
+        return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validationResults.errors });
       }
 
       try {
-          const updateResponse = await Hospital.updateStaff(updatedHospitalStaff);
-          return res.status(200).json({ status: 'success', message: 'Hospital Staff updated successfully', data: updateResponse.updatedData });
+        const updateResponse = await Hospital.updateStaff(updatedHospitalStaff);
+        return res.status(200).json({ status: 'success', message: 'Hospital Staff updated successfully', data: updateResponse.updatedData });
       } catch (error) {
-          if (error.message === 'Hospital not found' || error.message === 'Hospital staff not found' || error.message === 'Aadhar number already exists') {
-              return res.status(404).json({ status: 'error', error: error.message });
-          } else {
-              return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
-          }
+        if (error.message === 'Hospital not found' || error.message === 'Hospital staff not found' || error.message === 'Aadhar number already exists') {
+          return res.status(404).json({ status: 'error', error: error.message });
+        } else {
+          return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+        }
       }
+    });
   } catch (error) {
-      console.error('Error during update hospital staff:', error);
-      return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
+    console.error('Error during update hospital staff:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error', error: error.message });
   }
 };
+
 
 
 
@@ -904,25 +1022,46 @@ exports.viewAllStaffs = async (req, res) => {
   const token = req.headers.token;
   const { hospitalId } = req.body;
 
+  // Check if token is missing
+  if (!token) {
+    return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+  }
+
+  // Check if hospitalId is missing
+  if (!hospitalId) {
+    return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+  }
+
   try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
-
-      if (!hospitalId || !decoded || (decoded.hospitalId != hospitalId)) {
-          return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'failed', message: 'Invalid token' });
       }
 
-      const allStaffs = await Hospital.viewAllStaffs(hospitalId);
-      return res.status(200).json({ status: 'success', message: 'All Hospital Staffs retrieved successfully', data: allStaffs });
-  } catch (error) {
-      console.error('Error viewing all hospital staffs:', error);
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'failed', message: 'Unauthorized access' });
+      }
 
-      if (error.message === "Hospital not found") {
+      // Token is valid, proceed to fetch all hospital staffs
+      try {
+        const allStaffs = await Hospital.viewAllStaffs(hospitalId);
+        return res.status(200).json({ status: 'success', message: 'All Hospital Staffs retrieved successfully', data: allStaffs });
+      } catch (error) {
+        console.error('Error viewing all hospital staffs:', error);
+        if (error.message === "Hospital not found") {
           return res.status(404).json({ status: 'error',  error: error.message });
+        }
+        return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
       }
-
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+    });
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
+
 
 
 
@@ -933,28 +1072,56 @@ exports.viewAllStaffs = async (req, res) => {
 // View One Hospital Staff
 exports.viewOneStaff = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalId, hospitalStaffId } = req.body;
+    const token = req.headers.token;
+    const { hospitalId, hospitalStaffId } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!hospitalId || !decoded || (decoded.hospitalId != hospitalId) || !hospitalStaffId) {
-          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    // Check if hospitalStaffId is missing
+    if (!hospitalStaffId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital Staff ID is missing' });
+    }
+
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'failed', message: 'Invalid token' });
       }
 
-      const staffDetails = await Hospital.viewOneStaff(hospitalStaffId, hospitalId);
-      return res.status(200).json({ status: 'success', message: 'Hospital Staff details', data: staffDetails });
-  } catch (error) {
-      if (error.message === 'Hospital Staff not found') {
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+      }
+
+      // Token is valid, proceed to fetch details of one hospital staff
+      try {
+        const staffDetails = await Hospital.viewOneStaff(hospitalStaffId, hospitalId);
+        return res.status(200).json({ status: 'success', message: 'Hospital Staff details', data: staffDetails });
+      } catch (error) {
+        if (error.message === 'Hospital Staff not found') {
           return res.status(404).json({ status: 'error', error: error.message });
-      } else if (error.message === "Hospital not found") {
-          return res.status(404).json({ status: 'error', error: error.message});
-      } else {
+        } else if (error.message === "Hospital not found") {
+          return res.status(404).json({ status: 'error', error: error.message });
+        } else {
           console.error('Error viewing hospital staff details:', error);
           return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+        }
       }
+    });
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
+
 
 
 
@@ -967,35 +1134,58 @@ exports.searchStaffs = async (req, res) => {
   const { hospitalId, searchQuery } = req.body;
 
   try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!hospitalId || !decoded || (decoded.hospitalId != hospitalId)) {
-          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    // Check if searchQuery is missing or empty
+    if (!searchQuery || searchQuery.trim() === '') {
+      return res.status(400).json({ status: 'error', message: 'Search query cannot be empty' });
+    }
+
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
       }
 
-      if (searchQuery === undefined || searchQuery === null || searchQuery.trim() === '') {
-          return res.status(400).json({ status: 'error', message: 'Search query cannot be empty' });
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
       }
 
-      const searchResult = await Hospital.searchStaff(hospitalId, searchQuery);
+      // Token is valid, proceed to search hospital staff
+      try {
+        const searchResult = await Hospital.searchStaff(hospitalId, searchQuery);
 
-      if (searchResult.length === 0) {
+        if (searchResult.length === 0) {
           return res.status(404).json({ status: 'failed', message: 'No hospital staffs found' });
-      }
+        }
 
-      return res.status(200).json({ status: 'success', message: 'Hospital Staffs found successfully', data: searchResult });
-  } catch (error) {
-      console.error('Error searching hospital staff:', error);
+        return res.status(200).json({ status: 'success', message: 'Hospital Staffs found successfully', data: searchResult });
+      } catch (error) {
+        console.error('Error searching hospital staff:', error);
 
-      if (error.message === "Hospital not found") {
+        if (error.message === "Hospital not found") {
           return res.status(404).json({ status: 'error', error: error.message });
-      }
+        }
 
-      if (error.name === 'JsonWebTokenError') {
-          return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
+        return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
       }
+    });
+  } catch (error) {
+    console.error('Error searching hospital staff:', error);
 
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
+    }
+
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
 
@@ -1004,114 +1194,133 @@ exports.searchStaffs = async (req, res) => {
 
 
 
+
+
 // Add Hospital News
 exports.addNews = async (req, res) => {
+  const token = req.headers.token;
+  const { hospitalId } = req.body;
+
   try {
-    const token = req.headers.token;
-    const { hospitalId } = req.body;
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
 
-      if (!token || !decoded || !hospitalId || (decoded.hospitalId != hospitalId)) {
-        return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid token' });
       }
 
-      const newsImageStorage = multer.diskStorage({
-        destination: function (req, file, cb) {
-          cb(null, 'Files/HospitalImages/HospitalNewsImages');
-        },
-        filename: function (req, file, cb) {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-          const ext = path.extname(file.originalname);
-          cb(null, 'hospitalNewsImage-' + uniqueSuffix + ext);
-        }
-      });
-
-      const uploadNewsImage = multer({ storage: newsImageStorage }).single('hospitalNewsImage');
-
-      uploadNewsImage(req, res, async function (err) {
-        if (err) {
-          return res.status(400).json({ status: 'error', message: 'File upload failed', details: err.message });
+      try {
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
         }
 
-        const newsData = req.body;
-        const newsImageFile = req.file;
+        // Multer configuration and file upload
+        const newsImageStorage = multer.diskStorage({
+          destination: function (req, file, cb) {
+            cb(null, 'Files/HospitalImages/HospitalNewsImages');
+          },
+          filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            const ext = path.extname(file.originalname);
+            cb(null, 'hospitalNewsImage-' + uniqueSuffix + ext);
+          }
+        });
 
-        function validateNewsData() {
-          const validationResults = {
-            isValid: true,
-            errors: {},
+        const uploadNewsImage = multer({ storage: newsImageStorage }).single('hospitalNewsImage');
+
+        uploadNewsImage(req, res, async function (err) {
+          if (err) {
+            return res.status(400).json({ status: 'error', message: 'File upload failed', details: err.message });
+          }
+
+          const newsData = req.body;
+          const newsImageFile = req.file;
+
+          // Validate news data
+          function validateNewsData() {
+            const validationResults = {
+              isValid: true,
+              errors: {},
+            };
+
+            const titleValidation = dataValidator.isValidTitle(newsData.hospitalNewsTitle);
+            if (!titleValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors['hospitalNewsTitle'] = titleValidation.message;
+            }
+
+            const contentValidation = dataValidator.isValidContent(newsData.hospitalNewsContent);
+            if (!contentValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors['hospitalNewsContent'] = contentValidation.message;
+            }
+
+            const imageValidation = dataValidator.isValidNewsImage(newsImageFile);
+            if (!imageValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors['hospitalNewsImage'] = imageValidation.message;
+            }
+
+            return validationResults;
+          }
+
+          const validationResults = validateNewsData();
+
+          if (!validationResults.isValid) {
+            if (newsImageFile) {
+              const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
+              fs.unlinkSync(imagePath);
+            }
+            return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validationResults.errors });
+          }
+
+          if (newsData.hospitalId != decoded.hospitalId) {
+            if (newsImageFile) {
+              const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
+              fs.unlinkSync(imagePath);
+            }
+            return res.status(401).json({ status: 'error', message: 'Unauthorized access' });
+          }
+
+          const newHospitalNews = {
+            hospitalNewsTitle: newsData.hospitalNewsTitle,
+            hospitalNewsContent: newsData.hospitalNewsContent,
+            hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
           };
 
-          const titleValidation = dataValidator.isValidTitle(newsData.hospitalNewsTitle);
-          if (!titleValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors['hospitalNewsTitle'] = titleValidation.message;
-          }
-
-          const contentValidation = dataValidator.isValidContent(newsData.hospitalNewsContent);
-          if (!contentValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors['hospitalNewsContent'] = contentValidation.message;
-          }
-
-          const imageValidation = dataValidator.isValidNewsImage(newsImageFile);
-          if (!imageValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors['hospitalNewsImage'] = imageValidation.message;
-          }
-
-          return validationResults;
-        }
-
-        const validationResults = validateNewsData();
-
-        if (!validationResults.isValid) {
-          if (newsImageFile) {
-            const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
-            fs.unlinkSync(imagePath);
-          }
-          return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validationResults.errors });
-        }
-
-        if (newsData.hospitalId != decoded.hospitalId) {
-          if (newsImageFile) {
-            const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
-            fs.unlinkSync(imagePath);
-          }
-          return res.status(401).json({ status: 'error', message: 'Unauthorized access' });
-        }
-
-        const newHospitalNews = {
-          hospitalNewsTitle: newsData.hospitalNewsTitle,
-          hospitalNewsContent: newsData.hospitalNewsContent,
-          hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
-        };
-
-        try {
-          const addedNewsId = await Hospital.addNews(newsData.hospitalId, newHospitalNews);
-          return res.status(201).json({ status: 'success', message: 'Hospital news added successfully', data: { hospitalNewsId: addedNewsId, ...newHospitalNews } });
-        } catch (error) {
-          if (error.message === 'Hospital not found') {
-            if (newsImageFile) {
-              const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
-              fs.unlinkSync(imagePath);
+          try {
+            const addedNewsId = await Hospital.addNews(newsData.hospitalId, newHospitalNews);
+            return res.status(201).json({ status: 'success', message: 'Hospital news added successfully', data: { hospitalNewsId: addedNewsId, ...newHospitalNews } });
+          } catch (error) {
+            if (error.message === 'Hospital not found') {
+              if (newsImageFile) {
+                const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
+                fs.unlinkSync(imagePath);
+              }
+              return res.status(404).json({ status: 'error', error: error.message});
+            } else {
+              if (newsImageFile) {
+                const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
+                fs.unlinkSync(imagePath);
+              }
+              throw error;
             }
-            return res.status(404).json({ status: 'error', error: error.message});
-          } else {
-            if (newsImageFile) {
-              const imagePath = path.join('Files/HospitalImages/HospitalNewsImages', newsImageFile.filename);
-              fs.unlinkSync(imagePath);
-            }
-
-            throw error;
           }
-        }
-      });
-    } catch (error) {
-      return res.status(401).json({ status: 'error', message: 'Invalid token' });
-    }
+        });
+      } catch (error) {
+        return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+      }
+    });
   } catch (error) {
     console.error('Error during adding hospital news:', error);
     if (req.file) {
@@ -1127,33 +1336,61 @@ exports.addNews = async (req, res) => {
 
 
 
+
 // Delete  News
 exports.deleteNews = async (req, res) => {
   const token = req.headers.token;
   const { hospitalNewsId, hospitalId } = req.body;
 
+  // Check if token is missing
+  if (!token) {
+    return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+  }
+
+  // Check if hospitalNewsId is missing
+  if (!hospitalNewsId) {
+    return res.status(400).json({ status: 'failed', message: 'Hospital News ID is missing' });
+  }
+
+  // Check if hospitalId is missing
+  if (!hospitalId) {
+    return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+  }
+
   try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid token' });
+      }
 
-      if (!hospitalId || !hospitalNewsId || (decoded.hospitalId != hospitalId)) {
+      try {
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
           return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
-      }
+        }
 
-      await Hospital.deleteNews(hospitalNewsId, hospitalId);
+        // Call the function to delete hospital news
+        await Hospital.deleteNews(hospitalNewsId, hospitalId);
 
-      return res.status(200).json({ status: 'success', message: 'Hospital News deleted successfully' });
-  } catch (error) {
-      console.error('Error deleting hospital news:', error);
+        return res.status(200).json({ status: 'success', message: 'Hospital News deleted successfully' });
+      } catch (error) {
+        console.error('Error deleting hospital news:', error);
 
-      if (error.message === "Hospital not found" || error.message === "Hospital news not found") {
+        if (error.message === "Hospital not found" || error.message === "Hospital news not found") {
           return res.status(404).json({ status: 'error', error: error.message });
-      } else if (error.name === 'JsonWebTokenError') {
-          return res.status(401).json({ status: 'error', message: 'Invalid token' });
-      } else {
+        } else {
           return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+        }
       }
+    });
+  } catch (error) {
+    console.error('Error deleting hospital news:', error);
+
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
 
 
 
@@ -1164,96 +1401,122 @@ exports.deleteNews = async (req, res) => {
 // Update  News
 exports.updateNews = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalId, hospitalNewsId, hospitalNewsTitle, hospitalNewsContent } = req.body;
+    const token = req.headers.token;
+    const { hospitalId, hospitalNewsId, hospitalNewsTitle, hospitalNewsContent } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!token || !decoded || !hospitalId || !hospitalNewsId || (decoded.hospitalId != hospitalId)) {
-          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    // Check if hospitalNewsId is missing
+    if (!hospitalNewsId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital News ID is missing' });
+    }
+
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid token' });
       }
 
-      const newsImageStorage = multer.diskStorage({
+      try {
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+        }
+
+        const newsImageStorage = multer.diskStorage({
           destination: function (req, file, cb) {
-              cb(null, 'Files/HospitalImages/HospitalNewsImages');
+            cb(null, 'Files/HospitalImages/HospitalNewsImages');
           },
           filename: function (req, file, cb) {
-              const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-              const ext = path.extname(file.originalname);
-              cb(null, 'hospitalNewsImage-' + uniqueSuffix + ext);
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            const ext = path.extname(file.originalname);
+            cb(null, 'hospitalNewsImage-' + uniqueSuffix + ext);
           }
-      });
+        });
 
-      const uploadNewsImage = multer({ storage: newsImageStorage }).single('hospitalNewsImage');
+        const uploadNewsImage = multer({ storage: newsImageStorage }).single('hospitalNewsImage');
 
-      uploadNewsImage(req, res, async function (err) {
+        uploadNewsImage(req, res, async function (err) {
           if (err) {
-              fs.unlinkSync(req.file.path);  // Delete uploaded file on error
-              return res.status(400).json({ status: 'error', message: 'File upload failed', details: err.message });
+            fs.unlinkSync(req.file.path); // Delete uploaded file on error
+            return res.status(400).json({ status: 'error', message: 'File upload failed', details: err.message });
           }
 
           const newsImageFile = req.file;
 
           function validateUpdatedNewsData(newsData, newsImageFile) {
-              const validationResults = {
-                  isValid: true,
-                  errors: {},
-              };
+            const validationResults = {
+              isValid: true,
+              errors: {},
+            };
 
-              const titleValidation = dataValidator.isValidTitle(newsData.hospitalNewsTitle);
+            const titleValidation = dataValidator.isValidTitle(newsData.hospitalNewsTitle);
 
-              if (!titleValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalNewsTitle'] = [titleValidation.message];
-              }
+            if (!titleValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors['hospitalNewsTitle'] = [titleValidation.message];
+            }
 
-              const contentValidation = dataValidator.isValidContent(newsData.hospitalNewsContent);
+            const contentValidation = dataValidator.isValidContent(newsData.hospitalNewsContent);
 
-              if (!contentValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalNewsContent'] = [contentValidation.message];
-              }
+            if (!contentValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors['hospitalNewsContent'] = [contentValidation.message];
+            }
 
-              const imageValidation = dataValidator.isValidNewsImage(newsImageFile);
+            const imageValidation = dataValidator.isValidNewsImage(newsImageFile);
 
-              if (!imageValidation.isValid) {
-                  validationResults.isValid = false;
-                  validationResults.errors['hospitalNewsImage'] = [imageValidation.message];
-              }
+            if (!imageValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors['hospitalNewsImage'] = [imageValidation.message];
+            }
 
-              return validationResults;
+            return validationResults;
           }
 
           const validationResults = validateUpdatedNewsData({ hospitalNewsTitle, hospitalNewsContent, hospitalId }, newsImageFile);
 
           if (!validationResults.isValid) {
-              fs.unlinkSync(req.file.path);  // Delete uploaded file on validation failure
-              return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validationResults.errors });
+            fs.unlinkSync(req.file.path); // Delete uploaded file on validation failure
+            return res.status(400).json({ status: 'error', message: 'Validation failed', errors: validationResults.errors });
           }
 
           const updatedHospitalNews = {
-              hospitalNewsTitle,
-              hospitalNewsContent,
-              hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
-              updatedDate: new Date()
+            hospitalNewsTitle,
+            hospitalNewsContent,
+            hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
+            updatedDate: new Date()
           };
 
           try {
-              await Hospital.updateNews(hospitalNewsId, hospitalId, updatedHospitalNews);
-              return res.status(200).json({ status: 'success', message: 'Hospital news updated successfully' });
+            await Hospital.updateNews(hospitalNewsId, hospitalId, updatedHospitalNews);
+            return res.status(200).json({ status: 'success', message: 'Hospital news updated successfully' });
           } catch (error) {
-              if (error.message === 'Hospital not found' || error.message === 'Hospital news not found') {
-                  return res.status(403).json({ status: 'error', error: error.message });
-              } else {
-                  console.error('Error updating hospital news:', error);
-                  fs.unlinkSync(req.file.path);  // Delete uploaded file on error
-                  return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-              }
+            if (error.message === 'Hospital not found' || error.message === 'Hospital news not found') {
+              return res.status(403).json({ status: 'error', error: error.message });
+            } else {
+              console.error('Error updating hospital news:', error);
+              fs.unlinkSync(req.file.path); // Delete uploaded file on error
+              return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+            }
           }
-      });
+        });
+      } catch (error) {
+        console.error('Error during updateHospitalNews:', error);
+        return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+      }
+    });
   } catch (error) {
-      console.error('Error during updateHospitalNews:', error);
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+    console.error('Error during updateHospitalNews:', error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
 
@@ -1267,36 +1530,49 @@ exports.updateNews = async (req, res) => {
 // Hospital view all Hospital News
 exports.viewAllNews = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const { hospitalId } = req.body;
+    const token = req.headers.token;
+    const { hospitalId } = req.body;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
 
-      if (!hospitalId || (decoded.hospitalId != hospitalId)) {
-          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
       }
 
       try {
-          const allNewsData = await Hospital.viewAllNews(hospitalId);
-          return res.status(200).json({ status: 'success', message: 'All hospital news retrieved successfully', data: allNewsData });
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+        }
+
+        const allNewsData = await Hospital.viewAllNews(hospitalId);
+        return res.status(200).json({ status: 'success', message: 'All hospital news retrieved successfully', data: allNewsData });
       } catch (error) {
-          console.error('Error viewing all hospital news:', error);
+        console.error('Error viewing all hospital news:', error);
 
-          if (error.message === "Hospital not found") {
-              return res.status(404).json({ status: 'error', error: error.message });
-          }
+        if (error.message === "Hospital not found") {
+          return res.status(404).json({ status: 'error', error: error.message });
+        }
 
-          return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+        return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
       }
+    });
   } catch (error) {
-      console.error('Error during viewAllHospitalNews:', error);
-
-      if (error.name === 'JsonWebTokenError') {
-          return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
-      }
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+    console.error('Error during viewAllHospitalNews:', error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
 
 
 
@@ -1306,33 +1582,52 @@ exports.viewAllNews = async (req, res) => {
 
 // Hospital view One Hospital News
 exports.viewOneNews = async (req, res) => {
-  const token = req.headers.token;
-  const { hospitalId, hospitalNewsId } = req.body;
-
   try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL);
+    const token = req.headers.token;
+    const { hospitalId, hospitalNewsId } = req.body;
 
-      if (!hospitalId || !hospitalNewsId || (decoded.hospitalId != hospitalId)) {
-          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({ status: 'failed', message: 'Token is missing' });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital ID is missing' });
+    }
+
+    // Check if hospitalNewsId is missing
+    if (!hospitalNewsId) {
+      return res.status(400).json({ status: 'failed', message: 'Hospital News ID is missing' });
+    }
+
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
       }
 
       try {
-          const newsItemData = await Hospital.viewOneNews(hospitalNewsId, hospitalId);
-          return res.status(200).json({ status: 'success', message: 'Hospital news retrieved successfully', data: newsItemData });
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({ status: 'error', message: 'Unauthorized access' });
+        }
+
+        const newsItemData = await Hospital.viewOneNews(hospitalNewsId, hospitalId);
+        return res.status(200).json({ status: 'success', message: 'Hospital news retrieved successfully', data: newsItemData });
       } catch (error) {
-          console.error('Error viewing one hospital news:', error);
-          if (error.message === 'Hospital news not found' || error.message === "Hospital not found") {
-              return res.status(404).json({ status: 'error', message: error.message });
-          } else {
-              return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
-          }
+        console.error('Error viewing one hospital news:', error);
+        if (error.message === 'Hospital news not found' || error.message === "Hospital not found") {
+          return res.status(404).json({ status: 'error', message: error.message });
+        } else {
+          return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+        }
       }
+    });
   } catch (error) {
-      console.error('Error during viewOneHospitalNews:', error);
-      if (error.name === 'JsonWebTokenError') {
-          return res.status(401).json({ status: 'error', message: 'Invalid or missing token' });
-      }
-      return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+    console.error('Error during viewOneHospitalNews:', error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+
 

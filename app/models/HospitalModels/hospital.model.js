@@ -175,35 +175,24 @@ Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
 };
 
 
-// Hospital Change Image
-Hospital.changeImage = async (hospitalId, newImageFilename) => {
-    const verifyQuery = `
-        SELECT hospitalId
-        FROM Hospitals
-        WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1
-    `;
+
+
+
+Hospital.updateImage = async (hospitalId, newImageFilename) => {
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
 
     try {
-        const verifyResult = await dbQuery(verifyQuery, [hospitalId]);
-
-        if (verifyResult.length === 0) {
+        const selectRes = await dbQuery(checkHospitalQuery, [hospitalId]);
+        if (selectRes.length === 0) {
             throw new Error("Hospital not found");
         }
 
         const updateQuery = `
             UPDATE Hospitals
-            SET 
-                hospitalImage = ?,
-                updateStatus = 1, 
-                updatedDate = CURRENT_TIMESTAMP()
+            SET hospitalImage = ?
             WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1
         `;
-
-        const updateResult = await dbQuery(updateQuery, [newImageFilename, hospitalId]);
-
-        if (updateResult.affectedRows === 0) {
-            throw new Error("Failed to update hospital image");
-        }
+        await dbQuery(updateQuery, [newImageFilename, hospitalId]);
     } catch (error) {
         console.error('Error updating hospital image:', error);
         throw error;
