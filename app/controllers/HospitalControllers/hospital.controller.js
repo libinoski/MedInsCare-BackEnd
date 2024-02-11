@@ -138,7 +138,7 @@ exports.register = async (req, res) => {
 
         try {
           const registrationResponse = await Hospital.register(newHospital);
-          return res.status(201).json({
+          return res.status(200).json({
             status: "success",
             message: "Hospital registered successfully",
             data: registrationResponse,
