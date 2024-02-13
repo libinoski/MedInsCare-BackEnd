@@ -226,7 +226,7 @@ Hospital.updateImage = async (hospitalId, newImageFilename) => {
 // VIEW PROFILE
 Hospital.getProfile = async (hospitalId) => {
   const query =
-    "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    "SELECT hospitalId,hospitalImage, hospitalName, hospitalEmail, hospitalWebSite, hospitalAadhar, hospitalMobile, hospitalAddress, registeredDate FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
 
   try {
     const result = await dbQuery(query, [hospitalId]);
@@ -240,6 +240,7 @@ Hospital.getProfile = async (hospitalId) => {
     throw error;
   }
 };
+
 //
 //
 //
