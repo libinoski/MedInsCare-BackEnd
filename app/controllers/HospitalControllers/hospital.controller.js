@@ -5,6 +5,18 @@ const jwt = require("jsonwebtoken");
 const { Hospital } = require("../../models/HospitalModels/hospital.model");
 const dataValidator = require("../../config/data.validate");
 const fs = require("fs");
+const AWS = require("aws-sdk");
+require("dotenv").config();
+//
+//
+//
+//
+// Configure AWS SDK with credentials from .env file
+const s3 = new AWS.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+});
 //
 //
 //
@@ -12,19 +24,8 @@ const fs = require("fs");
 // REGISTRATION
 exports.register = async (req, res) => {
   try {
-    const hospitalImageStorage = multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, "Files/HospitalImages");
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const ext = path.extname(file.originalname);
-        cb(null, "hospitalImage-" + uniqueSuffix + ext);
-      },
-    });
-
     const uploadHospitalImage = multer({
-      storage: hospitalImageStorage,
+      storage: multer.memoryStorage(), // Store file in memory for uploading to S3
     }).single("hospitalImage");
 
     uploadHospitalImage(req, res, async function (err) {
@@ -88,6 +89,7 @@ exports.register = async (req, res) => {
           }
 
           // Validate hospital image
+          console.log("Hospital image file:", hospitalImageFile);
           const imageValidation = dataValidator.isValidImageWith1MBConstraint(hospitalImageFile);
           if (!imageValidation.isValid) {
             validationResults.isValid = false;
@@ -107,7 +109,7 @@ exports.register = async (req, res) => {
         const validationResults = validateHospitalRegistration();
 
         if (!validationResults.isValid) {
-          if (hospitalImageFile) {
+          if (hospitalImageFile && hospitalImageFile.filename) {
             const imagePath = path.join(
               "Files/HospitalImages",
               hospitalImageFile.filename
@@ -120,46 +122,62 @@ exports.register = async (req, res) => {
           });
         }
 
-        const newHospital = {
-          hospitalName: hospitalData.hospitalName,
-          hospitalEmail: hospitalData.hospitalEmail,
-          hospitalWebSite: hospitalData.hospitalWebSite,
-          hospitalAadhar: hospitalData.hospitalAadhar.replace(/\s/g, ""),
-          hospitalMobile: hospitalData.hospitalMobile.replace(/\s/g, ""),
-          hospitalAddress: hospitalData.hospitalAddress,
-          hospitalImage: hospitalImageFile ? hospitalImageFile.filename : null,
-          hospitalPassword: hospitalData.hospitalPassword,
-          registeredDate: new Date(),
-          isActive: 1,
-          deleteStatus: 0,
-          updateStatus: 0,
-          passwordUpdatedStatus: 0,
+        // Upload image to S3
+        const params = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `hospitalImages/hospitalImage-${Date.now()}${path.extname(hospitalImageFile.originalname)}`,
+          Body: hospitalImageFile.buffer,
+          ACL: "public-read",
         };
 
-        try {
-          const registrationResponse = await Hospital.register(newHospital);
-          return res.status(200).json({
-            status: "success",
-            message: "Hospital registered successfully",
-            data: registrationResponse,
-          });
-        } catch (error) {
-          console.error("Error during hospital registration:", error);
-
-          if (error.name === "ValidationError") {
-            return res
-              .status(422)
-              .json({ status: "failed", 
-              error: error.errors 
-            });
-          } else {
+        s3.upload(params, async (err, data) => {
+          if (err) {
             return res.status(500).json({
               status: "error",
-              message: "Internal server error",
-              error: error.message,
+              message: "Error uploading image to S3",
+              error: err.message,
             });
           }
-        }
+
+          const newHospital = {
+            hospitalName: hospitalData.hospitalName,
+            hospitalEmail: hospitalData.hospitalEmail,
+            hospitalWebSite: hospitalData.hospitalWebSite,
+            hospitalAadhar: hospitalData.hospitalAadhar.replace(/\s/g, ""),
+            hospitalMobile: hospitalData.hospitalMobile.replace(/\s/g, ""),
+            hospitalAddress: hospitalData.hospitalAddress,
+            hospitalImage: data.Location, // Store S3 image URL
+            hospitalPassword: hospitalData.hospitalPassword,
+            registeredDate: new Date(),
+            isActive: 1,
+            deleteStatus: 0,
+            updateStatus: 0,
+            passwordUpdatedStatus: 0,
+          };
+
+          try {
+            const registrationResponse = await Hospital.register(newHospital);
+            return res.status(200).json({
+              status: "success",
+              message: "Hospital registered successfully",
+              data: registrationResponse,
+            });
+          } catch (error) {
+            console.error("Error during hospital registration:", error);
+
+            if (error.name === "ValidationError") {
+              return res
+                .status(422)
+                .json({ status: "failed", error: error.errors });
+            } else {
+              return res.status(500).json({
+                status: "error",
+                message: "Internal server error",
+                error: error.message,
+              });
+            }
+          }
+        });
       } catch (error) {
         console.error("Error during hospital registration:", error);
         return res.status(500).json({
@@ -211,9 +229,9 @@ exports.login = async (req, res) => {
 
   const validationResults = validateHospitalLogin();
   if (!validationResults.isValid) {
-    return res.status(400).json({ 
-      status: "validation failed", 
-      results: validationResults.errors 
+    return res.status(400).json({
+      status: "validation failed",
+      results: validationResults.errors
     });
   }
 
@@ -238,16 +256,16 @@ exports.login = async (req, res) => {
     console.error("Error during hospital login:", error);
 
     if (error.message === "Hospital not found") {
-      return res.status(422).json({ 
-        status: "error", 
-        error: error.message 
+      return res.status(422).json({
+        status: "error",
+        error: error.message
       });
     }
 
     if (error.message === "Wrong password") {
-      return res.status(422).json({ 
-        status: "error", 
-        error: error.message 
+      return res.status(422).json({
+        status: "error",
+        error: error.message
       });
     }
 
@@ -269,17 +287,17 @@ exports.changePassword = async (req, res) => {
 
   // Check if token is missing
   if (!token) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Token is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Token is missing"
     });
   }
 
   // Check if hospitalId is missing
   if (!hospitalId) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Hospital ID is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Hospital ID is missing"
     });
   }
 
@@ -289,26 +307,26 @@ exports.changePassword = async (req, res) => {
     async (err, decoded) => {
       if (err) {
         if (err.name === "JsonWebTokenError") {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Invalid token" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Invalid token"
           });
         } else if (err.name === "TokenExpiredError") {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Token has expired" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Token has expired"
           });
         }
-        return res.status(403).json({ 
-          status: "failed", 
-          message: "Unauthorized access" 
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
         });
       }
 
       if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({ 
-          status: "failed", 
-          message: "Unauthorized access" 
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
         });
       }
 
@@ -338,33 +356,33 @@ exports.changePassword = async (req, res) => {
 
         const validationResults = validateHospitalChangePassword();
         if (!validationResults.isValid) {
-          return res.status(400).json({ 
-            status: "failed", 
-            message: "Validation failed", 
-            results: validationResults.errors 
+          return res.status(400).json({
+            status: "failed",
+            message: "Validation failed",
+            results: validationResults.errors
           });
         }
 
         await Hospital.changePassword(hospitalId, oldPassword, newPassword);
-        return res.status(200).json({ 
-          status: "success", 
-          message: "Password changed successfully" 
+        return res.status(200).json({
+          status: "success",
+          message: "Password changed successfully"
         });
       } catch (error) {
         if (
           error.message === "Hospital not found" ||
           error.message === "Invalid old password"
         ) {
-          return res.status(422).json({ 
-            status: "error", 
-            message: error.message 
+          return res.status(422).json({
+            status: "error",
+            message: error.message
           });
         } else {
           console.error("Error changing hospital password:", error);
-          return res.status(500).json({ 
-            status: "error", 
-            message: "Internal server error", 
-            error: error.message 
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message
           });
         }
       }
@@ -381,9 +399,9 @@ exports.updateImage = async (req, res) => {
 
   // Check if token is missing
   if (!token) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Token is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Token is missing"
     });
   }
 
@@ -393,19 +411,19 @@ exports.updateImage = async (req, res) => {
     async (err, decoded) => {
       if (err) {
         if (err.name === "JsonWebTokenError") {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Invalid token" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Invalid token"
           });
         } else if (err.name === "TokenExpiredError") {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Token has expired" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Token has expired"
           });
         }
-        return res.status(403).json({ 
-          status: "failed", 
-          message: "Unauthorized access" 
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
         });
       }
 
@@ -439,9 +457,9 @@ exports.updateImage = async (req, res) => {
 
         // Check if hospitalId is missing after form data is processed
         if (!hospitalId) {
-          return res.status(401).json({ 
-            status: "failed", 
-            results: "Hospital ID is missing" 
+          return res.status(401).json({
+            status: "failed",
+            results: "Hospital ID is missing"
           });
         }
 
@@ -456,9 +474,9 @@ exports.updateImage = async (req, res) => {
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -508,17 +526,17 @@ exports.viewProfile = async (req, res) => {
 
   // Check if token is missing
   if (!token) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Token is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Token is missing"
     });
   }
 
   // Check if hospitalId is missing
   if (!hospitalId) {
-    return res.status(401).json({ 
-      status: "failed", 
-      results: "Hospital ID is missing" 
+    return res.status(401).json({
+      status: "failed",
+      results: "Hospital ID is missing"
     });
   }
 
@@ -530,41 +548,41 @@ exports.viewProfile = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
             });
           }
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
         // Token is valid, proceed to fetch hospital profile
         try {
           const result = await Hospital.getProfile(hospitalId);
-          return res.status(200).json({ 
-            status: "success", 
-            data: result 
+          return res.status(200).json({
+            status: "success",
+            data: result
           });
         } catch (error) {
           if (error.message === "Hospital not found") {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           } else {
             console.error("Error fetching hospital profile:", error);
@@ -603,16 +621,16 @@ exports.updateProfile = async (req, res) => {
   } = req.body;
 
   if (!token) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Token is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Token is missing"
     });
   }
 
   if (!hospitalId) {
-    return res.status(401).json({ 
-      status: "failed", 
-      results: "Hospital ID is missing" 
+    return res.status(401).json({
+      status: "failed",
+      results: "Hospital ID is missing"
     });
   }
 
@@ -622,26 +640,26 @@ exports.updateProfile = async (req, res) => {
     async (err, decoded) => {
       if (err) {
         if (err.name === "JsonWebTokenError") {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Invalid token" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Invalid token"
           });
         } else if (err.name === "TokenExpiredError") {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Token has expired" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Token has expired"
           });
         }
-        return res.status(403).json({ 
-          status: "failed", 
-          message: "Unauthorized access" 
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
         });
       }
 
       if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({ 
-          status: "failed", 
-          message: "Unauthorized access" 
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
         });
       }
 
@@ -726,16 +744,16 @@ exports.updateProfile = async (req, res) => {
           error.message === "Hospital not found" ||
           error.message === "Aadhar Number Already Exists."
         ) {
-          return res.status(422).json({ 
-            status: "error", 
-            error: error.message 
+          return res.status(422).json({
+            status: "error",
+            error: error.message
           });
         } else if (
           error.message === "Error fetching updated hospital details."
         ) {
-          return res.status(500).json({ 
-            status: "failed", 
-            message: error.message 
+          return res.status(500).json({
+            status: "failed",
+            message: error.message
           });
         } else {
           return res.status(500).json({
@@ -758,9 +776,9 @@ exports.staffRegister = async (req, res) => {
     const token = req.headers.token;
 
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
@@ -770,19 +788,19 @@ exports.staffRegister = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
             });
           }
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -827,19 +845,19 @@ exports.staffRegister = async (req, res) => {
           }
 
           const hospitalStaffData = req.body;
-          const hospitalId = hospitalStaffData.hospitalId; 
+          const hospitalId = hospitalStaffData.hospitalId;
 
           if (!hospitalId) {
-            return res.status(401).json({ 
-              status: "failed", 
-              results: "Hospital ID is missing" 
+            return res.status(401).json({
+              status: "failed",
+              results: "Hospital ID is missing"
             });
           }
 
           if (decoded.hospitalId != hospitalId) {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
 
@@ -986,9 +1004,9 @@ exports.staffRegister = async (req, res) => {
             // If database operation fails, delete uploaded files
             cleanupUploadedFiles(req);
             if (error.name === "ValidationError") {
-              return res.status(422).json({ 
-                status: "failed", 
-                results: error.errors 
+              return res.status(422).json({
+                status: "failed",
+                results: error.errors
               });
             } else {
               return res.status(500).json({
@@ -1052,25 +1070,25 @@ exports.deleteStaff = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     // Check if hospitalStaffId is missing
     if (!hospitalStaffId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital Staff ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital Staff ID is missing"
       });
     }
 
@@ -1080,26 +1098,26 @@ exports.deleteStaff = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Token has expired"
             });
           }
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1125,9 +1143,9 @@ exports.deleteStaff = async (req, res) => {
             error.message === "Hospital Staff not found" ||
             error.message === "Hospital not found"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           }
 
@@ -1159,23 +1177,23 @@ exports.suspendStaff = async (req, res) => {
     const { hospitalId, hospitalStaffId } = req.body;
 
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     if (!hospitalStaffId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital Staff ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital Staff ID is missing"
       });
     }
 
@@ -1185,26 +1203,26 @@ exports.suspendStaff = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Token has expired"
             });
           }
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1230,9 +1248,9 @@ exports.suspendStaff = async (req, res) => {
             error.message === "Hospital Staff not found" ||
             error.message === "Hospital not found"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           }
 
@@ -1265,25 +1283,25 @@ exports.unsuspendStaff = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     // Check if hospitalStaffId is missing
     if (!hospitalStaffId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital Staff ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital Staff ID is missing"
       });
     }
 
@@ -1293,26 +1311,26 @@ exports.unsuspendStaff = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Token has expired"
             });
           }
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1338,9 +1356,9 @@ exports.unsuspendStaff = async (req, res) => {
             error.message === "Hospital Staff not found" ||
             error.message === "Hospital not found"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           }
 
@@ -1380,25 +1398,25 @@ exports.updateStaff = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     // Check if hospitalStaffId is missing
     if (!hospitalStaffId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital Staff ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital Staff ID is missing"
       });
     }
 
@@ -1408,26 +1426,26 @@ exports.updateStaff = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Token has expired"
             });
           }
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1518,9 +1536,9 @@ exports.updateStaff = async (req, res) => {
             error.message === "Hospital staff not found" ||
             error.message === "Aadhar number already exists"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           } else {
             return res.status(500).json({
@@ -1552,17 +1570,17 @@ exports.viewAllStaffs = async (req, res) => {
 
   // Check if token is missing
   if (!token) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Token is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Token is missing"
     });
   }
 
   // Check if hospitalId is missing
   if (!hospitalId) {
-    return res.status(400).json({ 
-      status: "failed", 
-      results: "Hospital ID is missing" 
+    return res.status(400).json({
+      status: "failed",
+      results: "Hospital ID is missing"
     });
   }
 
@@ -1574,28 +1592,28 @@ exports.viewAllStaffs = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
 
         // Check if decoded token matches hospitalId from request body
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1610,9 +1628,9 @@ exports.viewAllStaffs = async (req, res) => {
         } catch (error) {
           console.error("Error viewing all hospital staffs:", error);
           if (error.message === "Hospital not found") {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           }
           return res.status(500).json({
@@ -1644,25 +1662,25 @@ exports.viewOneStaff = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     // Check if hospitalStaffId is missing
     if (!hospitalStaffId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital Staff ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital Staff ID is missing"
       });
     }
 
@@ -1673,28 +1691,28 @@ exports.viewOneStaff = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "failed", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "failed",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
 
         // Check if decoded token matches hospitalId from request body
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1714,9 +1732,9 @@ exports.viewOneStaff = async (req, res) => {
             error.message === "Hospital Staff not found" ||
             error.message === "Hospital not found"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           } else {
             console.error("Error viewing hospital staff details:", error);
@@ -1750,25 +1768,25 @@ exports.searchStaffs = async (req, res) => {
   try {
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     // Check if searchQuery is missing or empty
     if (!searchQuery || searchQuery.trim() === "") {
-      return res.status(400).json({ 
-        status: "error", 
-        results: "Search query cannot be empty" 
+      return res.status(400).json({
+        status: "error",
+        results: "Search query cannot be empty"
       });
     }
 
@@ -1779,27 +1797,27 @@ exports.searchStaffs = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Invalid or missing token" 
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid or missing token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
 
         if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({ 
-            status: "failed", 
-            message: "Unauthorized access" 
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
           });
         }
 
@@ -1819,14 +1837,14 @@ exports.searchStaffs = async (req, res) => {
           console.error("Error searching hospital staff:", error);
 
           if (error.message === "Hospital not found") {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           } else if (error.message === "No hospital staffs found") {
-            return res.status(422).json({ 
-              status: "failed", 
-              error: error.message 
+            return res.status(422).json({
+              status: "failed",
+              error: error.message
             });
           }
 
@@ -1858,9 +1876,9 @@ exports.addNews = async (req, res) => {
   try {
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
@@ -1871,19 +1889,19 @@ exports.addNews = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
@@ -1920,18 +1938,18 @@ exports.addNews = async (req, res) => {
           // Check if hospitalId is missing
           if (!hospitalId) {
             cleanupUploadedFiles(req);
-            return res.status(400).json({ 
-              status: "failed", 
-              results: "Hospital ID is missing" 
+            return res.status(400).json({
+              status: "failed",
+              results: "Hospital ID is missing"
             });
           }
 
           // Check if decoded token matches hospitalId from request body
           if (decoded.hospitalId != hospitalId) {
             cleanupUploadedFiles(req);
-            return res.status(403).json({ 
-              status: "error", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
             });
           }
 
@@ -2016,9 +2034,9 @@ exports.addNews = async (req, res) => {
                 );
                 fs.unlinkSync(imagePath);
               }
-              return res.status(422).json({ 
-                status: "error", 
-                error: error.message 
+              return res.status(422).json({
+                status: "error",
+                error: error.message
               });
             } else {
               if (newsImageFile) {
@@ -2071,25 +2089,25 @@ exports.deleteNews = async (req, res) => {
 
   // Check if token is missing
   if (!token) {
-    return res.status(401).json({ 
-      status: "failed", 
-      message: "Token is missing" 
+    return res.status(401).json({
+      status: "failed",
+      message: "Token is missing"
     });
   }
 
   // Check if hospitalNewsId is missing
   if (!hospitalNewsId) {
-    return res.status(400).json({ 
-      status: "failed", 
-      results: "Hospital News ID is missing" 
+    return res.status(400).json({
+      status: "failed",
+      results: "Hospital News ID is missing"
     });
   }
 
   // Check if hospitalId is missing
   if (!hospitalId) {
-    return res.status(400).json({ 
-      status: "failed", 
-      results: "Hospital ID is missing" 
+    return res.status(400).json({
+      status: "failed",
+      results: "Hospital ID is missing"
     });
   }
 
@@ -2101,19 +2119,19 @@ exports.deleteNews = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
@@ -2121,9 +2139,9 @@ exports.deleteNews = async (req, res) => {
         try {
           // Check if decoded token matches hospitalId from request body
           if (decoded.hospitalId != hospitalId) {
-            return res.status(403).json({ 
-              status: "error", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
             });
           }
 
@@ -2141,9 +2159,9 @@ exports.deleteNews = async (req, res) => {
             error.message === "Hospital not found" ||
             error.message === "Hospital news not found"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           } else {
             return res.status(500).json({
@@ -2176,9 +2194,9 @@ exports.updateNews = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
@@ -2189,19 +2207,19 @@ exports.updateNews = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
@@ -2237,27 +2255,27 @@ exports.updateNews = async (req, res) => {
             // Check if hospitalId is missing
             if (!hospitalId) {
               cleanupUploadedFiles(req);
-              return res.status(400).json({ 
-                status: "failed", 
-                results: "Hospital ID is missing" 
+              return res.status(400).json({
+                status: "failed",
+                results: "Hospital ID is missing"
               });
             }
 
             // Check if hospitalNewsId is missing
             if (!hospitalNewsId) {
               cleanupUploadedFiles(req);
-              return res.status(400).json({ 
-                status: "failed", 
-                results: "Hospital News ID is missing" 
+              return res.status(400).json({
+                status: "failed",
+                results: "Hospital News ID is missing"
               });
             }
 
             // Check if decoded token matches hospitalId from request body
             if (decoded.hospitalId != hospitalId) {
               cleanupUploadedFiles(req);
-              return res.status(403).json({ 
-                status: "error", 
-                message: "Unauthorized access" 
+              return res.status(403).json({
+                status: "error",
+                message: "Unauthorized access"
               });
             }
 
@@ -2342,9 +2360,10 @@ exports.updateNews = async (req, res) => {
               ) {
                 return res
                   .status(422)
-                  .json({ status: "error", 
-                  error: error.message
-                 });
+                  .json({
+                    status: "error",
+                    error: error.message
+                  });
               } else {
                 console.error("Error updating hospital news:", error);
                 cleanupUploadedFiles(req); // Delete uploaded file on error
@@ -2387,17 +2406,17 @@ exports.viewAllNews = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
@@ -2408,19 +2427,19 @@ exports.viewAllNews = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
@@ -2428,9 +2447,9 @@ exports.viewAllNews = async (req, res) => {
         try {
           // Check if decoded token matches hospitalId from request body
           if (decoded.hospitalId != hospitalId) {
-            return res.status(403).json({ 
-              status: "error", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
             });
           }
 
@@ -2444,9 +2463,9 @@ exports.viewAllNews = async (req, res) => {
           console.error("Error viewing all hospital news:", error);
 
           if (error.message === "Hospital not found") {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           }
 
@@ -2479,25 +2498,25 @@ exports.viewOneNews = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({ 
-        status: "failed", 
-        message: "Token is missing" 
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
       });
     }
 
     // Check if hospitalId is missing
     if (!hospitalId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital ID is missing"
       });
     }
 
     // Check if hospitalNewsId is missing
     if (!hospitalNewsId) {
-      return res.status(400).json({ 
-        status: "failed", 
-        results: "Hospital News ID is missing" 
+      return res.status(400).json({
+        status: "failed",
+        results: "Hospital News ID is missing"
       });
     }
 
@@ -2508,19 +2527,19 @@ exports.viewOneNews = async (req, res) => {
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Invalid token" 
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid token"
             });
           } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({ 
-              status: "error", 
-              message: "Token has expired" 
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
             });
           } else {
-            return res.status(403).json({ 
-              status: "failed", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
             });
           }
         }
@@ -2528,9 +2547,9 @@ exports.viewOneNews = async (req, res) => {
         try {
           // Check if decoded token matches hospitalId from request body
           if (decoded.hospitalId != hospitalId) {
-            return res.status(403).json({ 
-              status: "error", 
-              message: "Unauthorized access" 
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
             });
           }
 
@@ -2549,9 +2568,9 @@ exports.viewOneNews = async (req, res) => {
             error.message === "Hospital news not found" ||
             error.message === "Hospital not found"
           ) {
-            return res.status(422).json({ 
-              status: "error", 
-              error: error.message 
+            return res.status(422).json({
+              status: "error",
+              error: error.message
             });
           } else {
             return res.status(500).json({
