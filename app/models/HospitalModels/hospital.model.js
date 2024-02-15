@@ -69,7 +69,7 @@ const HospitalNews = function (hospitalNews) {
 //
 //
 // REGISTER
-Hospital.register = async (newHospital) => {
+Hospital.register = async (newHospital, hospitalImageFile) => {
   try {
     const checkEmailQuery =
       "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
@@ -93,6 +93,13 @@ Hospital.register = async (newHospital) => {
     }
 
     if (Object.keys(errors).length > 0) {
+      if (hospitalImageFile && hospitalImageFile.filename) {
+        const imagePath = path.join(
+          "Files/HospitalImages",
+          hospitalImageFile.filename
+        );
+        fs.unlinkSync(imagePath);
+      }
       throw { name: "ValidationError", errors: errors };
     }
 

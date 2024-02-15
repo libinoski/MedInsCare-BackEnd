@@ -11,7 +11,7 @@ require("dotenv").config();
 //
 //
 //
-// Configure AWS SDK with credentials from .env file
+// 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -21,11 +21,11 @@ const s3 = new AWS.S3({
 //
 //
 //
-// REGISTRATION
+// REGISTER
 exports.register = async (req, res) => {
   try {
     const uploadHospitalImage = multer({
-      storage: multer.memoryStorage(), // Store file in memory for uploading to S3
+      storage: multer.memoryStorage(),
     }).single("hospitalImage");
 
     uploadHospitalImage(req, res, async function (err) {
@@ -46,57 +46,56 @@ exports.register = async (req, res) => {
             errors: {},
           };
 
-          // Validate hospital name
+          // Name validation
           const nameValidation = dataValidator.isValidName(hospitalData.hospitalName);
           if (!nameValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalName"] = nameValidation.message;
           }
 
-          // Validate hospital email
+          // Email validation
           const emailValidation = dataValidator.isValidEmail(hospitalData.hospitalEmail);
           if (!emailValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalEmail"] = emailValidation.message;
           }
 
-          // Validate hospital Aadhar number
+          // Aadhar validation
           const aadharValidation = dataValidator.isValidAadharNumber(hospitalData.hospitalAadhar);
           if (!aadharValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalAadhar"] = aadharValidation.message;
           }
 
-          // Validate hospital mobile number
+          // Mobile validation
           const mobileValidation = dataValidator.isValidMobileNumber(hospitalData.hospitalMobile);
           if (!mobileValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalMobile"] = mobileValidation.message;
           }
 
-          // Validate hospital website
+          // Website validation
           const websiteValidation = dataValidator.isValidWebsite(hospitalData.hospitalWebSite);
           if (!websiteValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalWebSite"] = websiteValidation.message;
           }
 
-          // Validate hospital address
+          // Address validation
           const addressValidation = dataValidator.isValidAddress(hospitalData.hospitalAddress);
           if (!addressValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalAddress"] = addressValidation.message;
           }
 
-          // Validate hospital image
-          console.log("Hospital image file:", hospitalImageFile);
+          // Image validation
           const imageValidation = dataValidator.isValidImageWith1MBConstraint(hospitalImageFile);
           if (!imageValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalImage"] = imageValidation.message;
           }
 
-          // Validate hospital password
+          // Password validation
           const passwordValidation = dataValidator.isValidPassword(hospitalData.hospitalPassword);
           if (!passwordValidation.isValid) {
             validationResults.isValid = false;
@@ -122,41 +121,35 @@ exports.register = async (req, res) => {
           });
         }
 
-        // Upload image to S3
-        const params = {
-          Bucket: process.env.S3_BUCKET_NAME,
-          Key: `hospitalImages/hospitalImage-${Date.now()}${path.extname(hospitalImageFile.originalname)}`,
-          Body: hospitalImageFile.buffer,
-          ACL: "public-read",
-        };
-
-        s3.upload(params, async (err, data) => {
-          if (err) {
-            return res.status(500).json({
-              status: "error",
-              message: "Error uploading image to S3",
-              error: err.message,
-            });
-          }
-
-          const newHospital = {
-            hospitalName: hospitalData.hospitalName,
-            hospitalEmail: hospitalData.hospitalEmail,
-            hospitalWebSite: hospitalData.hospitalWebSite,
-            hospitalAadhar: hospitalData.hospitalAadhar.replace(/\s/g, ""),
-            hospitalMobile: hospitalData.hospitalMobile.replace(/\s/g, ""),
-            hospitalAddress: hospitalData.hospitalAddress,
-            hospitalImage: data.Location, // Store S3 image URL
-            hospitalPassword: hospitalData.hospitalPassword,
-            registeredDate: new Date(),
-            isActive: 1,
-            deleteStatus: 0,
-            updateStatus: 0,
-            passwordUpdatedStatus: 0,
-          };
-
+        const uploadToS3 = async () => {
           try {
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `hospitalImages/hospitalImage-${Date.now()}${path.extname(hospitalImageFile.originalname)}`,
+              Body: hospitalImageFile.buffer,
+              ACL: "public-read",
+            };
+
+            const uploadResult = await s3.upload(params).promise();
+
+            const newHospital = {
+              hospitalName: hospitalData.hospitalName,
+              hospitalEmail: hospitalData.hospitalEmail,
+              hospitalWebSite: hospitalData.hospitalWebSite,
+              hospitalAadhar: hospitalData.hospitalAadhar.replace(/\s/g, ""),
+              hospitalMobile: hospitalData.hospitalMobile.replace(/\s/g, ""),
+              hospitalAddress: hospitalData.hospitalAddress,
+              hospitalImage: uploadResult.Location,
+              hospitalPassword: hospitalData.hospitalPassword,
+              registeredDate: new Date(),
+              isActive: 1,
+              deleteStatus: 0,
+              updateStatus: 0,
+              passwordUpdatedStatus: 0,
+            };
+
             const registrationResponse = await Hospital.register(newHospital);
+
             return res.status(200).json({
               status: "success",
               message: "Hospital registered successfully",
@@ -164,8 +157,21 @@ exports.register = async (req, res) => {
             });
           } catch (error) {
             console.error("Error during hospital registration:", error);
-
+            if (hospitalImageFile && hospitalImageFile.filename) {
+              const imagePath = path.join(
+                "Files/HospitalImages",
+                hospitalImageFile.filename
+              );
+              fs.unlinkSync(imagePath);
+            }
             if (error.name === "ValidationError") {
+              if (hospitalImageFile && hospitalImageFile.filename) {
+                const imagePath = path.join(
+                  "Files/HospitalImages",
+                  hospitalImageFile.filename
+                );
+                fs.unlinkSync(imagePath);
+              }
               return res
                 .status(422)
                 .json({ status: "failed", error: error.errors });
@@ -177,9 +183,18 @@ exports.register = async (req, res) => {
               });
             }
           }
-        });
+        };
+
+        await uploadToS3();
       } catch (error) {
         console.error("Error during hospital registration:", error);
+        if (hospitalImageFile && hospitalImageFile.filename) {
+          const imagePath = path.join(
+            "Files/HospitalImages",
+            hospitalImageFile.filename
+          );
+          fs.unlinkSync(imagePath);
+        }
         return res.status(500).json({
           status: "error",
           message: "Internal server error",
@@ -189,6 +204,13 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error("Error during hospital registration:", error);
+    if (req.file && req.file.filename) {
+      const imagePath = path.join(
+        "Files/HospitalImages",
+        req.file.filename
+      );
+      fs.unlinkSync(imagePath);
+    }
     return res.status(500).json({
       status: "error",
       message: "Internal server error",
@@ -196,6 +218,8 @@ exports.register = async (req, res) => {
     });
   }
 };
+
+
 //
 //
 //
@@ -397,7 +421,6 @@ exports.changePassword = async (req, res) => {
 exports.updateImage = async (req, res) => {
   const token = req.headers.token;
 
-  // Check if token is missing
   if (!token) {
     return res.status(401).json({
       status: "failed",
@@ -427,94 +450,94 @@ exports.updateImage = async (req, res) => {
         });
       }
 
-      // Define Multer upload middleware
-      const hospitalImageStorage = multer.diskStorage({
-        destination: function (req, file, cb) {
-          cb(null, "Files/HospitalImages");
-        },
-        filename: function (req, file, cb) {
-          const uniqueSuffix =
-            Date.now() + "-" + Math.round(Math.random() * 1e9);
-          const ext = path.extname(file.originalname);
-          cb(null, "hospitalImage-" + uniqueSuffix + ext);
-        },
-      });
+      try {
+        const uploadHospitalImage = multer({
+          storage: multer.memoryStorage(),
+        }).single("hospitalImage");
 
-      const uploadHospitalImage = multer({
-        storage: hospitalImageStorage,
-      }).single("hospitalImage");
-
-      // Use Multer middleware to handle the file upload and form data parsing
-      uploadHospitalImage(req, res, async function (err) {
-        if (err) {
-          return res.status(400).json({
-            status: "validation failed",
-            results: { file: "File upload failed", details: err.message },
-          });
-        }
-
-        const { hospitalId } = req.body;
-
-        // Check if hospitalId is missing after form data is processed
-        if (!hospitalId) {
-          return res.status(401).json({
-            status: "failed",
-            results: "Hospital ID is missing"
-          });
-        }
-
-        const imageValidation = dataValidator.isValidImageWith1MBConstraint(
-          req.file
-        );
-        if (!imageValidation.isValid) {
-          return res.status(400).json({
-            status: "validation failed",
-            results: imageValidation.message,
-          });
-        }
-
-        if (decoded.hospitalId != hospitalId) {
-          return res.status(403).json({
-            status: "failed",
-            message: "Unauthorized access"
-          });
-        }
-
-        try {
-          const hospitalImageFile = req.file;
-
-          if (!hospitalImageFile) {
+        uploadHospitalImage(req, res, async function (err) {
+          if (err) {
+            fs.unlinkSync(req.file.path);
             return res.status(400).json({
               status: "validation failed",
-              results: "Hospital image file is required",
+              results: { file: "File upload failed", details: err.message },
             });
           }
 
-          // Update hospital image in database
-          await Hospital.updateImage(hospitalId, hospitalImageFile.filename);
+          const { hospitalId } = req.body;
 
-          return res.status(200).json({
-            status: "success",
-            message: "Hospital image updated successfully",
-          });
-        } catch (error) {
-          console.error("Error updating hospital image:", error);
-          if (error.message === "Hospital not found") {
-            return res.status(422).json({
+          if (!hospitalId) {
+            fs.unlinkSync(req.file.path);
+            return res.status(401).json({
               status: "failed",
-              error: error.message,
+              results: "Hospital ID is missing"
             });
           }
-          return res.status(500).json({
-            status: "error",
-            message: "Internal server error",
-            error: error.message,
-          });
+
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(
+            req.file
+          );
+          if (!imageValidation.isValid) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({
+              status: "validation failed",
+              results: imageValidation.message,
+            });
+          }
+
+          if (decoded.hospitalId != hospitalId) {
+            fs.unlinkSync(req.file.path);
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+
+          const uploadToS3 = async () => {
+            try {
+              const params = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: `hospitalImages/hospitalImage-${Date.now()}${path.extname(req.file.originalname)}`,
+                Body: req.file.buffer,
+                ACL: "public-read",
+              };
+
+              await s3.upload(params).promise();
+
+              await Hospital.updateImage(hospitalId, params.Key);
+
+              return res.status(200).json({
+                status: "success",
+                message: "Hospital image updated successfully",
+              });
+            } catch (error) {
+              console.error("Error updating hospital image:", error);
+              fs.unlinkSync(req.file.path);
+              return res.status(500).json({
+                status: "error",
+                message: "Internal server error",
+                error: error.message,
+              });
+            }
+          };
+
+          await uploadToS3();
+        });
+      } catch (error) {
+        console.error("Error during hospital image update:", error);
+        if (req.file && req.file.path) {
+          fs.unlinkSync(req.file.path);
         }
-      });
+        return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+        });
+      }
     }
   );
 };
+
 //
 //
 //
@@ -804,28 +827,141 @@ exports.staffRegister = async (req, res) => {
           });
         }
 
-        const staffImagesStorage = multer.diskStorage({
-          destination: function (req, file, cb) {
-            cb(null, "Files/HospitalStaffImages");
-          },
-          filename: function (req, file, cb) {
-            const uniqueSuffix =
-              Date.now() + "-" + Math.round(Math.random() * 1e9);
-            const ext = path.extname(file.originalname);
+        const validateHospitalStaffRegistration = (hospitalStaffData, files) => {
+          const validationResults = {
+            isValid: true,
+            errors: {},
+          };
 
-            if (file.fieldname === "hospitalStaffProfileImage") {
-              const fileName =
-                "hospitalStaffProfileImage-" + uniqueSuffix + ext;
-              cb(null, fileName);
-              req.hospitalStaffProfileImageFileName = fileName;
-            } else if (file.fieldname === "hospitalStaffIdProofImage") {
-              const fileName =
-                "hospitalStaffIdProofImage-" + uniqueSuffix + ext;
-              cb(null, fileName);
-              req.hospitalStaffIdProofImageFileName = fileName;
-            }
-          },
-        });
+          // Name validation
+          const nameValidation = dataValidator.isValidName(
+            hospitalStaffData.hospitalStaffName
+          );
+          if (!nameValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffName"] = [
+              nameValidation.message,
+            ];
+          }
+
+          // Email validation
+          const emailValidation = dataValidator.isValidEmail(
+            hospitalStaffData.hospitalStaffEmail
+          );
+          if (!emailValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffEmail"] = [
+              emailValidation.message,
+            ];
+          }
+
+          // Aadhar validation
+          const aadharValidation = dataValidator.isValidAadharNumber(
+            hospitalStaffData.hospitalStaffAadhar
+          );
+          if (!aadharValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffAadhar"] = [
+              aadharValidation.message,
+            ];
+          }
+
+          // Mobile validation
+          const mobileValidation = dataValidator.isValidMobileNumber(
+            hospitalStaffData.hospitalStaffMobile
+          );
+          if (!mobileValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffMobile"] = [
+              mobileValidation.message,
+            ];
+          }
+
+          // Address validation
+          const addressValidation = dataValidator.isValidAddress(
+            hospitalStaffData.hospitalStaffAddress
+          );
+          if (!addressValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffAddress"] = [
+              addressValidation.message,
+            ];
+          }
+
+          // Password validation
+          const passwordValidation = dataValidator.isValidPassword(
+            hospitalStaffData.hospitalStaffPassword
+          );
+          if (!passwordValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffPassword"] = [
+              passwordValidation.message,
+            ];
+          }
+
+          // Profile image validation
+          const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(
+            files["hospitalStaffProfileImage"]
+              ? files["hospitalStaffProfileImage"][0]
+              : null
+          );
+          if (!profileImageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffProfileImage"] = [
+              profileImageValidation.message,
+            ];
+          }
+
+          // ID proof image validation
+          const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(
+            files["hospitalStaffIdProofImage"]
+              ? files["hospitalStaffIdProofImage"][0]
+              : null
+          );
+          if (!idProofImageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffIdProofImage"] = [
+              idProofImageValidation.message,
+            ];
+          }
+
+          return validationResults;
+        };
+
+        const hospitalStaffData = req.body;
+        const validationResults = validateHospitalStaffRegistration(hospitalStaffData, req.files);
+
+        if (!validationResults.isValid) {
+          // If validation fails, delete uploaded files
+          fs.unlinkSync(req.files["hospitalStaffProfileImage"][0].path);
+          fs.unlinkSync(req.files["hospitalStaffIdProofImage"][0].path);
+          return res.status(400).json({
+            status: "failed",
+            message: "Validation failed",
+            results: validationResults.errors,
+          });
+        }
+
+        const uploadToS3 = async (fileName, fileBuffer) => {
+          try {
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: fileName,
+              Body: fileBuffer,
+              ACL: "public-read",
+            };
+
+            const uploadResult = await s3.upload(params).promise();
+            return uploadResult.Location;
+          } catch (error) {
+            // If upload fails, delete uploaded files
+            fs.unlinkSync(req.files["hospitalStaffProfileImage"][0].path);
+            fs.unlinkSync(req.files["hospitalStaffIdProofImage"][0].path);
+            throw error;
+          }
+        };
+
+        const staffImagesStorage = multer.memoryStorage();
 
         const uploadStaffImages = multer({
           storage: staffImagesStorage,
@@ -837,6 +973,9 @@ exports.staffRegister = async (req, res) => {
         // Extracting hospitalId after multer configuration
         uploadStaffImages(req, res, async function (err) {
           if (err) {
+            // If file upload fails, delete uploaded files
+            fs.unlinkSync(req.files["hospitalStaffProfileImage"][0].path);
+            fs.unlinkSync(req.files["hospitalStaffIdProofImage"][0].path);
             return res.status(400).json({
               status: "error",
               message: "File upload failed",
@@ -844,7 +983,6 @@ exports.staffRegister = async (req, res) => {
             });
           }
 
-          const hospitalStaffData = req.body;
           const hospitalId = hospitalStaffData.hospitalId;
 
           if (!hospitalId) {
@@ -861,134 +999,31 @@ exports.staffRegister = async (req, res) => {
             });
           }
 
-          // Validate hospital staff registration data
-          function validateHospitalStaffRegistration() {
-            const validationResults = {
-              isValid: true,
-              errors: {},
+          try {
+            const profileImageFileName = `hospitalStaffProfileImage-${Date.now()}${path.extname(req.files["hospitalStaffProfileImage"][0].originalname)}`;
+            const idProofImageFileName = `hospitalStaffIdProofImage-${Date.now()}${path.extname(req.files["hospitalStaffIdProofImage"][0].originalname)}`;
+
+            const profileImageUrl = await uploadToS3(profileImageFileName, req.files["hospitalStaffProfileImage"][0].buffer);
+            const idProofImageUrl = await uploadToS3(idProofImageFileName, req.files["hospitalStaffIdProofImage"][0].buffer);
+
+            const newHospitalStaff = {
+              hospitalId: hospitalId,
+              hospitalStaffName: hospitalStaffData.hospitalStaffName,
+              hospitalStaffProfileImage: profileImageUrl,
+              hospitalStaffIdProofImage: idProofImageUrl,
+              hospitalStaffMobile: hospitalStaffData.hospitalStaffMobile,
+              hospitalStaffEmail: hospitalStaffData.hospitalStaffEmail,
+              hospitalStaffAddress: hospitalStaffData.hospitalStaffAddress,
+              hospitalStaffAadhar: hospitalStaffData.hospitalStaffAadhar,
+              hospitalStaffPassword: hospitalStaffData.hospitalStaffPassword,
+              addedDate: new Date(),
+              updatedDate: null,
+              deleteStatus: 0,
+              isSuspended: 0,
+              updateStatus: 0,
+              passwordUpdateStatus: 0,
             };
 
-            const nameValidation = dataValidator.isValidName(
-              hospitalStaffData.hospitalStaffName
-            );
-            if (!nameValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffName"] = [
-                nameValidation.message,
-              ];
-            }
-
-            const emailValidation = dataValidator.isValidEmail(
-              hospitalStaffData.hospitalStaffEmail
-            );
-            if (!emailValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffEmail"] = [
-                emailValidation.message,
-              ];
-            }
-
-            const aadharValidation = dataValidator.isValidAadharNumber(
-              hospitalStaffData.hospitalStaffAadhar
-            );
-            if (!aadharValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffAadhar"] = [
-                aadharValidation.message,
-              ];
-            }
-
-            const mobileValidation = dataValidator.isValidMobileNumber(
-              hospitalStaffData.hospitalStaffMobile
-            );
-            if (!mobileValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffMobile"] = [
-                mobileValidation.message,
-              ];
-            }
-
-            const addressValidation = dataValidator.isValidAddress(
-              hospitalStaffData.hospitalStaffAddress
-            );
-            if (!addressValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffAddress"] = [
-                addressValidation.message,
-              ];
-            }
-
-            const profileImageValidation =
-              dataValidator.isValidImageWith1MBConstraint(
-                req.files["hospitalStaffProfileImage"]
-                  ? req.files["hospitalStaffProfileImage"][0]
-                  : null
-              );
-            if (!profileImageValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffProfileImage"] = [
-                profileImageValidation.message,
-              ];
-            }
-
-            const idProofImageValidation =
-              dataValidator.isValidImageWith1MBConstraint(
-                req.files["hospitalStaffIdProofImage"]
-                  ? req.files["hospitalStaffIdProofImage"][0]
-                  : null
-              );
-            if (!idProofImageValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffIdProofImage"] = [
-                idProofImageValidation.message,
-              ];
-            }
-
-            const passwordValidation = dataValidator.isValidPassword(
-              hospitalStaffData.hospitalStaffPassword
-            );
-            if (!passwordValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalStaffPassword"] = [
-                passwordValidation.message,
-              ];
-            }
-
-            return validationResults;
-          }
-
-          const validationResults = validateHospitalStaffRegistration();
-
-          if (!validationResults.isValid) {
-            // If validation fails, delete uploaded files
-            cleanupUploadedFiles(req);
-            return res.status(400).json({
-              status: "failed",
-              message: "Validation failed",
-              results: validationResults.errors,
-            });
-          }
-
-          // Save hospital staff registration data
-          const newHospitalStaff = {
-            hospitalId: hospitalId,
-            hospitalStaffName: hospitalStaffData.hospitalStaffName,
-            hospitalStaffProfileImage: req.hospitalStaffProfileImageFileName,
-            hospitalStaffIdProofImage: req.hospitalStaffIdProofImageFileName,
-            hospitalStaffMobile: hospitalStaffData.hospitalStaffMobile,
-            hospitalStaffEmail: hospitalStaffData.hospitalStaffEmail,
-            hospitalStaffAddress: hospitalStaffData.hospitalStaffAddress,
-            hospitalStaffAadhar: hospitalStaffData.hospitalStaffAadhar,
-            hospitalStaffPassword: hospitalStaffData.hospitalStaffPassword,
-            addedDate: new Date(),
-            updatedDate: null,
-            deleteStatus: 0,
-            isSuspended: 0,
-            updateStatus: 0,
-            passwordUpdateStatus: 0,
-          };
-
-          try {
             const registrationResponse = await Hospital.registerStaff(
               newHospitalStaff
             );
@@ -1001,14 +1036,16 @@ exports.staffRegister = async (req, res) => {
               },
             });
           } catch (error) {
-            // If database operation fails, delete uploaded files
-            cleanupUploadedFiles(req);
             if (error.name === "ValidationError") {
+              fs.unlinkSync(req.files["hospitalStaffProfileImage"][0].path);
+              fs.unlinkSync(req.files["hospitalStaffIdProofImage"][0].path);
               return res.status(422).json({
                 status: "failed",
                 results: error.errors
               });
             } else {
+              fs.unlinkSync(req.files["hospitalStaffProfileImage"][0].path);
+              fs.unlinkSync(req.files["hospitalStaffIdProofImage"][0].path);
               return res.status(500).json({
                 status: "error",
                 message: "Internal server error",
@@ -1021,43 +1058,15 @@ exports.staffRegister = async (req, res) => {
     );
   } catch (error) {
     // Error handling logic
-    cleanupUploadedFiles(req);
+    fs.unlinkSync(req.files["hospitalStaffProfileImage"][0].path);
+    fs.unlinkSync(req.files["hospitalStaffIdProofImage"][0].path);
     return res.status(500).json({
       status: "error",
       message: "Internal server error",
       error: error.message,
     });
   }
-
-  function cleanupUploadedFiles(req) {
-    if (req.files) {
-      if (
-        req.files["hospitalStaffProfileImage"] &&
-        req.files["hospitalStaffProfileImage"][0]
-      ) {
-        fs.unlinkSync(
-          path.join(
-            "Files/HospitalStaffImages",
-            req.files["hospitalStaffProfileImage"][0].filename
-          )
-        );
-      }
-
-      if (
-        req.files["hospitalStaffIdProofImage"] &&
-        req.files["hospitalStaffIdProofImage"][0]
-      ) {
-        fs.unlinkSync(
-          path.join(
-            "Files/HospitalStaffImages",
-            req.files["hospitalStaffIdProofImage"][0].filename
-          )
-        );
-      }
-    }
-  }
 };
-
 //
 //
 //
@@ -1874,7 +1883,6 @@ exports.addNews = async (req, res) => {
   const token = req.headers.token;
 
   try {
-    // Check if token is missing
     if (!token) {
       return res.status(401).json({
         status: "failed",
@@ -1882,7 +1890,6 @@ exports.addNews = async (req, res) => {
       });
     }
 
-    // Verifying the token
     jwt.verify(
       token,
       process.env.JWT_SECRET_KEY_HOSPITAL,
@@ -1906,26 +1913,17 @@ exports.addNews = async (req, res) => {
           }
         }
 
-        // Multer configuration and file upload
-        const newsImageStorage = multer.diskStorage({
-          destination: function (req, file, cb) {
-            cb(null, "Files/HospitalImages/HospitalNewsImages");
-          },
-          filename: function (req, file, cb) {
-            const uniqueSuffix =
-              Date.now() + "-" + Math.round(Math.random() * 1e9);
-            const ext = path.extname(file.originalname);
-            cb(null, "hospitalNewsImage-" + uniqueSuffix + ext);
-          },
-        });
+        const newsImageStorage = multer.memoryStorage();
 
         const uploadNewsImage = multer({ storage: newsImageStorage }).single(
           "hospitalNewsImage"
         );
 
-        // Use Multer middleware to handle the file upload and form data parsing
         uploadNewsImage(req, res, async function (err) {
           if (err) {
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(400).json({
               status: "error",
               message: "File upload failed",
@@ -1933,20 +1931,22 @@ exports.addNews = async (req, res) => {
             });
           }
 
-          const { hospitalId } = req.body; // Retrieve hospitalId after form data is processed
+          const { hospitalId } = req.body;
 
-          // Check if hospitalId is missing
           if (!hospitalId) {
-            cleanupUploadedFiles(req);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(400).json({
               status: "failed",
               results: "Hospital ID is missing"
             });
           }
 
-          // Check if decoded token matches hospitalId from request body
           if (decoded.hospitalId != hospitalId) {
-            cleanupUploadedFiles(req);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(403).json({
               status: "error",
               message: "Unauthorized access"
@@ -1956,7 +1956,6 @@ exports.addNews = async (req, res) => {
           const newsData = req.body;
           const newsImageFile = req.file;
 
-          // Validate news data
           function validateNewsData() {
             const validationResults = {
               isValid: true,
@@ -1995,12 +1994,8 @@ exports.addNews = async (req, res) => {
           const validationResults = validateNewsData();
 
           if (!validationResults.isValid) {
-            if (newsImageFile) {
-              const imagePath = path.join(
-                "Files/HospitalImages/HospitalNewsImages",
-                newsImageFile.filename
-              );
-              fs.unlinkSync(imagePath);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
             }
             return res.status(400).json({
               status: "error",
@@ -2009,13 +2004,36 @@ exports.addNews = async (req, res) => {
             });
           }
 
-          const newHospitalNews = {
-            hospitalNewsTitle: newsData.hospitalNewsTitle,
-            hospitalNewsContent: newsData.hospitalNewsContent,
-            hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
+          const uploadToS3 = async (fileName, fileBuffer) => {
+            try {
+              const params = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: fileName,
+                Body: fileBuffer,
+                ACL: "public-read",
+              };
+
+              const uploadResult = await s3.upload(params).promise();
+              return uploadResult.Location;
+            } catch (error) {
+              if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
+              }
+              throw error;
+            }
           };
 
           try {
+            const newsImageFileName = `hospitalNewsImage-${Date.now()}${path.extname(newsImageFile.originalname)}`;
+
+            const imageUrl = await uploadToS3(newsImageFileName, newsImageFile.buffer);
+
+            const newHospitalNews = {
+              hospitalNewsTitle: newsData.hospitalNewsTitle,
+              hospitalNewsContent: newsData.hospitalNewsContent,
+              hospitalNewsImage: imageUrl,
+            };
+
             const addedNewsId = await Hospital.addNews(
               newsData.hospitalId,
               newHospitalNews
@@ -2027,24 +2045,16 @@ exports.addNews = async (req, res) => {
             });
           } catch (error) {
             if (error.message === "Hospital not found") {
-              if (newsImageFile) {
-                const imagePath = path.join(
-                  "Files/HospitalImages/HospitalNewsImages",
-                  newsImageFile.filename
-                );
-                fs.unlinkSync(imagePath);
+              if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
               }
               return res.status(422).json({
                 status: "error",
                 error: error.message
               });
             } else {
-              if (newsImageFile) {
-                const imagePath = path.join(
-                  "Files/HospitalImages/HospitalNewsImages",
-                  newsImageFile.filename
-                );
-                fs.unlinkSync(imagePath);
+              if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
               }
               throw error;
             }
@@ -2054,28 +2064,14 @@ exports.addNews = async (req, res) => {
     );
   } catch (error) {
     console.error("Error during adding hospital news:", error);
-    if (req.file) {
-      const imagePath = path.join(
-        "Files/HospitalImages/HospitalNewsImages",
-        req.file.filename
-      );
-      fs.unlinkSync(imagePath);
+    if (req.file && req.file.path) {
+      fs.unlinkSync(req.file.path);
     }
     return res.status(500).json({
       status: "error",
       message: "Internal server error",
       error: error.message,
     });
-  }
-
-  function cleanupUploadedFiles(req) {
-    if (req.file) {
-      const imagePath = path.join(
-        "Files/HospitalImages/HospitalNewsImages",
-        req.file.filename
-      );
-      fs.unlinkSync(imagePath);
-    }
   }
 };
 //
