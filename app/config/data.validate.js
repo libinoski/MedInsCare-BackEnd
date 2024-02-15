@@ -140,15 +140,21 @@ function isValidTitle(title) {
 
 
 // Validate an image within a 1 MB size limit.
+// Validate an image within a 1 MB size limit.
 function isValidImageWith1MBConstraint(file) {
+    console.log("Hospital image file:", file);
+
     if (isNullOrUndefined(file)) {
         return {
             isValid: false,
             message: 'Please upload a file.'
         };
     }
+
+    // Use originalname if filename is not available
+    const filename = file.filename || file.originalname;
     const allowedExtensions = /\.(jpg|jpeg|png|webp|heif)$/;
-    const extensionIsValid = allowedExtensions.test(path.extname(file.filename.replace(/[^\w\-.]/g, '')).toLowerCase());
+    const extensionIsValid = allowedExtensions.test(path.extname(filename.replace(/[^\w\-.]/g, '')).toLowerCase());
     const maxFileSize = 1 * 1024 * 1024; 
     const sizeIsValid = file.size <= maxFileSize;
 
@@ -174,6 +180,8 @@ function isValidImageWith1MBConstraint(file) {
         message: 'File is valid'
     };
 }
+
+
 
 
 // Verify the validity of a mobile number.

@@ -69,7 +69,7 @@ const HospitalNews = function (hospitalNews) {
 //
 //
 // REGISTER
-Hospital.register = async (newHospital) => {
+Hospital.register = async (newHospital, hospitalImageFile) => {
   try {
     const checkEmailQuery =
       "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
@@ -93,6 +93,13 @@ Hospital.register = async (newHospital) => {
     }
 
     if (Object.keys(errors).length > 0) {
+      if (hospitalImageFile && hospitalImageFile.filename) {
+        const imagePath = path.join(
+          "Files/HospitalImages",
+          hospitalImageFile.filename
+        );
+        fs.unlinkSync(imagePath);
+      }
       throw { name: "ValidationError", errors: errors };
     }
 
@@ -226,7 +233,7 @@ Hospital.updateImage = async (hospitalId, newImageFilename) => {
 // VIEW PROFILE
 Hospital.getProfile = async (hospitalId) => {
   const query =
-    "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    "SELECT hospitalId,hospitalImage, hospitalName, hospitalEmail, hospitalWebSite, hospitalAadhar, hospitalMobile, hospitalAddress, registeredDate FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
 
   try {
     const result = await dbQuery(query, [hospitalId]);
@@ -240,6 +247,7 @@ Hospital.getProfile = async (hospitalId) => {
     throw error;
   }
 };
+
 //
 //
 //
