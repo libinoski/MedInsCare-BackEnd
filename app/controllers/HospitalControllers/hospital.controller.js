@@ -174,8 +174,10 @@ exports.register = async (req, res) => {
               }
               return res
                 .status(422)
-                .json({ status: "failed", 
-                error: error.errors });
+                .json({
+                  status: "failed",
+                  error: error.errors
+                });
             } else {
               return res.status(500).json({
                 status: "error",
@@ -456,7 +458,9 @@ exports.updateImage = async (req, res) => {
 
         uploadHospitalImage(req, res, async function (err) {
           if (err) {
-            fs.unlinkSync(req.file.path);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(400).json({
               status: "validation failed",
               results: { file: "File upload failed", details: err.message },
@@ -466,10 +470,12 @@ exports.updateImage = async (req, res) => {
           const { hospitalId } = req.body;
 
           if (!hospitalId) {
-            fs.unlinkSync(req.file.path);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(401).json({
               status: "failed",
-              results: "Hospital ID is missing"
+              message: "Hospital ID is missing"
             });
           }
 
@@ -477,7 +483,9 @@ exports.updateImage = async (req, res) => {
             req.file
           );
           if (!imageValidation.isValid) {
-            fs.unlinkSync(req.file.path);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(400).json({
               status: "validation failed",
               results: imageValidation.message,
@@ -485,7 +493,9 @@ exports.updateImage = async (req, res) => {
           }
 
           if (decoded.hospitalId != hospitalId) {
-            fs.unlinkSync(req.file.path);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
             return res.status(403).json({
               status: "failed",
               message: "Unauthorized access"
@@ -500,24 +510,29 @@ exports.updateImage = async (req, res) => {
               ACL: "public-read",
             };
 
-            await s3.upload(params).promise();
+            const uploadResult = await s3.upload(params).promise();
 
-            await Hospital.updateImage(hospitalId, params.Key);
-
-            return res.status(200).json({
-              status: "success",
-              message: "Hospital image updated successfully",
-            });
+            return uploadResult.Location; // Return S3 URL
           };
 
-          await uploadToS3();
+          const s3Url = await uploadToS3();
+
+          // Update database with S3 URL
+          await Hospital.updateImage(hospitalId, s3Url);
+
+          return res.status(200).json({
+            status: "success",
+            message: "Hospital image updated successfully",
+            data: { s3Url },
+          });
         });
       } catch (error) {
         console.error("Error during hospital image update:", error);
         if (req.file && req.file.path) {
-          fs.unlinkSync(req.file.path);
+          const imagePath = path.join("Files/HospitalImages", req.file.filename);
+          fs.unlinkSync(imagePath);
         }
-        return res.status(422).json({ 
+        return res.status(422).json({
           status: "error",
           error: error.message,
         });
@@ -525,6 +540,8 @@ exports.updateImage = async (req, res) => {
     }
   );
 };
+
+
 //
 //
 //
