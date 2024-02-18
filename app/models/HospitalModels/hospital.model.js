@@ -69,7 +69,7 @@ const HospitalNews = function (hospitalNews) {
 //
 //
 // REGISTER
-Hospital.register = async (newHospital, hospitalImageFile) => {
+Hospital.register = async (newHospital) => {
   try {
     const checkEmailQuery =
       "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND deleteStatus=0 AND isActive=1";
@@ -93,21 +93,13 @@ Hospital.register = async (newHospital, hospitalImageFile) => {
     }
 
     if (Object.keys(errors).length > 0) {
-      if (hospitalImageFile && hospitalImageFile.filename) {
-        const imagePath = path.join(
-          "Files/HospitalImages",
-          hospitalImageFile.filename
-        );
-        fs.unlinkSync(imagePath);
-      }
       throw { name: "ValidationError", errors: errors };
     }
 
-    const hashedPassword = await promisify(bcrypt.hash)(
-      newHospital.hospitalPassword,
-      10
-    );
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(newHospital.hospitalPassword, 10);
     newHospital.hospitalPassword = hashedPassword;
+
     const insertQuery = "INSERT INTO Hospitals SET ?";
     const insertRes = await dbQuery(insertQuery, newHospital);
 
@@ -328,12 +320,11 @@ Hospital.registerStaff = async (newHospitalStaff) => {
       "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar=? AND deleteStatus=0 AND isSuspended = 0";
     const checkEmailQuery =
       "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail=? AND deleteStatus=0 AND isSuspended = 0";
-    const hospitalResult = await dbQuery(checkHospitalQuery, [
-      newHospitalStaff.hospitalId,
-    ]);
-
+    
+    // Check if hospitalId exists and is active
+    const hospitalResult = await dbQuery(checkHospitalQuery, [newHospitalStaff.hospitalId]);
     if (hospitalResult.length === 0) {
-      throw new Error("Hospital not found");
+      throw new Error("Hospital not found or not active");
     }
 
     const errors = {};
@@ -364,11 +355,14 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
     const insertRes = await dbQuery(insertQuery, newHospitalStaff);
 
-    return insertRes.insertId;
+    const insertedStaff = { ...newHospitalStaff, hospitalStaffId: insertRes.insertId };
+    return insertedStaff;
   } catch (error) {
     throw error;
   }
 };
+
+
 //
 //
 //
