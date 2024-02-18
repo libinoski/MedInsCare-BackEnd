@@ -320,12 +320,11 @@ Hospital.registerStaff = async (newHospitalStaff) => {
       "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar=? AND deleteStatus=0 AND isSuspended = 0";
     const checkEmailQuery =
       "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail=? AND deleteStatus=0 AND isSuspended = 0";
-    const hospitalResult = await dbQuery(checkHospitalQuery, [
-      newHospitalStaff.hospitalId,
-    ]);
-
+    
+    // Check if hospitalId exists and is active
+    const hospitalResult = await dbQuery(checkHospitalQuery, [newHospitalStaff.hospitalId]);
     if (hospitalResult.length === 0) {
-      throw new Error("Hospital not found");
+      throw new Error("Hospital not found or not active");
     }
 
     const errors = {};
@@ -356,11 +355,14 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
     const insertRes = await dbQuery(insertQuery, newHospitalStaff);
 
-    return insertRes.insertId;
+    const insertedStaff = { ...newHospitalStaff, hospitalStaffId: insertRes.insertId };
+    return insertedStaff;
   } catch (error) {
     throw error;
   }
 };
+
+
 //
 //
 //
