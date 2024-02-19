@@ -23,7 +23,7 @@ const s3Client = new S3Client({
 //
 //
 //
-// REGISTER
+// REGISTER HOSPITAL
 exports.register = async (req, res) => {
   const uploadHospitalImage = multer({
       storage: multer.memoryStorage(),
@@ -399,7 +399,7 @@ exports.changePassword = async (req, res) => {
 //
 //
 //
-// UPDATE IMAGE
+// UPDATE HOSPITAL IMAGE
 exports.updateImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -454,6 +454,24 @@ exports.updateImage = async (req, res) => {
             });
           }
 
+          // Function to upload file to S3
+          async function uploadFileToS3(file) {
+            const fileName = `hospitalImage-${Date.now()}${path.extname(file.originalname)}`;
+            const mimeType = file.mimetype;
+
+            const uploadParams = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `hospitalImages/${fileName}`,
+              Body: file.buffer,
+              ACL: "public-read",
+              ContentType: mimeType,
+            };
+
+            const command = new PutObjectCommand(uploadParams);
+            const result = await s3Client.send(command);
+            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+          }
+
           // Validation function for hospital image
           function validateHospitalImage(file) {
             const validationResults = {
@@ -496,44 +514,8 @@ exports.updateImage = async (req, res) => {
             });
           }
 
-          // Function to upload file to S3
-          async function uploadFileToS3(file) {
-            const fileName = `hospitalImage-${Date.now()}${path.extname(file.originalname)}`;
-            const mimeType = file.mimetype;
-
-            const uploadParams = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `hospitalImages/${fileName}`,
-              Body: file.buffer,
-              ACL: "public-read",
-              ContentType: mimeType,
-            };
-
-            const command = new PutObjectCommand(uploadParams);
-            const result = await s3Client.send(command);
-            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-          }
-
           const s3Url = await uploadFileToS3(req.file); // Upload file to S3
-          try {
-            await Hospital.updateImage(hospitalId, s3Url);
-          } catch (error) {
-            const params = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `hospitalImages/${s3Url.split('/').pop()}`
-            };
-            await s3Client.send(new DeleteObjectCommand(params));
-            
-            // Remove the uploaded image from local storage
-            if (req.file && req.file.path) {
-              fs.unlinkSync(req.file.path);
-            }
-
-            return res.status(422).json({
-              status: "failed",
-              error: error.message
-            });
-          }
+          await Hospital.updateImage(hospitalId, s3Url); // Call the updated hospital model function
 
           return res.status(200).json({
             status: "success",
@@ -547,14 +529,28 @@ exports.updateImage = async (req, res) => {
           const imagePath = path.join("Files/HospitalImages", req.file.filename);
           fs.unlinkSync(imagePath);
         }
-        return res.status(500).json({
-          status: "error",
-          error: error.message,
-        });
+        const params = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `hospitalImages/${s3Url.split('/').pop()}`
+        };
+        await s3Client.send(new DeleteObjectCommand(params));
+        
+        if (error.message === "Hospital not found") {
+          return res.status(422).json({
+            status: "failed",
+            error: error.message
+          });
+        } else {
+          return res.status(500).json({
+            status: "error",
+            error: error.message
+          });
+        }
       }
     }
   );
 };
+
 //
 //
 //
@@ -861,7 +857,7 @@ exports.registerStaff = async (req, res) => {
           const hospitalStaffData = req.body;
 
           // Check if hospitalStaffData.hospitalId exists
-          if (!hospitalStaffData.hospitalId) {
+          if (!decoded.hospitalId!=hospitalStaffData.hospitalId) {
               return res.status(403).json({
                   status: "failed",
                   message: "Unauthorized access"
@@ -1067,9 +1063,6 @@ exports.registerStaff = async (req, res) => {
       return validationResults;
   }
 };
-
-
-
 //
 //
 //

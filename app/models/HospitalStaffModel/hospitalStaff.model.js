@@ -203,29 +203,32 @@ HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilenam
 //
 // HospitalStaff Update Profile Image
 HospitalStaff.changeProfileImage = async (hospitalStaffId,newProfileImageFilename) => {
-  const query = `
-        UPDATE Hospital_Staffs
-        SET
-            hospitalStaffProfileImage = ?,
-            updateStatus = 1,
-            updatedDate = CURRENT_TIMESTAMP()
+  const verifyQuery = `
+        SELECT hospitalStaffId
+        FROM Hospital_Staffs
         WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
     `;
 
   try {
-    const result = await dbQuery(query, [
-      newProfileImageFilename,
-      hospitalStaffId,
-    ]);
-    if (result.affectedRows === 0) {
-      throw new Error("Failed to update profile image or staff not found.");
+    const verifyResult = await dbQuery(verifyQuery, [hospitalStaffId]);
+
+    if (verifyResult.length === 0) {
+      throw new Error("Hospital staff not found");
     }
-    console.log(
-      `Profile image updated successfully for hospitalStaffId: ${hospitalStaffId}`
-    );
-    return true; // Indicates success
+
+    const updateQuery = `
+            UPDATE Hospital_Staffs
+            SET 
+                hospitalStaffProfileImage = ?,
+                updateStatus = 1, 
+                updatedDate = CURRENT_TIMESTAMP()
+            WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
+        `;
+
+    await dbQuery(updateQuery, [newProfileImageFilename, hospitalStaffId]);
+
+    return true;
   } catch (error) {
-    console.error("Error updating profile image:", error);
     throw error;
   }
 };
@@ -315,56 +318,57 @@ HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
 //
 //
 // Hospital staff Register new patient
-HospitalStaff.registerPatient = async (newPatient) => {
+HospitalStaff.registerPatient = async (patientData) => {
   try {
-    const checkHospitalStaffQuery =
-      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus=0 AND isSuspended=0";
-    const checkAadharQuery =
-      "SELECT * FROM Patients WHERE patientAadhar=? AND dischargeStatus = 0";
-    const checkEmailQuery =
-      "SELECT * FROM Patients WHERE patientEmail=? AND dischargeStatus = 0";
+    const staffHospitalQuery = `
+      SELECT hs.hospitalStaffId, hs.hospitalId
+      FROM Hospital_Staffs hs
+      JOIN Hospitals h ON hs.hospitalId = h.hospitalId
+      WHERE hs.hospitalStaffId = ? AND hs.deleteStatus = 0 AND hs.isSuspended = 0
+      AND h.isActive = 1 AND h.deleteStatus = 0
+    `;
+    const staffHospitalResult = await dbQuery(staffHospitalQuery, [patientData.hospitalStaffId]);
+    if (staffHospitalResult.length === 0) {
+      const errors = { staff: "Hospital staff not found, or linked hospital is not active/not exists" };
+      throw { name: "ValidationError", errors: errors };
+    }
 
+    // Set patient's hospitalId based on the staff's hospital
+    patientData.hospitalId = staffHospitalResult[0].hospitalId;
+
+    // Initialize errors object for validation errors
     const errors = {};
 
-    const hospitalStaffResult = await dbQuery(checkHospitalStaffQuery, [
-      newPatient.hospitalStaffId,
-    ]);
-
-    if (hospitalStaffResult.length === 0) {
-      errors["hospitalStaffId"] = "Hospital staff does not exist";
-    }
-
-    const aadharRes = await dbQuery(checkAadharQuery, [
-      newPatient.patientAadhar,
-    ]);
+    // Validate unique fields: Aadhar and Email for the patient
+    const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar=? AND deleteStatus=0";
+    const aadharRes = await dbQuery(checkAadharQuery, [patientData.patientAadhar]);
     if (aadharRes.length > 0) {
-      errors["patientAadhar"] = "Aadhar number already exists";
+      errors["aadhar"] = "Aadhar number already exists";
     }
 
-    const emailRes = await dbQuery(checkEmailQuery, [newPatient.patientEmail]);
+    const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail=? AND deleteStatus=0";
+    const emailRes = await dbQuery(checkEmailQuery, [patientData.patientEmail]);
     if (emailRes.length > 0) {
-      errors["patientEmail"] = "Email already exists";
+      errors["email"] = "Email already exists";
     }
 
+    // If there are validation errors, throw a ValidationError
     if (Object.keys(errors).length > 0) {
       throw { name: "ValidationError", errors: errors };
     }
 
-    const hospitalId = hospitalStaffResult[0].hospitalId;
+    // Hash the patient's password
+    const hashedPassword = await promisify(bcrypt.hash)(patientData.patientPassword, 10);
+    patientData.patientPassword = hashedPassword;
 
-    newPatient.hospitalId = hospitalId;
-
-    const hashedPassword = await promisify(bcrypt.hash)(
-      newPatient.patientPassword,
-      10
-    );
-    newPatient.patientPassword = hashedPassword;
-
+    // Insert patient data into the database
     const insertQuery = "INSERT INTO Patients SET ?";
-    const insertRes = await dbQuery(insertQuery, newPatient);
+    const insertRes = await dbQuery(insertQuery, patientData);
 
-    return { patientId: insertRes.insertId, ...newPatient };
+    // Return the newly registered patient data, including the generated patientId
+    return { ...patientData, patientId: insertRes.insertId };
   } catch (error) {
+    console.error("Error during patient registration in model:", error);
     throw error;
   }
 };
