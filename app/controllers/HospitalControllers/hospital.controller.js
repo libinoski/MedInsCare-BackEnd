@@ -23,7 +23,7 @@ const s3Client = new S3Client({
 //
 //
 //
-// REGISTER
+// REGISTER HOSPITAL
 exports.register = async (req, res) => {
   const uploadHospitalImage = multer({
       storage: multer.memoryStorage(),
@@ -399,7 +399,7 @@ exports.changePassword = async (req, res) => {
 //
 //
 //
-// UPDATE IMAGE
+// UPDATE HOSPITAL IMAGE
 exports.updateImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -454,6 +454,24 @@ exports.updateImage = async (req, res) => {
             });
           }
 
+          // Function to upload file to S3
+          async function uploadFileToS3(file) {
+            const fileName = `hospitalImage-${Date.now()}${path.extname(file.originalname)}`;
+            const mimeType = file.mimetype;
+
+            const uploadParams = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `hospitalImages/${fileName}`,
+              Body: file.buffer,
+              ACL: "public-read",
+              ContentType: mimeType,
+            };
+
+            const command = new PutObjectCommand(uploadParams);
+            const result = await s3Client.send(command);
+            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+          }
+
           // Validation function for hospital image
           function validateHospitalImage(file) {
             const validationResults = {
@@ -496,44 +514,8 @@ exports.updateImage = async (req, res) => {
             });
           }
 
-          // Function to upload file to S3
-          async function uploadFileToS3(file) {
-            const fileName = `hospitalImage-${Date.now()}${path.extname(file.originalname)}`;
-            const mimeType = file.mimetype;
-
-            const uploadParams = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `hospitalImages/${fileName}`,
-              Body: file.buffer,
-              ACL: "public-read",
-              ContentType: mimeType,
-            };
-
-            const command = new PutObjectCommand(uploadParams);
-            const result = await s3Client.send(command);
-            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-          }
-
           const s3Url = await uploadFileToS3(req.file); // Upload file to S3
-          try {
-            await Hospital.updateImage(hospitalId, s3Url);
-          } catch (error) {
-            const params = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `hospitalImages/${s3Url.split('/').pop()}`
-            };
-            await s3Client.send(new DeleteObjectCommand(params));
-            
-            // Remove the uploaded image from local storage
-            if (req.file && req.file.path) {
-              fs.unlinkSync(req.file.path);
-            }
-
-            return res.status(422).json({
-              status: "failed",
-              error: error.message
-            });
-          }
+          await Hospital.updateImage(hospitalId, s3Url); // Call the updated hospital model function
 
           return res.status(200).json({
             status: "success",
@@ -547,10 +529,23 @@ exports.updateImage = async (req, res) => {
           const imagePath = path.join("Files/HospitalImages", req.file.filename);
           fs.unlinkSync(imagePath);
         }
-        return res.status(500).json({
-          status: "error",
-          error: error.message,
-        });
+        const params = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `hospitalImages/${s3Url.split('/').pop()}`
+        };
+        await s3Client.send(new DeleteObjectCommand(params));
+        
+        if (error.message === "Hospital not found") {
+          return res.status(422).json({
+            status: "failed",
+            error: error.message
+          });
+        } else {
+          return res.status(500).json({
+            status: "error",
+            error: error.message
+          });
+        }
       }
     }
   );
@@ -861,7 +856,7 @@ exports.registerStaff = async (req, res) => {
           const hospitalStaffData = req.body;
 
           // Check if hospitalStaffData.hospitalId exists
-          if (!hospitalStaffData.hospitalId) {
+          if (!decoded.hospitalId!=hospitalStaffData.hospitalId) {
               return res.status(403).json({
                   status: "failed",
                   message: "Unauthorized access"
@@ -1067,9 +1062,6 @@ exports.registerStaff = async (req, res) => {
       return validationResults;
   }
 };
-
-
-
 //
 //
 //
@@ -1916,14 +1908,20 @@ exports.addNews = async (req, res) => {
           }
         }
 
-        const newsImageStorage = multer.memoryStorage();
-
-        const uploadNewsImage = multer({ storage: newsImageStorage }).single(
-          "hospitalNewsImage"
-        );
+        const uploadNewsImage = multer({
+          storage: multer.diskStorage({
+            destination: function (req, file, cb) {
+              cb(null, 'Files/HospitalNewsImages');
+            },
+            filename: function (req, file, cb) {
+              cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+            }
+          })
+        }).single("hospitalNewsImage");
 
         uploadNewsImage(req, res, async function (err) {
           if (err) {
+            console.error("File upload failed:", err);
             if (req.file && req.file.path) {
               fs.unlinkSync(req.file.path);
             }
@@ -1937,6 +1935,7 @@ exports.addNews = async (req, res) => {
           const { hospitalId } = req.body;
 
           if (!hospitalId) {
+            console.error("Hospital ID is missing");
             if (req.file && req.file.path) {
               fs.unlinkSync(req.file.path);
             }
@@ -1947,6 +1946,7 @@ exports.addNews = async (req, res) => {
           }
 
           if (decoded.hospitalId != hospitalId) {
+            console.error("Unauthorized access");
             if (req.file && req.file.path) {
               fs.unlinkSync(req.file.path);
             }
@@ -1959,46 +1959,12 @@ exports.addNews = async (req, res) => {
           const newsData = req.body;
           const newsImageFile = req.file;
 
-          function validateNewsData() {
-            const validationResults = {
-              isValid: true,
-              errors: {},
-            };
-
-            const titleValidation = dataValidator.isValidTitle(
-              newsData.hospitalNewsTitle
-            );
-            if (!titleValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalNewsTitle"] =
-                titleValidation.message;
-            }
-
-            const contentValidation = dataValidator.isValidContent(
-              newsData.hospitalNewsContent
-            );
-            if (!contentValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalNewsContent"] =
-                contentValidation.message;
-            }
-
-            const imageValidation =
-              dataValidator.isValidImageWith1MBConstraint(newsImageFile);
-            if (!imageValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["hospitalNewsImage"] =
-                imageValidation.message;
-            }
-
-            return validationResults;
-          }
-
-          const validationResults = validateNewsData();
+          const validationResults = validateHospitalNewsData(newsData, newsImageFile);
 
           if (!validationResults.isValid) {
-            if (req.file && req.file.path) {
-              fs.unlinkSync(req.file.path);
+            console.error("Validation failed:", validationResults.errors);
+            if (newsImageFile && newsImageFile.path) {
+              fs.unlinkSync(newsImageFile.path);
             }
             return res.status(400).json({
               status: "error",
@@ -2007,29 +1973,8 @@ exports.addNews = async (req, res) => {
             });
           }
 
-          const uploadToS3 = async (fileName, fileBuffer) => {
-            try {
-              const params = {
-                Bucket: process.env.S3_BUCKET_NAME,
-                Key: fileName,
-                Body: fileBuffer,
-                ACL: "public-read",
-              };
-
-              const uploadResult = await s3.upload(params).promise();
-              return uploadResult.Location;
-            } catch (error) {
-              if (req.file && req.file.path) {
-                fs.unlinkSync(req.file.path);
-              }
-              throw error;
-            }
-          };
-
           try {
-            const newsImageFileName = `hospitalNewsImage-${Date.now()}${path.extname(newsImageFile.originalname)}`;
-
-            const imageUrl = await uploadToS3(newsImageFileName, newsImageFile.buffer);
+            const imageUrl = await uploadFileToS3(newsImageFile);
 
             const newHospitalNews = {
               hospitalNewsTitle: newsData.hospitalNewsTitle,
@@ -2041,26 +1986,31 @@ exports.addNews = async (req, res) => {
               newsData.hospitalId,
               newHospitalNews
             );
-            return res.status(201).json({
+            return res.status(200).json({
               status: "success",
               message: "Hospital news added successfully",
               data: { hospitalNewsId: addedNewsId, ...newHospitalNews },
             });
           } catch (error) {
-            if (error.message === "Hospital not found") {
-              if (req.file && req.file.path) {
-                fs.unlinkSync(req.file.path);
-              }
-              return res.status(422).json({
-                status: "error",
-                error: error.message
-              });
-            } else {
-              if (req.file && req.file.path) {
-                fs.unlinkSync(req.file.path);
-              }
-              throw error;
+            console.error("Error during adding hospital news:", error);
+            if (newsImageFile && newsImageFile.path) {
+              fs.unlinkSync(newsImageFile.path);
             }
+            if (error.message === "Hospital not found" && newsImageFile) {
+              const params = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: `Files/hospitalNewsImages/${newsImageFile.filename}`
+              };
+              try {
+                await s3Client.send(new DeleteObjectCommand(params));
+              } catch (s3Error) {
+                console.error("Error deleting news image from S3:", s3Error);
+              }
+            }
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
           }
         });
       }
@@ -2075,6 +2025,67 @@ exports.addNews = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
+  }
+
+  // Function to validate hospital news data
+  function validateHospitalNewsData(newsData, newsImageFile) {
+    const validationResults = {
+      isValid: true,
+      errors: {},
+    };
+
+    const titleValidation = dataValidator.isValidTitle(
+      newsData.hospitalNewsTitle
+    );
+    if (!titleValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalNewsTitle"] =
+        titleValidation.message;
+    }
+
+    const contentValidation = dataValidator.isValidContent(
+      newsData.hospitalNewsContent
+    );
+    if (!contentValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalNewsContent"] =
+        contentValidation.message;
+    }
+
+    if (!newsImageFile) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalNewsImage"] =
+        "Hospital news image is required";
+    } else {
+      const imageValidation =
+        dataValidator.isValidImageWith1MBConstraint(newsImageFile);
+      if (!imageValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.errors["hospitalNewsImage"] =
+          imageValidation.message;
+      }
+    }
+
+    return validationResults;
+  }
+
+  // Function to upload file to S3
+  async function uploadFileToS3(file) {
+    try {
+      const fileName = `hospitalNewsImage-${Date.now()}${path.extname(file.originalname)}`;
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `Files/hospitalNewsImages/${fileName}`,
+        Body: file.buffer,
+        ACL: "public-read",
+        ContentType: file.mimetype,
+      };
+      const command = new PutObjectCommand(uploadParams);
+      const result = await s3Client.send(command);
+      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 //
@@ -2188,10 +2199,9 @@ exports.deleteNews = async (req, res) => {
 //
 // UPDATE NEWS
 exports.updateNews = async (req, res) => {
-  try {
-    const token = req.headers.token;
+  const token = req.headers.token;
 
-    // Check if token is missing
+  try {
     if (!token) {
       return res.status(403).json({
         status: "failed",
@@ -2199,7 +2209,6 @@ exports.updateNews = async (req, res) => {
       });
     }
 
-    // Verifying the token
     jwt.verify(
       token,
       process.env.JWT_SECRET_KEY_HOSPITAL,
@@ -2223,174 +2232,192 @@ exports.updateNews = async (req, res) => {
           }
         }
 
-        try {
-          const newsImageStorage = multer.diskStorage({
+        const uploadNewsImage = multer({
+          storage: multer.diskStorage({
             destination: function (req, file, cb) {
-              cb(null, "Files/HospitalImages/HospitalNewsImages");
+              cb(null, 'Files/HospitalNewsImages');
             },
             filename: function (req, file, cb) {
-              const uniqueSuffix =
-                Date.now() + "-" + Math.round(Math.random() * 1e9);
-              const ext = path.extname(file.originalname);
-              cb(null, "hospitalNewsImage-" + uniqueSuffix + ext);
-            },
-          });
-
-          const uploadNewsImage = multer({ storage: newsImageStorage }).single(
-            "hospitalNewsImage"
-          );
-
-          uploadNewsImage(req, res, async function (err) {
-            if (err) {
-              return res.status(400).json({
-                status: "error",
-                message: "File upload failed",
-                results: err.message,
-              });
+              cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
             }
+          })
+        }).single("hospitalNewsImage");
 
-            const { hospitalId, hospitalNewsId, hospitalNewsTitle, hospitalNewsContent } = req.body;
-
-            // Check if hospitalId is missing
-            if (!hospitalId) {
-              cleanupUploadedFiles(req);
-              return res.status(401).json({
-                status: "failed",
-                message: "Hospital ID is missing"
-              });
+        uploadNewsImage(req, res, async function (err) {
+          if (err) {
+            console.error("File upload failed:", err);
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
             }
+            return res.status(400).json({
+              status: "error",
+              message: "File upload failed",
+              results: err.message,
+            });
+          }
 
-            // Check if hospitalNewsId is missing
-            if (!hospitalNewsId) {
-              cleanupUploadedFiles(req);
-              return res.status(401).json({
-                status: "failed",
-                message: "Hospital News ID is missing"
-              });
+          const { hospitalId, hospitalNewsId, hospitalNewsTitle, hospitalNewsContent } = req.body;
+
+          if (!hospitalId || !hospitalNewsId) {
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
             }
+            return res.status(401).json({
+              status: "failed",
+              message: "Hospital ID or Hospital News ID is missing"
+            });
+          }
 
-            // Check if decoded token matches hospitalId from request body
-            if (decoded.hospitalId != hospitalId) {
-              cleanupUploadedFiles(req);
-              return res.status(403).json({
-                status: "error",
-                message: "Unauthorized access"
-              });
+          if (decoded.hospitalId != hospitalId) {
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
             }
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
 
-            const newsImageFile = req.file;
+          const newsData = req.body;
+          const newsImageFile = req.file;
 
-            function validateUpdatedNewsData(newsData, newsImageFile) {
-              const validationResults = {
-                isValid: true,
-                errors: {},
-              };
+          const validationResults = validateHospitalNewsData(newsData, newsImageFile);
 
-              const titleValidation = dataValidator.isValidTitle(
-                newsData.hospitalNewsTitle
-              );
-
-              if (!titleValidation.isValid) {
-                validationResults.isValid = false;
-                validationResults.errors["hospitalNewsTitle"] = [
-                  titleValidation.message,
-                ];
-              }
-
-              const contentValidation = dataValidator.isValidContent(
-                newsData.hospitalNewsContent
-              );
-
-              if (!contentValidation.isValid) {
-                validationResults.isValid = false;
-                validationResults.errors["hospitalNewsContent"] = [
-                  contentValidation.message,
-                ];
-              }
-
-              const imageValidation =
-                dataValidator.isValidImageWith1MBConstraint(newsImageFile);
-
-              if (!imageValidation.isValid) {
-                validationResults.isValid = false;
-                validationResults.errors["hospitalNewsImage"] = [
-                  imageValidation.message,
-                ];
-              }
-
-              return validationResults;
+          if (!validationResults.isValid) {
+            console.error("Validation failed:", validationResults.errors);
+            if (newsImageFile && newsImageFile.path) {
+              fs.unlinkSync(newsImageFile.path);
             }
+            return res.status(400).json({
+              status: "error",
+              message: "Validation failed",
+              results: validationResults.errors,
+            });
+          }
 
-            const validationResults = validateUpdatedNewsData(
-              { hospitalNewsTitle, hospitalNewsContent, hospitalId },
-              newsImageFile
-            );
-
-            if (!validationResults.isValid) {
-              cleanupUploadedFiles(req); // Delete uploaded file on validation failure
-              return res.status(400).json({
-                status: "error",
-                message: "Validation failed",
-                results: validationResults.errors,
-              });
-            }
+          try {
+            const imageUrl = await uploadFileToS3(newsImageFile);
 
             const updatedHospitalNews = {
               hospitalNewsTitle,
               hospitalNewsContent,
-              hospitalNewsImage: newsImageFile ? newsImageFile.filename : null,
+              hospitalNewsImage: imageUrl,
               updatedDate: new Date(),
             };
 
-            try {
-              await Hospital.updateNews(
-                hospitalNewsId,
-                hospitalId,
-                updatedHospitalNews
-              );
-              return res.status(200).json({
-                status: "success",
-                message: "Hospital news updated successfully",
-              });
-            } catch (error) {
-              if (
-                error.message === "Hospital not found" ||
-                error.message === "Hospital news not found"
-              ) {
-                return res
-                  .status(422)
-                  .json({
-                    status: "error",
-                    error: error.message
-                  });
-              } else {
-                console.error("Error updating hospital news:", error);
-                cleanupUploadedFiles(req); // Delete uploaded file on error
-                return res.status(500).json({
-                  status: "error",
-                  message: "Internal server error",
-                  error: error.message,
-                });
-              }
+            await Hospital.updateNews(
+              hospitalNewsId,
+              hospitalId,
+              updatedHospitalNews
+            );
+            return res.status(200).json({
+              status: "success",
+              message: "Hospital news updated successfully",
+            });
+          } catch (error) {
+            console.error("Error during updating hospital news:", error);
+            if (newsImageFile && newsImageFile.path) {
+              fs.unlinkSync(newsImageFile.path);
             }
-          });
-        } catch (error) {
-          console.error("Error during updateHospitalNews:", error);
-          return res.status(500).json({
-            status: "error",
-            message: "Internal server error",
-            error: error.message,
-          });
-        }
+            if (
+              error.message === "Hospital not found" ||
+              error.message === "Hospital news not found"
+            ) {
+              if (newsImageFile) {
+                const params = {
+                  Bucket: process.env.S3_BUCKET_NAME,
+                  Key: `Files/hospitalNewsImages/${newsImageFile.filename}` // Updated directory structure
+                };
+                try {
+                  await s3Client.send(new DeleteObjectCommand(params));
+                } catch (s3Error) {
+                  console.error("Error deleting news image from S3:", s3Error);
+                }
+              }
+              return res
+                .status(422)
+                .json({
+                  status: "error",
+                  error: error.message
+                });
+            } else {
+              return res.status(422).json({
+                status: "error",
+                error: error.message
+              });
+            }
+          }
+        });
       }
     );
   } catch (error) {
-    console.error("Error during updateHospitalNews:", error);
+    console.error("Error during updating hospital news:", error);
     return res.status(500).json({
       status: "error",
       message: "Internal server error",
       error: error.message,
     });
+  }
+
+  // Function to validate hospital news data
+  function validateHospitalNewsData(newsData, newsImageFile) {
+    const validationResults = {
+      isValid: true,
+      errors: {},
+    };
+
+    const titleValidation = dataValidator.isValidTitle(
+      newsData.hospitalNewsTitle
+    );
+    if (!titleValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalNewsTitle"] =
+        titleValidation.message;
+    }
+
+    const contentValidation = dataValidator.isValidContent(
+      newsData.hospitalNewsContent
+    );
+    if (!contentValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalNewsContent"] =
+        contentValidation.message;
+    }
+
+    if (!newsImageFile) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalNewsImage"] =
+        "Hospital news image is required";
+    } else {
+      const imageValidation =
+        dataValidator.isValidImageWith1MBConstraint(newsImageFile);
+      if (!imageValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.errors["hospitalNewsImage"] =
+          imageValidation.message;
+      }
+    }
+
+    return validationResults;
+  }
+
+  // Function to upload file to S3
+  async function uploadFileToS3(file) {
+    try {
+      const fileName = `hospitalNewsImage-${Date.now()}${path.extname(file.originalname)}`;
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `Files/hospitalNewsImages/${fileName}`, // Updated directory structure
+        Body: file.buffer,
+        ACL: "public-read",
+        ContentType: file.mimetype,
+      };
+      const command = new PutObjectCommand(uploadParams);
+      const result = await s3Client.send(command);
+      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 //

@@ -361,8 +361,6 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     throw error;
   }
 };
-
-
 //
 //
 //
