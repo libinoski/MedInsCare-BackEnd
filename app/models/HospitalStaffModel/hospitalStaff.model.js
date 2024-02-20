@@ -333,20 +333,17 @@ HospitalStaff.registerPatient = async (patientData) => {
       throw { name: "ValidationError", errors: errors };
     }
 
-    // Set patient's hospitalId based on the staff's hospital
     patientData.hospitalId = staffHospitalResult[0].hospitalId;
 
-    // Initialize errors object for validation errors
     const errors = {};
 
-    // Validate unique fields: Aadhar and Email for the patient
-    const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar=? AND deleteStatus=0";
+    const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar=? AND dischargeStatus = 0";
     const aadharRes = await dbQuery(checkAadharQuery, [patientData.patientAadhar]);
     if (aadharRes.length > 0) {
       errors["aadhar"] = "Aadhar number already exists";
     }
 
-    const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail=? AND deleteStatus=0";
+    const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail=? AND dischargeStatus	= 0";
     const emailRes = await dbQuery(checkEmailQuery, [patientData.patientEmail]);
     if (emailRes.length > 0) {
       errors["email"] = "Email already exists";
@@ -365,13 +362,14 @@ HospitalStaff.registerPatient = async (patientData) => {
     const insertQuery = "INSERT INTO Patients SET ?";
     const insertRes = await dbQuery(insertQuery, patientData);
 
-    // Return the newly registered patient data, including the generated patientId
-    return { ...patientData, patientId: insertRes.insertId };
+    // Return the newly registered patient data, including the generated patientId and hospitalId
+    return {patientId: insertRes.insertId, hospitalId: patientData.hospitalId, ...patientData };
   } catch (error) {
     console.error("Error during patient registration in model:", error);
     throw error;
   }
 };
+
 //
 //
 //

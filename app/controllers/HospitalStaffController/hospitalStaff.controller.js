@@ -5,6 +5,20 @@ const jwt = require("jsonwebtoken");
 const dataValidator = require("../../config/data.validate");
 const fs = require("fs");
 const { HospitalStaff } = require("../../models/HospitalStaffModel/hospitalStaff.model");
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+require("dotenv").config();
+//
+//
+//
+//
+//
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 //
 //
 //
@@ -66,18 +80,9 @@ exports.login = async (req, res) => {
   } catch (error) {
     if (
       error.message === "Hospital staff not found" ||
-      error.message === "You are not permitted to login" ||
-      error.message === "Invalid password" ||
-      error.message === "Hospital staff account is deleted"
-    ) {
-      return res.status(422).json({
-        status: "Failure",
-        message: "Authentication failed",
-        error: error.message,
-      });
-    } else if (
       error.message === "The associated hospital is not active" ||
-      error.message === "The associated hospital is deleted"
+      error.message === "The associated hospital is deleted" ||
+      error.message === "Invalid password"
     ) {
       return res.status(422).json({
         status: "Failure",
@@ -832,7 +837,7 @@ exports.registerPatient = async (req, res) => {
       });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
       if (err) {
           if (err.name === "JsonWebTokenError") {
               return res.status(403).json({
@@ -869,25 +874,19 @@ exports.registerPatient = async (req, res) => {
 
           const patientData = req.body;
 
-          if (!decoded.hospitalStaffId != patientData.hospitalStaffId) {
-            return res.status(403).json({
-                status: "failed",
-                message: "Unauthorized access"
-            });
-        }
-
+          if (decoded.hospitalStaffId != patientData.hospitalStaffId) {
+              return res.status(403).json({
+                  status: "failed",
+                  message: "Unauthorized access"
+              });
+          }
+      
           patientData.patientAadhar = patientData.patientAadhar ? patientData.patientAadhar.replace(/\s/g, '') : '';
           patientData.patientMobile = patientData.patientMobile ? patientData.patientMobile.replace(/\s/g, '') : '';
 
-          if (!req.files || !req.files["patientIdProofImage"] || !req.files["patientProfileImage"]) {
-            return res.status(400).json({
-                status: "validation failed",
-                error: "Patient ID proof image and profile image are required",
-            });
-        }
 
-          const idProofImageFile = req.files["patientIdProofImage"][0];
-          const profileImageFile = req.files["patientProfileImage"][0];
+          const idProofImageFile = req.files["patientIdProofImage"] ? req.files["patientIdProofImage"][0] : null;
+          const profileImageFile = req.files["patientProfileImage"] ? req.files["patientProfileImage"][0] : null;
 
           const validationResults = validatePatientRegistration(patientData, idProofImageFile, profileImageFile);
 
@@ -937,6 +936,7 @@ exports.registerPatient = async (req, res) => {
               const idProofFileLocation = await uploadFileToS3(idProofImageFile, idProofFileName, idProofImageFile.mimetype);
               const profileImageFileLocation = await uploadFileToS3(profileImageFile, profileImageFileName, profileImageFile.mimetype);
 
+              // Assign S3 URLs to patientData instead of file names
               patientData.patientIdProofImage = idProofFileLocation;
               patientData.patientProfileImage = profileImageFileLocation;
 
@@ -1038,8 +1038,20 @@ exports.registerPatient = async (req, res) => {
           validationResults.errors["patientPassword"] = passwordValidation.message;
       }
 
+      const genderValidation = dataValidator.isValidGender(patientData.patientGender);
+      if (!genderValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["patientGender"] = genderValidation.message;
+      }
+      const ageValidation = dataValidator.isValidAge(patientData.patientAge);
+      if (!ageValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["patientGender"] = ageValidation.message;
+      }
+
+
       const addressValidation = dataValidator.isValidAddress(patientData.patientAddress);
-      if (!passwordValidation.isValid) {
+      if (!addressValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["patientAddress"] = addressValidation.message;
       }
