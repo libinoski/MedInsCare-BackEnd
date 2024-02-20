@@ -868,6 +868,8 @@ exports.registerPatient = async (req, res) => {
           console.log(req.files);
 
           const patientData = req.body;
+          console.log("pidfrombody",patientData.hospitalStaffId)
+          console.log("pidfromtoken",decoded.hospitalStaffId)
 
           if (!decoded.hospitalStaffId != patientData.hospitalStaffId) {
             return res.status(403).json({

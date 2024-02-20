@@ -837,6 +837,8 @@ exports.registerStaff = async (req, res) => {
           });
       }
 
+
+
       const uploadStaffImages = multer({
           storage: multer.memoryStorage(),
       }).fields([
@@ -851,30 +853,26 @@ exports.registerStaff = async (req, res) => {
                   results: { files: "File upload failed", details: err.message },
               });
           }
-          console.log(req.files);
 
           const hospitalStaffData = req.body;
-
-          // Check if hospitalStaffData.hospitalId exists
-          if (!decoded.hospitalId!=hospitalStaffData.hospitalId) {
-              return res.status(403).json({
-                  status: "failed",
-                  message: "Unauthorized access"
-              });
+          if (decoded.hospitalId != hospitalStaffData.hospitalId) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Unauthorized access"
+            });
           }
+
 
           // Perform data cleanup
           hospitalStaffData.hospitalStaffAadhar = hospitalStaffData.hospitalStaffAadhar ? hospitalStaffData.hospitalStaffAadhar.replace(/\s/g, '') : '';
           hospitalStaffData.hospitalStaffMobile = hospitalStaffData.hospitalStaffMobile ? hospitalStaffData.hospitalStaffMobile.replace(/\s/g, '') : '';
 
           if (!req.files || !req.files["hospitalStaffIdProofImage"] || !req.files["hospitalStaffProfileImage"]) {
-            return res.status(400).json({
-                status: "validation failed",
-                error: "Hospital staff ID proof image and profile image are required",
-            });
-        }
-
-
+              return res.status(400).json({
+                  status: "validation failed",
+                  error: "Hospital staff ID proof image and profile image are required",
+              });
+          }
 
           const staffIdProofImageFile = req.files["hospitalStaffIdProofImage"][0];
           const staffProfileImageFile = req.files["hospitalStaffProfileImage"][0];
@@ -1004,6 +1002,13 @@ exports.registerStaff = async (req, res) => {
           errors: {},
       };
 
+      const idValidation = dataValidator.isValidId(hospitalStaffData.hospitalId);
+      if (!idValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["hospitalId"] = idValidation.message;
+      }
+
+
       // Name validation
       const nameValidation = dataValidator.isValidName(hospitalStaffData.hospitalStaffName);
       if (!nameValidation.isValid) {
@@ -1046,7 +1051,7 @@ exports.registerStaff = async (req, res) => {
           validationResults.errors["hospitalStaffAddress"] = addressValidation.message;
       }
 
-      const idProofImageValidation =  dataValidator.isValidImageWith1MBConstraint(staffIdProofImageFile);
+      const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(staffIdProofImageFile);
       if (!idProofImageValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["hospitalStaffIdProofImage"] = idProofImageValidation.message;

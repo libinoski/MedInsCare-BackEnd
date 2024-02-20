@@ -355,7 +355,7 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
     const insertRes = await dbQuery(insertQuery, newHospitalStaff);
 
-    const insertedStaff = { ...newHospitalStaff, hospitalStaffId: insertRes.insertId };
+    const insertedStaff = {hospitalStaffId: insertRes.insertId, ...newHospitalStaff };
     return insertedStaff;
   } catch (error) {
     throw error;
