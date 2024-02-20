@@ -539,7 +539,6 @@ exports.changeProfileImage = async (req, res) => {
     }
   );
 };
-
 //
 //
 //
@@ -826,7 +825,6 @@ exports.updateProfile = async (req, res) => {
 exports.registerPatient = async (req, res) => {
   const token = req.headers.token;
 
-  // Check if token is missing
   if (!token) {
       return res.status(403).json({
           status: "failed",
@@ -871,15 +869,13 @@ exports.registerPatient = async (req, res) => {
 
           const patientData = req.body;
 
-          // Check if patientData.hospitalId exists
-          if (!decoded.hospitalStaffId!=patientData.hospitalStaffId) {
+          if (!decoded.hospitalStaffId != patientData.hospitalStaffId) {
             return res.status(403).json({
                 status: "failed",
                 message: "Unauthorized access"
             });
         }
 
-          // Perform data cleanup
           patientData.patientAadhar = patientData.patientAadhar ? patientData.patientAadhar.replace(/\s/g, '') : '';
           patientData.patientMobile = patientData.patientMobile ? patientData.patientMobile.replace(/\s/g, '') : '';
 
@@ -890,29 +886,25 @@ exports.registerPatient = async (req, res) => {
             });
         }
 
-
-
           const idProofImageFile = req.files["patientIdProofImage"][0];
           const profileImageFile = req.files["patientProfileImage"][0];
 
           const validationResults = validatePatientRegistration(patientData, idProofImageFile, profileImageFile);
 
           if (!validationResults.isValid) {
-              // Delete uploaded images from local storage
               if (idProofImageFile && idProofImageFile.filename) {
-                  const idProofImagePath = path.join("Files/patientImages", idProofImageFile.filename);
+                  const idProofImagePath = path.join("Files/PatientImages", idProofImageFile.filename);
                   fs.unlinkSync(idProofImagePath);
               }
               if (profileImageFile && profileImageFile.filename) {
-                  const profileImagePath = path.join("Files/patientImages", profileImageFile.filename);
+                  const profileImagePath = path.join("Files/PatientImages", profileImageFile.filename);
                   fs.unlinkSync(profileImagePath);
               }
-              // Delete uploaded images from S3
               if (patientData.patientIdProofImage) {
                   const idProofS3Key = patientData.patientIdProofImage.split('/').pop();
                   const idProofParams = {
                       Bucket: process.env.S3_BUCKET_NAME,
-                      Key: `patientImages/${idProofS3Key}`
+                      Key: `PatientImages/${idProofS3Key}`
                   };
                   try {
                       await s3Client.send(new DeleteObjectCommand(idProofParams));
@@ -924,7 +916,7 @@ exports.registerPatient = async (req, res) => {
                   const profileS3Key = patientData.patientProfileImage.split('/').pop();
                   const profileParams = {
                       Bucket: process.env.S3_BUCKET_NAME,
-                      Key: `patientImages/${profileS3Key}`
+                      Key: `PatientImages/${profileS3Key}`
                   };
                   try {
                       await s3Client.send(new DeleteObjectCommand(profileParams));
@@ -938,7 +930,6 @@ exports.registerPatient = async (req, res) => {
               });
           }
 
-          // Upload patient images to S3
           const idProofFileName = `patientIdProof-${Date.now()}${path.extname(idProofImageFile.originalname)}`;
           const profileImageFileName = `patientProfileImage-${Date.now()}${path.extname(profileImageFile.originalname)}`;
 
@@ -949,7 +940,6 @@ exports.registerPatient = async (req, res) => {
               patientData.patientIdProofImage = idProofFileLocation;
               patientData.patientProfileImage = profileImageFileLocation;
 
-              // Register patient in the hospital
               const registrationResponse = await HospitalStaff.registerPatient(patientData);
               return res.status(200).json({
                   status: "success",
@@ -957,14 +947,12 @@ exports.registerPatient = async (req, res) => {
                   data: registrationResponse,
               });
           } catch (error) {
-              // Handling errors from the model
               if (error.name === "ValidationError") {
-                  // Delete uploaded images from S3
                   if (patientData.patientIdProofImage) {
                       const idProofS3Key = patientData.patientIdProofImage.split('/').pop();
                       const idProofParams = {
                           Bucket: process.env.S3_BUCKET_NAME,
-                          Key: `patientImages/${idProofS3Key}`
+                          Key: `PatientImages/${idProofS3Key}`
                       };
                       try {
                           await s3Client.send(new DeleteObjectCommand(idProofParams));
@@ -976,7 +964,7 @@ exports.registerPatient = async (req, res) => {
                       const profileS3Key = patientData.patientProfileImage.split('/').pop();
                       const profileParams = {
                           Bucket: process.env.S3_BUCKET_NAME,
-                          Key: `patientImages/${profileS3Key}`
+                          Key: `PatientImages/${profileS3Key}`
                       };
                       try {
                           await s3Client.send(new DeleteObjectCommand(profileParams));
@@ -1003,7 +991,7 @@ exports.registerPatient = async (req, res) => {
   async function uploadFileToS3(fileBuffer, fileName, mimeType) {
       const uploadParams = {
           Bucket: process.env.S3_BUCKET_NAME,
-          Key: `patientImages/${fileName}`,
+          Key: `PatientImages/${fileName}`,
           Body: fileBuffer.buffer,
           ACL: "public-read",
           ContentType: mimeType,
@@ -1020,42 +1008,36 @@ exports.registerPatient = async (req, res) => {
           errors: {},
       };
 
-      // Name validation
       const nameValidation = dataValidator.isValidName(patientData.patientName);
       if (!nameValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["patientName"] = nameValidation.message;
       }
 
-      // Email validation
       const emailValidation = dataValidator.isValidEmail(patientData.patientEmail);
       if (!emailValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["patientEmail"] = emailValidation.message;
       }
 
-      // Aadhar validation
       const aadharValidation = dataValidator.isValidAadharNumber(patientData.patientAadhar);
       if (!aadharValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["patientAadhar"] = aadharValidation.message;
       }
 
-      // Mobile validation
       const mobileValidation = dataValidator.isValidMobileNumber(patientData.patientMobile);
       if (!mobileValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["patientMobile"] = mobileValidation.message;
       }
 
-      // Password validation
       const passwordValidation = dataValidator.isValidPassword(patientData.patientPassword);
       if (!passwordValidation.isValid) {
           validationResults.isValid = false;
           validationResults.errors["patientPassword"] = passwordValidation.message;
       }
 
-      // Address validation
       const addressValidation = dataValidator.isValidAddress(patientData.patientAddress);
       if (!passwordValidation.isValid) {
           validationResults.isValid = false;
@@ -1068,7 +1050,6 @@ exports.registerPatient = async (req, res) => {
           validationResults.errors["patientIdProofImage"] = idProofImageValidation.message;
       }
 
-      // Validate patient profile image
       const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(profileImageFile);
       if (!profileImageValidation.isValid) {
           validationResults.isValid = false;
@@ -1078,7 +1059,6 @@ exports.registerPatient = async (req, res) => {
       return validationResults;
   }
 };
-
 //
 //
 //
