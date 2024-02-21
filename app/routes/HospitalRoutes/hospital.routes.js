@@ -23,6 +23,7 @@ router.post("/viewOneSuspendedHospitalStaff", HospitalController.viewOneSuspende
 router.post("/viewAllHospitalStaffs", HospitalController.viewAllStaffs);
 router.post("/viewOneHospitalStaff", HospitalController.viewOneStaff);
 router.post("/searchHospitalStaff", HospitalController.searchStaffs);
+router.post("/sendnotificationToStaff", HospitalController.sendNotificationToStaff);
 router.post("/addHospitalNews", HospitalController.addNews);
 router.post("/deleteHospitalNews", HospitalController.deleteNews);
 router.post("/updateHospitalNews", HospitalController.updateNews);

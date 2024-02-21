@@ -2071,6 +2071,130 @@ exports.searchStaffs = async (req, res) => {
 //
 //
 //
+// SEND NOTIFICATION TO STAFF
+exports.sendNotificationToStaff = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, hospitalStaffId, notificationMessage } = req.body;
+
+    if (!token) {
+      return res.status(403).json({
+        status: "error",
+        message: "Token is missing"
+      });
+    }
+
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Hospital ID is missing"
+      });
+    }
+    if (!hospitalStaffId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Hospital Staff ID is missing"
+      });
+    }
+    if (!notificationMessage) {
+      return res.status(401).json({
+        status: "error",
+        message: "Notification message is missing"
+      });
+    }
+
+    // Token verification
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Invalid or missing token"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Token has expired"
+          });
+        } else {
+          return res.status(403).json({
+            status: "error",
+            message: "Unauthorized access"
+          });
+        }
+      }
+
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: "error",
+          message: "Unauthorized access"
+        });
+      }
+
+      // Function to validate notification message
+      function validateNotificationData(notificationMessage) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        const messageValidation = dataValidator.isValidMessage(notificationMessage);
+        if (!messageValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["notificationMessage"] = messageValidation.message;
+        }
+
+        return validationResults;
+      }
+
+      const validationResults = validateNotificationData(notificationMessage);
+
+      if (!validationResults.isValid) {
+        return res.status(400).json({
+          status: "error",
+          message: "Validation failed",
+          errors: validationResults.errors
+        });
+      }
+
+      try {
+        const notificationDetails = await Hospital.sendNotificationToStaff(hospitalId, hospitalStaffId, notificationMessage);
+
+        return res.status(200).json({
+          status: "success",
+          message: "Notification sent successfully",
+          data: notificationDetails
+        });
+      } catch (error) {
+        console.error("Error sending notification to hospital staff:", error);
+
+        if (error.message === "Hospital not found" || error.message === "Hospital Staff not found or not active") {
+          return res.status(422).json({
+            status: "error",
+            message: error.message
+          });
+        }
+
+        return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error in sendNotificationToStaff controller:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+//
+//
+//
+//
 // ADD NEWS
 exports.addNews = async (req, res) => {
   const token = req.headers.token;

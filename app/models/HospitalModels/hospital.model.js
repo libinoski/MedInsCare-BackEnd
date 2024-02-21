@@ -68,6 +68,19 @@ const HospitalNews = function (hospitalNews) {
 //
 //
 //
+// Hospital Notification To Hospital Staff Model
+const NotificationToHospitalStaffs = function (notification) {
+  this.notificationId = notification.notificationId;
+  this.hospitalId = notification.hospitalId;
+  this.hospitalStaffId = notification.hospitalStaffId;
+  this.message = notification.message;
+  this.sendDate = notification.sendDate;
+  this.isSuccess = notification.isSuccess;
+};
+//
+//
+//
+//
 // REGISTER
 Hospital.register = async (newHospital) => {
   try {
@@ -366,7 +379,6 @@ Hospital.registerStaff = async (newHospitalStaff) => {
 //
 //
 // DELETE STAFF
-// DELETE STAFF
 Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -398,7 +410,6 @@ Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
     throw error;
   }
 };
-
 //
 //
 //
@@ -471,7 +482,6 @@ Hospital.unSuspendStaff = async (hospitalStaffId, hospitalId) => {
     throw error;
   }
 };
-
 //
 //
 //
@@ -662,7 +672,7 @@ Hospital.viewOneStaff = async (hospitalStaffId, hospitalId) => {
       throw new Error("Hospital Staff not found");
     }
 
-    return staffDetails[0]; // Returning the staff details directly
+    return staffDetails[0]; 
   } catch (error) {
     console.error("Error viewing hospital staff:", error);
     throw error;
@@ -728,6 +738,42 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
     return result;
   } catch (error) {
     console.error("Error searching hospital staff:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+Hospital.sendNotificationToStaff = async (hospitalId, hospitalStaffId, notificationMessage) => {
+  try {
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const checkStaffResult = await dbQuery(checkStaffQuery, [hospitalStaffId, hospitalId]);
+    if (checkStaffResult.length === 0) {
+      throw new Error("Hospital Staff not found or not active");
+    }
+
+    const insertNotificationQuery = "INSERT INTO Notification_To_Hospital_Staffs (hospitalId, hospitalStaffId, message) VALUES (?, ?, ?)";
+    const result = await dbQuery(insertNotificationQuery, [hospitalId, hospitalStaffId, notificationMessage]);
+
+    const notificationId = result.insertId;
+
+    const notificationDetails = {
+      notificationId: notificationId,
+      hospitalId: hospitalId,
+      hospitalStaffId: hospitalStaffId,
+      message: notificationMessage, // Update field name here
+    };
+
+    return notificationDetails;
+  } catch (error) {
+    console.error("Error sending notification to hospital staff:", error);
     throw error;
   }
 };
@@ -896,4 +942,4 @@ Hospital.viewOneNews = async (hospitalNewsId, hospitalId) => {
 //
 //
 //
-module.exports = { Hospital, HospitalStaff, HospitalNews };
+module.exports = { Hospital, HospitalStaff, HospitalNews, NotificationToHospitalStaffs };
