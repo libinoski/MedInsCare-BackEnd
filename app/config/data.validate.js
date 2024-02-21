@@ -401,6 +401,29 @@ function isValidDate(dateString) {
 }
 
 
+// Validate a message with a maximum length of 500 characters.
+function isValidMessage(message) {
+    if (isNullOrUndefined(message)) {
+        return {
+            isValid: false,
+            message: "Message cannot be null or undefined."
+        };
+    }
+
+    if (message.length > 500) {
+        return {
+            isValid: false,
+            message: "Message exceeds the maximum length of 500 characters."
+        };
+    }
+
+    return {
+        isValid: true,
+        message: "Message is valid."
+    };
+}
+
+
 
 // Export all validation functions
 module.exports = {
@@ -420,5 +443,6 @@ module.exports = {
     isValidAge,
     isValidGender,
     isValidText,
-    isValidDate
+    isValidDate,
+    isValidMessage
 };
