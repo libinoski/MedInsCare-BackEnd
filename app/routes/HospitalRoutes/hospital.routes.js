@@ -18,6 +18,8 @@ router.post("/deleteHospitalStaff", HospitalController.deleteStaff);
 router.post("/updateHospitalStaff", HospitalController.updateStaff);
 router.post("/suspendHospitalStaff", HospitalController.suspendStaff);
 router.post("/unSuspendHospitalStaff", HospitalController.unsuspendStaff);
+router.post("/viewAllSuspendedHospitalStaffs", HospitalController.viewAllSuspendedStaffs);
+router.post("/viewOneSuspendedHospitalStaff", HospitalController.viewOneSuspendedStaff);
 router.post("/viewAllHospitalStaffs", HospitalController.viewAllStaffs);
 router.post("/viewOneHospitalStaff", HospitalController.viewOneStaff);
 router.post("/searchHospitalStaff", HospitalController.searchStaffs);

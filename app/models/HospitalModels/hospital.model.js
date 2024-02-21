@@ -82,14 +82,14 @@ Hospital.register = async (newHospital) => {
       newHospital.hospitalEmail,
     ]);
     if (emailRes.length > 0) {
-      errors["email"] = "Email already exists";
+      errors["Email"] = ["Email already exists"];
     }
 
     const aadharRes = await dbQuery(checkAadharQuery, [
       newHospital.hospitalAadhar,
     ]);
     if (aadharRes.length > 0) {
-      errors["aadhar"] = "Aadhar number already exists";
+      errors["Aadhar"] = ["Aadhar number already exists"];
     }
 
     if (Object.keys(errors).length > 0) {
@@ -164,7 +164,7 @@ Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
     );
 
     if (!isMatch) {
-      throw new Error("Invalid old password");
+      throw new Error("Incorrect old password");
     }
 
     const hashedNewPassword = await promisify(bcrypt.hash)(newPassword, 10);
@@ -333,14 +333,14 @@ Hospital.registerStaff = async (newHospitalStaff) => {
       newHospitalStaff.hospitalStaffAadhar,
     ]);
     if (aadharRes.length > 0) {
-      errors["aadhar"] = "Aadhar number already exists";
+      errors["Aadhar"] = ["Aadhar number already exists"];
     }
 
     const emailRes = await dbQuery(checkEmailQuery, [
       newHospitalStaff.hospitalStaffEmail,
     ]);
     if (emailRes.length > 0) {
-      errors["email"] = "Email already exists";
+      errors["Email"] = ["Email already exists"];
     }
 
     if (Object.keys(errors).length > 0) {
@@ -366,6 +366,7 @@ Hospital.registerStaff = async (newHospitalStaff) => {
 //
 //
 // DELETE STAFF
+// DELETE STAFF
 Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -388,7 +389,7 @@ Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
     }
 
     const deleteQuery =
-      "UPDATE Hospital_Staffs SET deleteStatus = 1 WHERE hospitalStaffId = ? AND hospitalId = ?";
+      "UPDATE Hospital_Staffs SET deleteStatus = 1, isActive = 0 WHERE hospitalStaffId = ? AND hospitalId = ?";
     await dbQuery(deleteQuery, [hospitalStaffId, hospitalId]);
 
     return true; // Indicates successful deletion
@@ -397,6 +398,7 @@ Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
     throw error;
   }
 };
+
 //
 //
 //
@@ -413,7 +415,7 @@ Hospital.suspendStaff = async (hospitalStaffId, hospitalId) => {
     }
 
     const checkStaffQuery =
-      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND deleteStatus = 0 AND isSuspended = 0";
+      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0";
     const checkStaffResult = await dbQuery(checkStaffQuery, [
       hospitalStaffId,
       hospitalId,
@@ -424,7 +426,7 @@ Hospital.suspendStaff = async (hospitalStaffId, hospitalId) => {
     }
 
     const suspendQuery =
-      "UPDATE Hospital_Staffs SET isSuspended = 1 WHERE hospitalStaffId = ? AND hospitalId = ?";
+      "UPDATE Hospital_Staffs SET isSuspended = 1,isActive= 0 WHERE hospitalStaffId = ? AND hospitalId = ?";
     await dbQuery(suspendQuery, [hospitalStaffId, hospitalId]);
 
     return true; // Indicates successful suspension
@@ -449,7 +451,7 @@ Hospital.unSuspendStaff = async (hospitalStaffId, hospitalId) => {
     }
 
     const checkStaffQuery =
-      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND deleteStatus = 0 AND isSuspended = 1";
+      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND deleteStatus = 0  AND isActive = 0 AND isSuspended = 1";
     const checkStaffResult = await dbQuery(checkStaffQuery, [
       hospitalStaffId,
       hospitalId,
@@ -460,12 +462,71 @@ Hospital.unSuspendStaff = async (hospitalStaffId, hospitalId) => {
     }
 
     const unsuspendQuery =
-      "UPDATE Hospital_Staffs SET isSuspended = 0 WHERE hospitalStaffId = ? AND hospitalId = ?";
+      "UPDATE Hospital_Staffs SET isSuspended = 0, isActive = 1 WHERE hospitalStaffId = ? AND hospitalId = ?";
     await dbQuery(unsuspendQuery, [hospitalStaffId, hospitalId]);
 
     return true; // Indicates successful unsuspension
   } catch (error) {
     console.error("Error unsuspending hospital staff:", error);
+    throw error;
+  }
+};
+
+//
+//
+//
+//
+// VIEW ALL SUSPENDED STAFFS
+Hospital.viewAllSuspendedStaffs = async (hospitalId) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewSuspendedStaffsQuery =
+      "SELECT * FROM Hospital_Staffs WHERE hospitalId = ? AND isSuspended = 1 AND isActive = 0 AND deleteStatus = 0";
+    const suspendedStaffs = await dbQuery(viewSuspendedStaffsQuery, [hospitalId]);
+
+    return suspendedStaffs;
+  } catch (error) {
+    console.error("Error viewing all suspended hospital staffs:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// VIEW ONE SUSPENDED STAFF
+Hospital.viewOneSuspendedStaff = async (hospitalStaffId, hospitalId) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewOneSuspendedStaffQuery =
+      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND isSuspended = 1 AND isActive = 0 AND deleteStatus = 0";
+    const suspendedStaffDetails = await dbQuery(viewOneSuspendedStaffQuery, [
+      hospitalStaffId,
+      hospitalId,
+    ]);
+
+    if (suspendedStaffDetails.length === 0) {
+      throw new Error("Suspended staff not found");
+    }
+
+    return suspendedStaffDetails[0]; // Returning the suspended staff details directly
+  } catch (error) {
+    console.error("Error viewing suspended staff:", error);
     throw error;
   }
 };
@@ -487,7 +548,7 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
     }
 
     const checkStaffQuery =
-      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND deleteStatus = 0 AND isSuspended = 0";
+      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0";
     const checkStaffRes = await dbQuery(checkStaffQuery, [
       updatedHospitalStaff.hospitalStaffId,
       updatedHospitalStaff.hospitalId,
@@ -498,7 +559,7 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
     }
 
     const checkAadharQuery =
-      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar = ? AND hospitalId = ? AND hospitalStaffId != ? AND deleteStatus = 0 AND isSuspended = 0";
+      "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar = ? AND hospitalId = ? AND hospitalStaffId != ? AND isActive = 1 AND deleteStatus = 0";
     const aadharRes = await dbQuery(checkAadharQuery, [
       updatedHospitalStaff.hospitalStaffAadhar,
       updatedHospitalStaff.hospitalId,
@@ -566,7 +627,7 @@ Hospital.viewAllStaffs = async (hospitalId) => {
     }
 
     const viewAllStaffsQuery =
-      "SELECT * FROM Hospital_Staffs WHERE hospitalId = ? AND deleteStatus = 0";
+      "SELECT * FROM Hospital_Staffs WHERE hospitalId = ? AND deleteStatus = 0 AND isSuspended = 0 AND isActive = 1";
     const allStaffs = await dbQuery(viewAllStaffsQuery, [hospitalId]);
 
     return allStaffs;
