@@ -10,7 +10,7 @@ const HospitalController = require('../../controllers/HospitalControllers/hospit
 router.post("/hospitalRegistration", HospitalController.register);
 router.post("/hospitalLogin", HospitalController.login);
 router.post("/hospitalChangePassword", HospitalController.changePassword);
-router.post("/hospitalChangeImage", HospitalController.updateImage);
+router.post("/hospitalChangeImage", HospitalController.changeImage);
 router.post("/hospitalViewProfile", HospitalController.viewProfile);
 router.post("/hospitalUpdateProfile", HospitalController.updateProfile);
 router.post("/hospitalStaffRegister", HospitalController.registerStaff);

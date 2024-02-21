@@ -400,7 +400,7 @@ exports.changePassword = async (req, res) => {
 //
 //
 // UPDATE HOSPITAL IMAGE
-exports.updateImage = async (req, res) => {
+exports.changeImage = async (req, res) => {
   const token = req.headers.token;
 
   if (!token) {
