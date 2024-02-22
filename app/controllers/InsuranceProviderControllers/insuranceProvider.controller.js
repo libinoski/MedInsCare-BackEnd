@@ -296,3 +296,795 @@ exports.login = async (req, res) => {
 //
 //
 //
+// CHANGE PASSWORD
+exports.changePassword = async (req, res) => {
+  const token = req.headers.token;
+  const { insuranceProviderId, oldPassword, newPassword } = req.body;
+
+  // Check if token is missing
+  if (!token) {
+      return res.status(403).json({
+          status: "failed",
+          message: "Token is missing"
+      });
+  }
+
+  // Check if hospitalId is missing
+  if (!insuranceProviderId) {
+      return res.status(401).json({
+          status: "failed",
+          message: "Insurance ProviderId ID is missing"
+      });
+  }
+
+  jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+          if (err) {
+              if (err.name === "JsonWebTokenError") {
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Invalid token"
+                  });
+              } else if (err.name === "TokenExpiredError") {
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Token has expired"
+                  });
+              }
+              return res.status(403).json({
+                  status: "failed",
+                  message: "Unauthorized access"
+              });
+          }
+
+          if (decoded.insuranceProviderId != insuranceProviderId) {
+              return res.status(403).json({
+                  status: "failed",
+                  message: "Unauthorized access"
+              });
+          }
+
+          try {
+              function validateInsuranceProviderChangePassword() {
+                  const validationResults = {
+                      isValid: true,
+                      errors: {},
+                  };
+
+                  // Validate old password
+                  const passwordValidation = dataValidator.isValidPassword(oldPassword);
+                  if (!passwordValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["oldPassword"] = [passwordValidation.message];
+                  }
+
+                  // Validate new password
+                  const newPasswordValidation = dataValidator.isValidPassword(newPassword);
+                  if (!newPasswordValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["newPassword"] = [newPasswordValidation.message];
+                  }
+
+                  return validationResults;
+              }
+
+              const validationResults = validateHospitalChangePassword();
+              if (!validationResults.isValid) {
+                  return res.status(400).json({
+                      status: "failed",
+                      message: "Validation failed",
+                      results: validationResults.errors
+                  });
+              }
+
+              await InsuranceProvider.changePassword(insuranceProviderId, oldPassword, newPassword);
+              return res.status(200).json({
+                  status: "success",
+                  message: "Password changed successfully"
+              });
+          } catch (error) {
+              if (
+                  error.message === "Insurance provider not found" ||
+                  error.message === "Incorrect old password"
+              ) {
+                  return res.status(422).json({
+                      status: "failed",
+                      message: "Password change failed",
+                      error: error.message
+                  });
+              } else {
+                  console.error("Error changing insurance provider password:", error);
+                  return res.status(500).json({
+                      status: "failed",
+                      message: "Internal server error",
+                      error: error.message
+                  });
+              }
+          }
+      }
+  );
+};
+//
+//
+//
+//
+// UPDATE ID PROOF IMAGE
+exports.changeIdProofImage = async (req, res) => {
+  const token = req.headers.token;
+
+  if (!token) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
+  }
+
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
+    async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "failed",
+            message: "Invalid token"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "failed",
+            message: "Token has expired"
+          });
+        }
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
+      }
+
+      const uploadIdProofImage = multer({
+        storage: multer.memoryStorage(),
+      }).single("InsuranceProviderIdProofImage");
+
+      uploadIdProofImage(req, res, async (err) => {
+        if (err || !req.file) {
+          return res.status(400).json({
+            status: "error",
+            message: "File upload failed",
+            results: err ? err.message : "File is required.",
+          });
+        }
+
+        const { insuranceProviderId } = req.body;
+
+        if (!insuranceProviderId) {
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(401).json({
+            status: "failed",
+            message: "Insurance provider id is missing",
+          });
+        }
+
+        if (decoded.insuranceProviderId != insuranceProviderId) {
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        function validateIdProofImage(file) {
+          const validationResults = {
+            isValid: true,
+            errors: {},
+          };
+      
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+          if (!imageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["insuranceProviderProofImage"] = [imageValidation.message];
+          }
+      
+          return validationResults;
+        }
+        
+        const validationResults = validateIdProofImage(req.file);
+        if (!validationResults.isValid) {
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({
+            status: "error",
+            message: "Invalid image file",
+            results: validationResults.errors,
+          });
+        }
+
+        async function uploadFileToS3(file) {
+          const fileName = `insuranceProviderIdProof-${Date.now()}${path.extname(file.originalname)}`;
+          const uploadParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `insuranceProviderImages/${fileName}`,
+            Body: file.buffer,
+            ACL: "public-read",
+            ContentType: file.mimetype,
+          };
+        
+          const command = new PutObjectCommand(uploadParams);
+          const result = await s3Client.send(command);
+          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+        }
+        
+        try {
+          const idProofFileLocation = await uploadFileToS3(req.file);
+
+          await InsuranceProvider.changeIdProofImage(
+            insuranceProviderId,
+            idProofFileLocation
+          );
+          return res.status(200).json({
+            status: "success",
+            message: "ID proof image updated successfully",
+          });
+        } catch (error) {
+          // Delete the uploaded image from S3
+          const key = idProofFileLocation.split('/').pop(); // Extracting the filename from the URL
+          const params = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `insuranceProviderImages/${key}` // Constructing the full key
+          };
+          await s3Client.send(new DeleteObjectCommand(params));
+
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+
+          if (error.message === "Insurance provider not found") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else {
+            console.error("Error updating ID proof image:", error);
+            return res.status(500).json({
+              status: "error",
+              message: "Failed to update ID proof image",
+              error: error.message,
+            });
+          }
+        }
+      });
+    }
+  );
+};
+//
+//
+//
+//
+// UPDATE PROFILE IMAGE
+exports.changeProfileImage = async (req, res) => {
+  const token = req.headers.token;
+
+  if (!token) {
+      return res.status(403).json({
+          status: "failed",
+          message: "Token is missing"
+      });
+  }
+
+  jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
+      async (err, decoded) => {
+          if (err) {
+              if (err.name === "JsonWebTokenError") {
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Invalid token"
+                  });
+              } else if (err.name === "TokenExpiredError") {
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Token has expired"
+                  });
+              }
+              return res.status(403).json({
+                  status: "failed",
+                  message: "Unauthorized access"
+              });
+          }
+
+          const uploadProfileImage = multer({
+              storage: multer.memoryStorage(),
+          }).single("insuranceProviderProfileImage");
+
+          uploadProfileImage(req, res, async (err) => {
+              if (err || !req.file) {
+                  return res.status(400).json({
+                      status: "error",
+                      message: "File upload failed",
+                      results: err ? err.message : "File is required.",
+                  });
+              }
+
+              const { insuranceProviderId } = req.body;
+
+              if (!insuranceProviderId) {
+                  // Delete the uploaded file
+                  fs.unlinkSync(req.file.path);
+                  return res.status(401).json({
+                      status: "failed",
+                      message: "Insurance Provider ID is missing",
+                  });
+              }
+
+              if (decoded.insuranceProviderId != insuranceProviderId) {
+                  // Delete the uploaded file
+                  fs.unlinkSync(req.file.path);
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Unauthorized access"
+                  });
+              }
+
+              function validateProfileImage(file) {
+                  const validationResults = {
+                      isValid: true,
+                      errors: {},
+                  };
+              
+                  const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+                  if (!imageValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["insuranceProviderProfileImage"] = [imageValidation.message];
+                  }
+              
+                  return validationResults;
+              }
+              
+              const validationResults = validateProfileImage(req.file);
+              if (!validationResults.isValid) {
+                  // Delete the uploaded file
+                  fs.unlinkSync(req.file.path);
+                  return res.status(400).json({
+                      status: "error",
+                      message: "Invalid image file",
+                      results: validationResults.errors,
+                  });
+              }
+
+              async function uploadFileToS3(file) {
+                  const fileName = `insuranceProviderProfile-${Date.now()}${path.extname(file.originalname)}`;
+                  const uploadParams = {
+                      Bucket: process.env.S3_BUCKET_NAME,
+                      Key: `insuranceProviderImages/${fileName}`,
+                      Body: file.buffer,
+                      ACL: "public-read",
+                      ContentType: file.mimetype,
+                  };
+                  
+                  const command = new PutObjectCommand(uploadParams);
+                  const result = await s3Client.send(command);
+                  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+              }
+              
+              try {
+                  const profileImageFileLocation = await uploadFileToS3(req.file);
+
+                  await InsuranceProvider.changeProfileImage(
+                      insuranceProviderId,
+                      profileImageFileLocation
+                  );
+                  return res.status(200).json({
+                      status: "success",
+                      message: "Profile image updated successfully",
+                  });
+              } catch (error) {
+                  // Delete the uploaded image from S3
+                  const key = profileImageFileLocation.split('/').pop(); // Extracting the filename from the URL
+                  const params = {
+                      Bucket: process.env.S3_BUCKET_NAME,
+                      Key: `insuranceProviderImages/${key}` // Constructing the full key
+                  };
+                  await s3Client.send(new DeleteObjectCommand(params));
+
+                  // Delete the uploaded file
+                  fs.unlinkSync(req.file.path);
+
+                  if (error.message === "Insurance provider not found") {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message
+                      });
+                  } else {
+                      console.error("Error updating profile image:", error);
+                      return res.status(500).json({
+                          status: "error",
+                          message: "Failed to update profile image",
+                          error: error.message,
+                      });
+                  }
+              }
+          });
+      }
+  );
+};
+//
+//
+//
+//
+// INSURANCE PROVIDER VIEW PROFILE
+exports.viewProfile = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(400).json({
+        status: "failed",
+        results: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Verify the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(401).json({
+              status: "error",
+              message: "Invalid token",
+              error: "Token verification failed"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(401).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            console.error("Error during profile image change:", err);
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        // Check if decoded token matches insuranceProviderId from request body
+        if (decoded.insuranceProviderId != insuranceProviderId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        // Fetch insurance provider data
+        try {
+          const insuranceProviderData = await InsuranceProvider.viewProfile(
+            insuranceProviderId
+          );
+          return res.status(200).json({
+            status: "success",
+            message: "Insurance provider profile retrieved successfully",
+            data: insuranceProviderData
+          });
+        } catch (error) {
+          if (error.message === "Insurance provider not found") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else {
+            console.error("Error fetching insurance provider profile:", error);
+            return res.status(500).json({
+              status: "error",
+              message: "Internal server error",
+              details: error.message
+            });
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error fetching insurance provider profile:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      details: error.message
+    });
+  }
+};
+//
+//
+//
+//
+//
+// INSURANCE PROVIDER UPDATE PROFILE
+exports.updateProfile = async (req, res) => {
+  try {
+      const token = req.headers.token;
+      const {
+          insuranceProviderId,
+          insuranceProviderName,
+          insuranceProviderMobile,
+          insuranceProviderAddress,
+          insuranceProviderAadhar,
+      } = req.body;
+
+      // Check if insuranceProviderId is missing
+      if (!insuranceProviderId) {
+          return res.status(401).json({
+              status: "error",
+              message: "Insurance Provider ID is missing"
+          });
+      }
+
+      // Check if token is missing
+      if (!token) {
+          return res.status(403).json({
+              status: "failed",
+              message: "Token is missing"
+          });
+      }
+
+      // Verify the token
+      jwt.verify(
+          token,
+          process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
+          async (err, decoded) => {
+              if (err) {
+                  if (err.name === "JsonWebTokenError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Invalid token",
+                          error: "Token verification failed"
+                      });
+                  } else if (err.name === "TokenExpiredError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Token has expired"
+                      });
+                  } else {
+                      console.error("Error during profile image change:", err);
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Unauthorized access"
+                      });
+                  }
+              }
+
+              // Check if decoded token matches insuranceProviderId from request body
+              if (decoded.insuranceProviderId != insuranceProviderId) {
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Unauthorized access"
+                  });
+              }
+
+              // Clean Aadhar and mobile data
+              const cleanedAadhar = insuranceProviderAadhar.replace(/\s/g, '');
+              const cleanedMobile = insuranceProviderMobile.replace(/\s/g, '');
+
+              // Validate insurance provider profile update data
+              function validateInsuranceProviderUpdateProfile() {
+                  const validationResults = {
+                      isValid: true,
+                      errors: {}
+                  };
+
+                  const nameValidation = dataValidator.isValidName(insuranceProviderName);
+                  if (!nameValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["insuranceProviderName"] = [nameValidation.message];
+                  }
+
+                  const aadharValidation = dataValidator.isValidAadharNumber(cleanedAadhar);
+                  if (!aadharValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["insuranceProviderAadhar"] = [aadharValidation.message];
+                  }
+
+                  const mobileValidation = dataValidator.isValidMobileNumber(cleanedMobile);
+                  if (!mobileValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["insuranceProviderMobile"] = [mobileValidation.message];
+                  }
+
+                  const addressValidation = dataValidator.isValidAddress(insuranceProviderAddress);
+                  if (!addressValidation.isValid) {
+                      validationResults.isValid = false;
+                      validationResults.errors["insuranceProviderAddress"] = [addressValidation.message];
+                  }
+
+                  return validationResults;
+              }
+
+              const validationResults = validateInsuranceProviderUpdateProfile();
+
+              if (!validationResults.isValid) {
+                  return res.status(400).json({
+                      status: "failed",
+                      message: "Validation failed",
+                      results: validationResults.errors,
+                  });
+              }
+
+              // Update insurance provider profile
+              try {
+                  const updatedInsuranceProvider = {
+                      insuranceProviderId,
+                      insuranceProviderName,
+                      insuranceProviderMobile: cleanedMobile,
+                      insuranceProviderAddress,
+                      insuranceProviderAadhar: cleanedAadhar,
+                  };
+                  const data = await InsuranceProvider.updateProfile(updatedInsuranceProvider);
+
+                  return res.status(200).json({
+                      status: "success",
+                      message: "Insurance provider updated successfully",
+                      data,
+                  });
+              } catch (error) {
+                  if (error.message === "Insurance Provider not found" || error.message === "Aadhar Number Already Exists.") {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message,
+                      });
+                  } else {
+                      console.error("Error updating insurance provider profile:", error);
+                      return res.status(500).json({
+                          status: "error",
+                          message: "Internal server error",
+                          error: error.message,
+                      });
+                  }
+              }
+          }
+      );
+  } catch (error) {
+      console.error("Error during token verification:", error);
+      return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};
+//
+//
+//
+//
+// SEND NOTIFICATION TO CLIENT
+exports.sendNotificationToClient = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { insuranceProviderId, clientId, notificationMessage } = req.body;
+
+    if (!token) {
+      return res.status(403).json({
+        status: "error",
+        message: "Token is missing"
+      });
+    }
+
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    if (!clientId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Client ID is missing"
+      });
+    }
+    if (!notificationMessage) {
+      return res.status(401).json({
+        status: "error",
+        message: "Notification message is missing"
+      });
+    }
+
+    // Token verification
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Invalid or missing token"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Token has expired"
+          });
+        } else {
+          return res.status(403).json({
+            status: "error",
+            message: "Unauthorized access"
+          });
+        }
+      }
+
+      if (decoded.insuranceProviderId != insuranceProviderId) {
+        return res.status(403).json({
+          status: "error",
+          message: "Unauthorized access"
+        });
+      }
+
+      // Function to validate notification message
+      function validateNotificationData(notificationMessage) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        const messageValidation = dataValidator.isValidMessage(notificationMessage);
+        if (!messageValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["notificationMessage"] = [messageValidation.message];
+        }
+
+        return validationResults;
+      }
+
+      const validationResults = validateNotificationData(notificationMessage);
+
+      if (!validationResults.isValid) {
+        return res.status(400).json({
+          status: "error",
+          message: "Validation failed",
+          errors: validationResults.errors
+        });
+      }
+
+      try {
+        const notificationDetails = await InsuranceProvider.sendNotificationToClient(insuranceProviderId, clientId, notificationMessage);
+
+        return res.status(200).json({
+          status: "success",
+          message: "Notification sent successfully",
+          data: notificationDetails
+        });
+      } catch (error) {
+        console.error("Error sending notification to client:", error);
+
+        if (error.message === "Insurance Provider not found" || error.message === "Client not found or not active") {
+          return res.status(422).json({
+            status: "error",
+            message: error.message
+          });
+        }
+
+        return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error in sendNotificationToClient controller:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};

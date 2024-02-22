@@ -189,7 +189,7 @@ Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
                 deleteStatus = 0,
                 isActive = 1,
                 hospitalPassword = ?,
-                passwordUpdatedStatus = 1
+                passwordUpdateStatus = 1
             WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1
         `;
 
@@ -252,7 +252,6 @@ Hospital.getProfile = async (hospitalId) => {
     throw error;
   }
 };
-
 //
 //
 //

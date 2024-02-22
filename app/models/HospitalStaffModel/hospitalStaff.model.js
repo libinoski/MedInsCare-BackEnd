@@ -55,6 +55,35 @@ const Patient = function (patient) {
 //
 //
 //
+// MedicalRecords Model
+const MedicalRecord = function (record) {
+  this.recordId = record.recordId;
+  this.patientId = record.patientId;
+  this.hospitalId = record.hospitalId;
+  this.hospitalStaffId = record.hospitalStaffId;
+  this.patientName = record.patientName;
+  this.patientEmail = record.patientEmail;
+  this.staffReport = record.staffReport;
+  this.reportImage = record.reportImage;
+  this.medicineAndLabCosts = record.medicineAndLabCosts;
+  this.byStanderName = record.byStanderName;
+  this.byStanderPhone = record.byStanderPhone;
+  this.hospitalName = record.hospitalName;
+  this.hospitalEmail = record.hospitalEmail;
+  this.hospitalStaffName = record.hospitalStaffName;
+  this.hospitalStaffEmail = record.hospitalStaffEmail;
+  this.admissionDate = record.admissionDate;
+  this.dateGenerated = record.dateGenerated;
+  this.updateStatus = record.updateStatus;
+  this.updatedDate = record.updatedDate;
+  this.isActive = record.isActive;
+  this.deleteStatus = record.deleteStatus;
+};
+//
+//
+//
+//
+//
 // Hospital staff Login
 HospitalStaff.login = async (email, password) => {
   const query = `
@@ -369,7 +398,6 @@ HospitalStaff.registerPatient = async (patientData) => {
     throw error;
   }
 };
-
 //
 //
 //
@@ -529,4 +557,55 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
 //
 //
 //
-module.exports = { HospitalStaff, Patient };
+// ADD MEDICAL RECORD
+MedicalRecord.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
+  try {
+    // Fetch patient details
+    const patientQuery = `
+      SELECT P.hospitalId, P.patientName, P.patientEmail, P.admissionDate,
+             H.hospitalName, H.hospitalEmail,
+             HS.hospitalStaffName, HS.hospitalStaffEmail
+      FROM Patients P
+      JOIN Hospitals H ON P.hospitalId = H.hospitalId
+      JOIN Hospital_Staffs HS ON P.hospitalStaffId = HS.hospitalStaffId
+      WHERE P.patientId = ? AND P.dischargeStatus = 0
+    `;
+    const patientDetails = await dbQuery(patientQuery, [patientId]);
+
+    if (patientDetails.length === 0) {
+      throw new Error("Patient not found or not admitted");
+    }
+
+    const { hospitalId, patientName, patientEmail, admissionDate, hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail } = patientDetails[0];
+
+    // Include fetched values in medicalRecordData
+    const medicalRecord = {
+      patientId: patientId,
+      hospitalId: hospitalId,
+      hospitalStaffId: hospitalStaffId,
+      patientName: patientName,
+      patientEmail: patientEmail,
+      admissionDate: admissionDate,
+      hospitalName: hospitalName,
+      hospitalEmail: hospitalEmail,
+      hospitalStaffName: hospitalStaffName,
+      hospitalStaffEmail: hospitalStaffEmail,
+      ...medicalRecordData
+    };
+
+    // Insert medical record into the database
+    const insertQuery = "INSERT INTO Medical_Records SET ?";
+    const insertRes = await dbQuery(insertQuery, medicalRecord);
+
+    return { recordId: insertRes.insertId, ...medicalRecord };
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+
+
+
+
+module.exports = { HospitalStaff, Patient, MedicalRecord };

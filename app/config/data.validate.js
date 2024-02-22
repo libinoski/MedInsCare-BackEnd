@@ -205,24 +205,6 @@ function isValidMobileNumber(mobileNumber) {
 
 
 
-// Confirm the validity of an amount.
-function isValidAmount(amount) {
-    const sanitizedAmount = amount.replace(/\s/g, "");
-
-    if (isNullOrUndefined(sanitizedAmount) || sanitizedAmount === "") {
-        return {
-            isValid: false,
-            message: "Amount cannot be empty"
-        };
-    }
-
-    return {
-        isValid: sanitizedAmount > 0,
-        message: "Value must be greater than zero"
-    };
-}
-
-
 
 // Verify the correctness of an address.
 function isValidAddress(address) {
@@ -425,6 +407,34 @@ function isValidMessage(message) {
 
 
 
+// Validate cost as an integer or decimal number (cannot be null)
+function isValidCost(cost) {
+    if (isNullOrUndefined(cost)) {
+        return {
+            isValid: false,
+            message: "Cost cannot be null."
+        };
+    }
+
+    const sanitizedCost = cost.replace(/\s/g, "");
+
+    if (isNullOrUndefined(sanitizedCost) || sanitizedCost === "") {
+        return {
+            isValid: false,
+            message: "Cost cannot be null or empty after sanitization."
+        };
+    }
+
+    const regex = /^\d+(\.\d+)?$/;
+
+    return {
+        isValid: regex.test(sanitizedCost),
+        message: "Invalid Cost. It must be an integer or decimal number."
+    };
+}
+
+
+
 // Export all validation functions
 module.exports = {
     isEmpty,
@@ -437,12 +447,12 @@ module.exports = {
     isValidName,
     isValidImageWith1MBConstraint,
     isValidAadharNumber,
-    isValidAmount,
     isValidContent,
     isValidTitle,
     isValidAge,
     isValidGender,
     isValidText,
     isValidDate,
-    isValidMessage
+    isValidMessage,
+    isValidCost
 };
