@@ -369,7 +369,6 @@ HospitalStaff.registerPatient = async (patientData) => {
     throw error;
   }
 };
-
 //
 //
 //

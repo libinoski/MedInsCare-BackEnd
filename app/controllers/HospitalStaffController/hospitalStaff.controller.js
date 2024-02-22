@@ -644,7 +644,7 @@ exports.viewProfile = async (req, res) => {
 //
 //
 //
-// UPDATE PROFILE
+// HOSPITAL STAFF UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -661,14 +661,6 @@ exports.updateProfile = async (req, res) => {
       return res.status(401).json({
         status: "failed",
         message: "Token is missing"
-      });
-    }
-
-    // Check if hospitalStaffId is missing
-    if (!hospitalStaffId) {
-      return res.status(400).json({
-        status: "failed",
-        results: "Hospital Staff ID is missing"
       });
     }
 
@@ -706,42 +698,32 @@ exports.updateProfile = async (req, res) => {
           });
         }
 
+        // Clean Aadhar and mobile data
+        const cleanedAadhar = hospitalStaffAadhar.replace(/\s/g, '');
+        const cleanedMobile = hospitalStaffMobile.replace(/\s/g, '');
+
         // Validate hospital staff profile update data
-        function validateHospitalStaffUpdateProfile(hospitalStaffData) {
+        function validateHospitalStaffUpdateProfile() {
           const validationResults = {
             isValid: true,
             errors: {}
           };
 
-          const idValidation = dataValidator.isValidId(
-            hospitalStaffData.hospitalStaffId
-          );
-          if (!idValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["hospitalStaffId"] = idValidation.message;
-          }
-
-          const nameValidation = dataValidator.isValidName(
-            hospitalStaffData.hospitalStaffName
-          );
+          const nameValidation = dataValidator.isValidName(hospitalStaffName);
           if (!nameValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffName"] =
               nameValidation.message;
           }
 
-          const aadharValidation = dataValidator.isValidAadharNumber(
-            hospitalStaffData.hospitalStaffAadhar
-          );
+          const aadharValidation = dataValidator.isValidAadharNumber(cleanedAadhar);
           if (!aadharValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffAadhar"] =
               aadharValidation.message;
           }
 
-          const mobileValidation = dataValidator.isValidMobileNumber(
-            hospitalStaffData.hospitalStaffMobile
-          );
+          const mobileValidation = dataValidator.isValidMobileNumber(cleanedMobile);
           if (!mobileValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffMobile"] =
@@ -749,7 +731,7 @@ exports.updateProfile = async (req, res) => {
           }
 
           const addressValidation = dataValidator.isValidAddress(
-            hospitalStaffData.hospitalStaffAddress
+            hospitalStaffAddress
           );
           if (!addressValidation.isValid) {
             validationResults.isValid = false;
@@ -760,31 +742,26 @@ exports.updateProfile = async (req, res) => {
           return validationResults;
         }
 
-        const validationResults = validateHospitalStaffUpdateProfile({
-          hospitalStaffId,
-          hospitalStaffName,
-          hospitalStaffMobile,
-          hospitalStaffAddress,
-          hospitalStaffAadhar,
-        });
+        const validationResults = validateHospitalStaffUpdateProfile();
 
         if (!validationResults.isValid) {
           return res.status(400).json({
-            status: "Validation failed",
-            message: "One or more fields failed validation",
+            status: "failed",
+            message: "Validation failed",
             results: validationResults.errors,
           });
         }
 
         // Update hospital staff profile
         try {
-          const data = await HospitalStaff.updateProfile({
+          const updatedHospitalStaff = {
             hospitalStaffId,
             hospitalStaffName,
-            hospitalStaffMobile,
+            hospitalStaffMobile: cleanedMobile,
             hospitalStaffAddress,
-            hospitalStaffAadhar,
-          });
+            hospitalStaffAadhar: cleanedAadhar,
+          };
+          const data = await HospitalStaff.updateProfile(updatedHospitalStaff);
 
           return res.status(200).json({
             status: "success",
@@ -1169,7 +1146,6 @@ exports.viewOnePatient = async (req, res) => {
     });
   }
 };
-
 //
 //
 //
@@ -1257,7 +1233,6 @@ exports.viewAllPatients = async (req, res) => {
     });
   }
 };
-
 //
 //
 //

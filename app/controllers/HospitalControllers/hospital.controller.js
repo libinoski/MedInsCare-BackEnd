@@ -646,7 +646,7 @@ exports.viewProfile = async (req, res) => {
 //
 //
 //
-// UPDATE PROFILE
+//HOSPITAL UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
   const token = req.headers.token;
   const {

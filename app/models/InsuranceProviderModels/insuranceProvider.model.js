@@ -22,7 +22,10 @@ const Hospital = function (hospital) {
   this.passwordUpdatedStatus = hospital.passwordUpdatedStatus;
   this.updatedDate = hospital.updatedDate;
 };
-
+//
+//
+//
+//
 // Insurance Provider Model
 const InsuranceProvider = function (insuranceProvider) {
   this.insuranceProviderId = insuranceProvider.insuranceProviderId;
@@ -98,7 +101,7 @@ InsuranceProvider.register = async (newInsuranceProvider) => {
 //
 //INSURANCE PROVIDER LOGIN
 InsuranceProvider.login = async (email, password) => {
-    const query = "SELECT * FROM Insurance_Providers WHERE insuranceProviderEmail = ? AND isActive = 1 AND deleteStatus = 0";
+    const query = "SELECT * FROM Insurance_Providers WHERE insuranceProviderEmail = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
 
     try {
         const result = await dbQuery(query, [email]);
@@ -129,8 +132,256 @@ InsuranceProvider.login = async (email, password) => {
 //
 //
 //
+InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newPassword) => {
+  const checkInsuranceProviderQuery =
+    "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
 
-  
+  try {
+    const selectRes = await dbQuery(checkInsuranceProviderQuery, [insuranceProviderId]);
+    if (selectRes.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const insuranceProvider = selectRes[0];
+    const isMatch = await promisify(bcrypt.compare)(
+      oldPassword,
+      insuranceProvider.insuranceProviderPassword
+    );
+
+    if (!isMatch) {
+      throw new Error("Incorrect old password");
+    }
+
+    const hashedNewPassword = await promisify(bcrypt.hash)(newPassword, 10);
+    const updatePasswordQuery = `
+            UPDATE Insurance_Providers
+            SET
+                updateStatus = 1,
+                updatedDate = CURRENT_DATE(),
+                deleteStatus = 0,
+                isActive = 1,
+                isnuranceProviderPassword = ?,
+                passwordUpdateStatus = 1
+            WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0
+        `;
+
+    const updatePasswordValues = [hashedNewPassword, insuranceProviderId];
+
+    await dbQuery(updatePasswordQuery, updatePasswordValues);
+
+    console.log(
+      "Insurance provider password updated successfully for hospitalId:",
+      insuranceProviderId
+    );
+    return { message: "Password updated successfully" };
+  } catch (error) {
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+InsuranceProvider.changeIdProofImage = async (insuranceProviderId,newIdProofImageFilename) => {
+  const verifyQuery = `
+        SELECT insuranceProviderId
+        FROM Insurance_Providers
+        WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0
+    `;
+
+  try {
+    const verifyResult = await dbQuery(verifyQuery, [insuranceProviderId]);
+
+    if (verifyResult.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const updateQuery = `
+            UPDATE Insurance_Providers
+            SET 
+                insuranceProviderIdProofImage = ?,
+                updateStatus = 1, 
+                updatedDate = CURRENT_TIMESTAMP()
+            WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isSuspended = 0
+        `;
+
+    await dbQuery(updateQuery, [newIdProofImageFilename, insuranceProviderId]);
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileImageFilename) => {
+  const verifyQuery = `
+        SELECT insuranceProviderId
+        FROM Insurance_Providers
+        WHERE insuranceProviderId = ? AND AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0
+    `;
+
+  try {
+    const verifyResult = await dbQuery(verifyQuery, [insuranceProviderId]);
+
+    if (verifyResult.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const updateQuery = `
+            UPDATE Insurance_Providers
+            SET 
+                insuranceProviderProfileImage = ?,
+                updateStatus = 1, 
+                updatedDate = CURRENT_TIMESTAMP()
+            WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isSuspended = 0
+        `;
+
+    await dbQuery(updateQuery, [newProfileImageFilename, insuranceProviderId]);
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// Insurance provider update Profile
+InsuranceProvider.viewProfile = async (insuranceProviderId) => {
+  const query =
+    "SELECT * FROM Hospital_Staffs WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
+  try {
+    const result = await dbQuery(query, [insuranceProviderId]);
+
+    if (result.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    return result[0];
+  } catch (error) {
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// UPDATE PROFILE
+InsuranceProvider.updateProfile = async (updatedInsuranceProvider) => {
+  const checkInsuranceProviderQuery =
+    "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
+
+  try {
+    const selectRes = await dbQuery(checkInsuranceProviderQuery, [
+      updatedInsuranceProvider.insuranceProviderId,
+    ]);
+
+    if (selectRes.length === 0) {
+      throw new Error("Insurance Provider not found");
+    }
+
+    // Check if insuranceProviderAadhar already exists for another provider member
+    const checkAadharQuery =
+      "SELECT * FROM Insurance_Providers WHERE insuranceProviderAadhar = ? AND insuranceProviderId != ? AND deleteStatus = 0 AND isSuspended = 0";
+    const aadharRes = await dbQuery(checkAadharQuery, [
+      updatedInsuranceProvider.insuranceProviderAadhar,
+      updatedInsuranceProvider.insuranceProviderId,
+    ]);
+
+    if (aadharRes.length > 0) {
+      throw new Error("Aadhar Number Already Exists.");
+    }
+
+    const updateQuery = `
+            UPDATE Insurance_Providers
+            SET
+                updateStatus = 1,
+                updatedDate = CURRENT_DATE(),
+                insuranceProviderName = ?,
+                insuranceProviderMobile = ?,
+                insuranceProviderAddress = ?,
+                insuranceProviderAadhar = ?
+            WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isSuspended = 0
+        `;
+
+    const updateValues = [
+      updatedInsuranceProvider.insuranceProviderName,
+      updatedInsuranceProvider.insuranceProviderMobile,
+      updatedInsuranceProvider.insuranceProviderAddress,
+      updatedInsuranceProvider.insuranceProviderAadhar,
+      updatedInsuranceProvider.insuranceProviderId,
+    ];
+
+    await dbQuery(updateQuery, updateValues);
+
+    console.log("Updated insurance provider details:", {
+      id: updatedInsuranceProvider.insuranceProviderId,
+      ...updatedInsuranceProvider,
+    });
+    return updatedInsuranceProvider; // Returning the updated data without additional status and message
+  } catch (error) {
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientId, notificationMessage) => {
+  try {
+    const checkInsuranceProviderQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
+    const insuranceProviderCheckResult = await dbQuery(checkInsuranceProviderQuery, [insuranceProviderId]);
+    if (insuranceProviderCheckResult.length === 0) {
+      throw new Error("Insurance Provider not found");
+    }
+
+    const checkClientQuery = "SELECT * FROM Clients WHERE clientId = ? AND insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0";
+    const checkClientResult = await dbQuery(checkClientQuery, [clientId, insuranceProviderId]);
+    if (checkClientResult.length === 0) {
+      throw new Error("Client not found or not active");
+    }
+
+    const insertNotificationQuery = "INSERT INTO Notification_To_Clients (insuranceProviderId, clientId, message) VALUES (?, ?, ?)";
+    const result = await dbQuery(insertNotificationQuery, [insuranceProviderId, clientId, notificationMessage]);
+
+    const notificationId = result.insertId;
+
+    const notificationDetails = {
+      notificationId: notificationId,
+      insuranceProviderId: insuranceProviderId,
+      clientId: clientId,
+      message: notificationMessage, // Update field name here
+    };
+
+    return notificationDetails;
+  } catch (error) {
+    console.error("Error sending notification to clients:", error);
+    throw error;
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
 
 
 
