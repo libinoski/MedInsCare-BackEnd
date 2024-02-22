@@ -362,25 +362,116 @@ Patient.updateProfile = async (updatedPatient) => {
 // PATIENT VIEW ALL INSURANCE PROVIDERS
 Patient.viewAllInsuranceProviders = async (patientId) => {
     try {
-      const checkPatientQuery =
-        "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1";
-      const patientCheckResult = await dbQuery(checkPatientQuery, [patientId]);
-  
-      if (patientCheckResult.length === 0) {
-        throw new Error("Patient not found");
-      }
-  
-      const viewAllInsuranceProvidersQuery =
-        "SELECT * FROM Insurance_Providers WHERE hospitalId IN (SELECT hospitalId FROM Patients WHERE patientId = ?) AND isActive = 1 AND isSuspended = 0 AND isApproved = 1";
-      const allInsuranceProviders = await dbQuery(viewAllInsuranceProvidersQuery, [patientId]);
-  
-      return allInsuranceProviders;
+        const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        const viewAllInsuranceProvidersQuery =
+            "SELECT * FROM Insurance_Providers WHERE hospitalId = ? AND isActive = 1 AND isSuspended = 0 AND isApproved = 1";
+        const allInsuranceProviders = await dbQuery(viewAllInsuranceProvidersQuery, [hospitalId]);
+
+        return allInsuranceProviders;
     } catch (error) {
-      console.error("Error viewing all insurance providers:", error);
-      throw error;
+        console.error("Error viewing all insurance providers:", error);
+        throw error;
     }
-  };
-  
+};
+//
+//
+//
+//
+//
+//VIEW ONE INSURANCE PROVIDER
+Patient.viewOneInsuranceProvider = async (patientId, insuranceProviderId) => {
+    try {
+        const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        const viewInsuranceProviderQuery =
+            "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isActive = 1 AND isSuspended = 0 AND isApproved = 1";
+        const insuranceProvider = await dbQuery(viewInsuranceProviderQuery, [insuranceProviderId, hospitalId]);
+
+        if (insuranceProvider.length === 0) {
+            throw new Error("Insurance provider not found for this patient");
+        }
+
+        return insuranceProvider[0];
+    } catch (error) {
+        console.error("Error viewing insurance provider:", error);
+        throw error;
+    }
+};
+//
+//
+//
+//
+//
+// VIEW ALL INSURANCE PACKAGES
+Patient.viewAllInsurancePackages = async (patientId) => {
+    try {
+        // Fetch hospitalId associated with the patientId
+        const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+        
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Fetch all insurance packages under the same hospitalId
+        const viewAllInsurancePackagesQuery =
+            "SELECT * FROM Insurance_Packages WHERE hospitalId = ? AND isActive = 1";
+        const allInsurancePackages = await dbQuery(viewAllInsurancePackagesQuery, [hospitalId]);
+
+        return allInsurancePackages;
+    } catch (error) {
+        console.error("Error viewing all insurance packages:", error);
+        throw error;
+    }
+};
+//
+//
+//
+//
+//
+Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
+    try {
+        // Fetch hospitalId associated with the patientId
+        const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+        
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        const viewInsurancePackageQuery =
+            "SELECT * FROM Insurance_Packages WHERE hospitalId = ? AND insurancePackageId = ? AND isActive = 1";
+        const insurancePackage = await dbQuery(viewInsurancePackageQuery, [hospitalId, insurancePackageId]);
+
+        if (insurancePackage.length === 0) {
+            throw new Error("Insurance package not found");
+        }
+
+        return insurancePackage[0]; // Return the found insurance package
+    } catch (error) {
+        console.error("Error viewing insurance package:", error);
+        throw error;
+    }
+};
 
   
 
