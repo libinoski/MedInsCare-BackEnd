@@ -291,7 +291,7 @@ exports.changeIdProofImage = async (req, res) => {
                     const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
                     if (!imageValidation.isValid) {
                         validationResults.isValid = false;
-                        validationResults.errors["patientIdProofImage"] = imageValidation.message;
+                        validationResults.errors["patientIdProofImage"] = [imageValidation.message];
                     }
 
                     return validationResults;
@@ -417,12 +417,11 @@ exports.changeProfileImage = async (req, res) => {
 
                 const { patientId } = req.body;
 
+                // Check if patientId is missing
                 if (!patientId) {
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
                     return res.status(401).json({
                         status: "failed",
-                        message: "Patient ID is missing",
+                        message: "Patient ID is missing"
                     });
                 }
 
@@ -444,7 +443,7 @@ exports.changeProfileImage = async (req, res) => {
                     const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
                     if (!imageValidation.isValid) {
                         validationResults.isValid = false;
-                        validationResults.errors["patientProfileImage"] = imageValidation.message;
+                        validationResults.errors["patientProfileImage"] = [imageValidation.message];
                     }
 
                     return validationResults;
@@ -517,6 +516,7 @@ exports.changeProfileImage = async (req, res) => {
         }
     );
 };
+
 //
 //
 //
@@ -638,6 +638,14 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
         // Verify the token
         jwt.verify(
             token,
@@ -687,21 +695,21 @@ exports.updateProfile = async (req, res) => {
                     if (!nameValidation.isValid) {
                         validationResults.isValid = false;
                         validationResults.errors["patientName"] =
-                            nameValidation.message;
+                            [nameValidation.message];
                     }
 
                     const aadharValidation = dataValidator.isValidAadharNumber(cleanedAadhar);
                     if (!aadharValidation.isValid) {
                         validationResults.isValid = false;
                         validationResults.errors["patientAadhar"] =
-                            aadharValidation.message;
+                            [aadharValidation.message];
                     }
 
                     const mobileValidation = dataValidator.isValidMobileNumber(cleanedMobile);
                     if (!mobileValidation.isValid) {
                         validationResults.isValid = false;
                         validationResults.errors["patientMobile"] =
-                            mobileValidation.message;
+                            [mobileValidation.message];
                     }
 
                     const addressValidation = dataValidator.isValidAddress(
@@ -710,7 +718,7 @@ exports.updateProfile = async (req, res) => {
                     if (!addressValidation.isValid) {
                         validationResults.isValid = false;
                         validationResults.errors["patientAddress"] =
-                            addressValidation.message;
+                            [addressValidation.message];
                     }
 
                     return validationResults;
@@ -976,7 +984,6 @@ exports.viewOnensuranceProvider = async (req, res) => {
 //
 //
 //
-//
 // VIEW ALL INSURANCE PACKAGES
 exports.viewAllInsurancePackages = async (req, res) => {
     const token = req.headers.token;
@@ -1064,7 +1071,6 @@ exports.viewAllInsurancePackages = async (req, res) => {
         });
     }
 };
-//
 //
 //
 //

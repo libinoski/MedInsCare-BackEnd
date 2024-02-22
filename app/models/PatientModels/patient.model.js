@@ -472,6 +472,10 @@ Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
         throw error;
     }
 };
+//
+//
+//
+//
 
   
 

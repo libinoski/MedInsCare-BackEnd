@@ -172,7 +172,7 @@ exports.changePassword = async (req, res) => {
           if (!passwordValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["oldPassword"] =
-              passwordValidation.message;
+              [passwordValidation.message];
           }
 
           const newPasswordValidation = dataValidator.isValidPassword(
@@ -181,7 +181,7 @@ exports.changePassword = async (req, res) => {
           if (!newPasswordValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["newPassword"] =
-              newPasswordValidation.message;
+              [newPasswordValidation.message];
           }
 
           return validationResults;
@@ -292,6 +292,7 @@ exports.changeIdProofImage = async (req, res) => {
 
         const { hospitalStaffId } = req.body;
 
+        // Check if hospitalStaffId is missing
         if (!hospitalStaffId) {
           // Delete the uploaded file
           fs.unlinkSync(req.file.path);
@@ -315,16 +316,16 @@ exports.changeIdProofImage = async (req, res) => {
             isValid: true,
             errors: {},
           };
-      
+
           const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
           if (!imageValidation.isValid) {
             validationResults.isValid = false;
-            validationResults.errors["hospitalStaffIdProofImage"] = imageValidation.message;
+            validationResults.errors["hospitalStaffIdProofImage"] = [imageValidation.message];
           }
-      
+
           return validationResults;
         }
-        
+
         const validationResults = validateIdProofImage(req.file);
         if (!validationResults.isValid) {
           // Delete the uploaded file
@@ -345,12 +346,12 @@ exports.changeIdProofImage = async (req, res) => {
             ACL: "public-read",
             ContentType: file.mimetype,
           };
-        
+
           const command = new PutObjectCommand(uploadParams);
           const result = await s3Client.send(command);
           return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
         }
-        
+
         try {
           const idProofFileLocation = await uploadFileToS3(req.file);
 
@@ -444,6 +445,7 @@ exports.changeProfileImage = async (req, res) => {
 
         const { hospitalStaffId } = req.body;
 
+        // Check if hospitalStaffId is missing
         if (!hospitalStaffId) {
           // Delete the uploaded file
           fs.unlinkSync(req.file.path);
@@ -467,16 +469,16 @@ exports.changeProfileImage = async (req, res) => {
             isValid: true,
             errors: {},
           };
-      
+
           const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
           if (!imageValidation.isValid) {
             validationResults.isValid = false;
-            validationResults.errors["hospitalStaffProfileImage"] = imageValidation.message;
+            validationResults.errors["hospitalStaffProfileImage"] = [imageValidation.message];
           }
-      
+
           return validationResults;
         }
-        
+
         const validationResults = validateProfileImage(req.file);
         if (!validationResults.isValid) {
           // Delete the uploaded file
@@ -497,12 +499,12 @@ exports.changeProfileImage = async (req, res) => {
             ACL: "public-read",
             ContentType: file.mimetype,
           };
-        
+
           const command = new PutObjectCommand(uploadParams);
           const result = await s3Client.send(command);
           return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
         }
-        
+
         try {
           const profileImageFileLocation = await uploadFileToS3(req.file);
 
@@ -556,7 +558,7 @@ exports.viewProfile = async (req, res) => {
 
     // Check if token is missing
     if (!token) {
-      return res.status(401).json({
+      return res.status(403).json({
         status: "failed",
         message: "Token is missing"
       });
@@ -564,9 +566,9 @@ exports.viewProfile = async (req, res) => {
 
     // Check if hospitalStaffId is missing
     if (!hospitalStaffId) {
-      return res.status(400).json({
+      return res.status(401).json({
         status: "failed",
-        results: "Hospital Staff ID is missing"
+        message: "Hospital Staff ID is missing"
       });
     }
 
@@ -656,6 +658,14 @@ exports.updateProfile = async (req, res) => {
       hospitalStaffAadhar,
     } = req.body;
 
+    // Check if hospitalStaffId is missing
+    if (!hospitalStaffId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital Staff ID is missing"
+      });
+    }
+
     // Check if token is missing
     if (!token) {
       return res.status(401).json({
@@ -713,21 +723,21 @@ exports.updateProfile = async (req, res) => {
           if (!nameValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffName"] =
-              nameValidation.message;
+              [nameValidation.message];
           }
 
           const aadharValidation = dataValidator.isValidAadharNumber(cleanedAadhar);
           if (!aadharValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffAadhar"] =
-              aadharValidation.message;
+              [aadharValidation.message];
           }
 
           const mobileValidation = dataValidator.isValidMobileNumber(cleanedMobile);
           if (!mobileValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffMobile"] =
-              mobileValidation.message;
+              [mobileValidation.message];
           }
 
           const addressValidation = dataValidator.isValidAddress(
@@ -736,7 +746,7 @@ exports.updateProfile = async (req, res) => {
           if (!addressValidation.isValid) {
             validationResults.isValid = false;
             validationResults.errors["hospitalStaffAddress"] =
-              addressValidation.message;
+              [addressValidation.message];
           }
 
           return validationResults;
@@ -799,6 +809,7 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
+
 //
 //
 //
@@ -806,246 +817,259 @@ exports.updateProfile = async (req, res) => {
 // REGISTER PATIENT
 exports.registerPatient = async (req, res) => {
   const token = req.headers.token;
+  const hospitalStaffId = req.body.hospitalStaffId;
 
   if (!token) {
-      return res.status(403).json({
-          status: "failed",
-          message: "Token is missing"
-      });
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
+  }
+
+  if (!hospitalStaffId) {
+    return res.status(401).json({
+      status: "failed",
+      message: "Hospital Staff ID is missing"
+    });
   }
 
   jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
+    if (err) {
+      if (err.name === "JsonWebTokenError") {
+        return res.status(403).json({
+          status: "failed",
+          message: "Invalid token"
+        });
+      } else if (err.name === "TokenExpiredError") {
+        return res.status(403).json({
+          status: "failed",
+          message: "Token has expired"
+        });
+      }
+      return res.status(403).json({
+        status: "failed",
+        message: "Unauthorized access"
+      });
+    }
+
+    const uploadPatientImages = multer({
+      storage: multer.memoryStorage(),
+    }).fields([
+      { name: "patientIdProofImage", maxCount: 1 },
+      { name: "patientProfileImage", maxCount: 1 }
+    ]);
+
+    uploadPatientImages(req, res, async function (err) {
       if (err) {
-          if (err.name === "JsonWebTokenError") {
-              return res.status(403).json({
-                  status: "failed",
-                  message: "Invalid token"
-              });
-          } else if (err.name === "TokenExpiredError") {
-              return res.status(403).json({
-                  status: "failed",
-                  message: "Token has expired"
-              });
-          }
-          return res.status(403).json({
-              status: "failed",
-              message: "Unauthorized access"
-          });
+        return res.status(400).json({
+          status: "validation failed",
+          results: { files: "File upload failed", details: err.message },
+        });
       }
 
-      const uploadPatientImages = multer({
-          storage: multer.memoryStorage(),
-      }).fields([
-          { name: "patientIdProofImage", maxCount: 1 },
-          { name: "patientProfileImage", maxCount: 1 }
-      ]);
+      const patientData = req.body;
 
-      uploadPatientImages(req, res, async function (err) {
-          if (err) {
-              return res.status(400).json({
-                  status: "validation failed",
-                  results: { files: "File upload failed", details: err.message },
-              });
-          }
-          console.log(req.files);
+      if (decoded.hospitalStaffId != patientData.hospitalStaffId) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
+      }
 
-          const patientData = req.body;
+      patientData.patientAadhar = patientData.patientAadhar ? patientData.patientAadhar.replace(/\s/g, '') : '';
+      patientData.patientMobile = patientData.patientMobile ? patientData.patientMobile.replace(/\s/g, '') : '';
 
-          if (decoded.hospitalStaffId != patientData.hospitalStaffId) {
-              return res.status(403).json({
-                  status: "failed",
-                  message: "Unauthorized access"
-              });
-          }
-      
-          patientData.patientAadhar = patientData.patientAadhar ? patientData.patientAadhar.replace(/\s/g, '') : '';
-          patientData.patientMobile = patientData.patientMobile ? patientData.patientMobile.replace(/\s/g, '') : '';
+      const idProofImageFile = req.files["patientIdProofImage"] ? req.files["patientIdProofImage"][0] : null;
+      const profileImageFile = req.files["patientProfileImage"] ? req.files["patientProfileImage"][0] : null;
 
+      const validationResults = validatePatientRegistration(patientData, idProofImageFile, profileImageFile);
 
-          const idProofImageFile = req.files["patientIdProofImage"] ? req.files["patientIdProofImage"][0] : null;
-          const profileImageFile = req.files["patientProfileImage"] ? req.files["patientProfileImage"][0] : null;
-
-          const validationResults = validatePatientRegistration(patientData, idProofImageFile, profileImageFile);
-
-          if (!validationResults.isValid) {
-              if (idProofImageFile && idProofImageFile.filename) {
-                  const idProofImagePath = path.join("Files/PatientImages", idProofImageFile.filename);
-                  fs.unlinkSync(idProofImagePath);
-              }
-              if (profileImageFile && profileImageFile.filename) {
-                  const profileImagePath = path.join("Files/PatientImages", profileImageFile.filename);
-                  fs.unlinkSync(profileImagePath);
-              }
-              if (patientData.patientIdProofImage) {
-                  const idProofS3Key = patientData.patientIdProofImage.split('/').pop();
-                  const idProofParams = {
-                      Bucket: process.env.S3_BUCKET_NAME,
-                      Key: `PatientImages/${idProofS3Key}`
-                  };
-                  try {
-                      await s3Client.send(new DeleteObjectCommand(idProofParams));
-                  } catch (s3Error) {
-                      console.error("Error deleting ID proof image from S3:", s3Error);
-                  }
-              }
-              if (patientData.patientProfileImage) {
-                  const profileS3Key = patientData.patientProfileImage.split('/').pop();
-                  const profileParams = {
-                      Bucket: process.env.S3_BUCKET_NAME,
-                      Key: `PatientImages/${profileS3Key}`
-                  };
-                  try {
-                      await s3Client.send(new DeleteObjectCommand(profileParams));
-                  } catch (s3Error) {
-                      console.error("Error deleting profile image from S3:", s3Error);
-                  }
-              }
-              return res.status(400).json({
-                  status: "validation failed",
-                  results: validationResults.errors,
-              });
-          }
-
-          const idProofFileName = `patientIdProof-${Date.now()}${path.extname(idProofImageFile.originalname)}`;
-          const profileImageFileName = `patientProfileImage-${Date.now()}${path.extname(profileImageFile.originalname)}`;
-
+      if (!validationResults.isValid) {
+        if (idProofImageFile && idProofImageFile.filename) {
+          const idProofImagePath = path.join("Files/PatientImages", idProofImageFile.filename);
+          fs.unlinkSync(idProofImagePath);
+        }
+        if (profileImageFile && profileImageFile.filename) {
+          const profileImagePath = path.join("Files/PatientImages", profileImageFile.filename);
+          fs.unlinkSync(profileImagePath);
+        }
+        if (patientData.patientIdProofImage) {
+          const idProofS3Key = patientData.patientIdProofImage.split('/').pop();
+          const idProofParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `PatientImages/${idProofS3Key}`
+          };
           try {
-              const idProofFileLocation = await uploadFileToS3(idProofImageFile, idProofFileName, idProofImageFile.mimetype);
-              const profileImageFileLocation = await uploadFileToS3(profileImageFile, profileImageFileName, profileImageFile.mimetype);
-
-              // Assign S3 URLs to patientData instead of file names
-              patientData.patientIdProofImage = idProofFileLocation;
-              patientData.patientProfileImage = profileImageFileLocation;
-
-              const registrationResponse = await HospitalStaff.registerPatient(patientData);
-              return res.status(200).json({
-                  status: "success",
-                  message: "Patient registered successfully",
-                  data: registrationResponse,
-              });
-          } catch (error) {
-              if (error.name === "ValidationError") {
-                  if (patientData.patientIdProofImage) {
-                      const idProofS3Key = patientData.patientIdProofImage.split('/').pop();
-                      const idProofParams = {
-                          Bucket: process.env.S3_BUCKET_NAME,
-                          Key: `PatientImages/${idProofS3Key}`
-                      };
-                      try {
-                          await s3Client.send(new DeleteObjectCommand(idProofParams));
-                      } catch (s3Error) {
-                          console.error("Error deleting ID proof image from S3:", s3Error);
-                      }
-                  }
-                  if (patientData.patientProfileImage) {
-                      const profileS3Key = patientData.patientProfileImage.split('/').pop();
-                      const profileParams = {
-                          Bucket: process.env.S3_BUCKET_NAME,
-                          Key: `PatientImages/${profileS3Key}`
-                      };
-                      try {
-                          await s3Client.send(new DeleteObjectCommand(profileParams));
-                      } catch (s3Error) {
-                          console.error("Error deleting profile image from S3:", s3Error);
-                      }
-                  }
-                  return res.status(422).json({
-                      status: "failed",
-                      message: "Validation error during registration",
-                      errors: error.errors,
-                  });
-              } else {
-                  return res.status(500).json({
-                      status: "error",
-                      message: "Internal server error during registration",
-                      error: error.message,
-                  });
-              }
+            await s3Client.send(new DeleteObjectCommand(idProofParams));
+          } catch (s3Error) {
+            console.error("Error deleting ID proof image from S3:", s3Error);
           }
-      });
+        }
+        if (patientData.patientProfileImage) {
+          const profileS3Key = patientData.patientProfileImage.split('/').pop();
+          const profileParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `PatientImages/${profileS3Key}`
+          };
+          try {
+            await s3Client.send(new DeleteObjectCommand(profileParams));
+          } catch (s3Error) {
+            console.error("Error deleting profile image from S3:", s3Error);
+          }
+        }
+        return res.status(400).json({
+          status: "validation failed",
+          results: validationResults.errors,
+        });
+      }
+
+      const idProofFileName = `patientIdProof-${Date.now()}${path.extname(idProofImageFile.originalname)}`;
+      const profileImageFileName = `patientProfileImage-${Date.now()}${path.extname(profileImageFile.originalname)}`;
+
+      try {
+        const idProofFileLocation = await uploadFileToS3(idProofImageFile, idProofFileName, idProofImageFile.mimetype);
+        const profileImageFileLocation = await uploadFileToS3(profileImageFile, profileImageFileName, profileImageFile.mimetype);
+
+        // Assign S3 URLs to patientData instead of file names
+        patientData.patientIdProofImage = idProofFileLocation;
+        patientData.patientProfileImage = profileImageFileLocation;
+
+        const registrationResponse = await HospitalStaff.registerPatient(patientData);
+        return res.status(200).json({
+          status: "success",
+          message: "Patient registered successfully",
+          data: registrationResponse,
+        });
+      } catch (error) {
+        if (error.name === "ValidationError") {
+          if (patientData.patientIdProofImage) {
+            const idProofS3Key = patientData.patientIdProofImage.split('/').pop();
+            const idProofParams = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `PatientImages/${idProofS3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(idProofParams));
+            } catch (s3Error) {
+              console.error("Error deleting ID proof image from S3:", s3Error);
+            }
+          }
+          if (patientData.patientProfileImage) {
+            const profileS3Key = patientData.patientProfileImage.split('/').pop();
+            const profileParams = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `PatientImages/${profileS3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(profileParams));
+            } catch (s3Error) {
+              console.error("Error deleting profile image from S3:", s3Error);
+            }
+          }
+          return res.status(422).json({
+            status: "failed",
+            message: "Validation error during registration",
+            errors: error.errors,
+          });
+        } else {
+          if (idProofImageFile && idProofImageFile.filename) {
+            const idProofImagePath = path.join("Files/PatientImages", idProofImageFile.filename);
+            fs.unlinkSync(idProofImagePath);
+          }
+          if (profileImageFile && profileImageFile.filename) {
+            const profileImagePath = path.join("Files/PatientImages", profileImageFile.filename);
+            fs.unlinkSync(profileImagePath);
+          }
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error during registration",
+            error: error.message,
+          });
+        }
+      }
+    });
   });
 
   async function uploadFileToS3(fileBuffer, fileName, mimeType) {
-      const uploadParams = {
-          Bucket: process.env.S3_BUCKET_NAME,
-          Key: `PatientImages/${fileName}`,
-          Body: fileBuffer.buffer,
-          ACL: "public-read",
-          ContentType: mimeType,
-      };
+    const uploadParams = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `PatientImages/${fileName}`,
+      Body: fileBuffer.buffer,
+      ACL: "public-read",
+      ContentType: mimeType,
+    };
 
-      const command = new PutObjectCommand(uploadParams);
-      await s3Client.send(command);
-      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    const command = new PutObjectCommand(uploadParams);
+    await s3Client.send(command);
+    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
   }
 
   function validatePatientRegistration(patientData, idProofImageFile, profileImageFile) {
-      const validationResults = {
-          isValid: true,
-          errors: {},
-      };
+    const validationResults = {
+      isValid: true,
+      errors: {},
+    };
 
-      const nameValidation = dataValidator.isValidName(patientData.patientName);
-      if (!nameValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientName"] = nameValidation.message;
-      }
+    const nameValidation = dataValidator.isValidName(patientData.patientName);
+    if (!nameValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientName"] = [nameValidation.message];
+    }
 
-      const emailValidation = dataValidator.isValidEmail(patientData.patientEmail);
-      if (!emailValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientEmail"] = emailValidation.message;
-      }
+    const emailValidation = dataValidator.isValidEmail(patientData.patientEmail);
+    if (!emailValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientEmail"] = [emailValidation.message];
+    }
 
-      const aadharValidation = dataValidator.isValidAadharNumber(patientData.patientAadhar);
-      if (!aadharValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientAadhar"] = aadharValidation.message;
-      }
+    const aadharValidation = dataValidator.isValidAadharNumber(patientData.patientAadhar);
+    if (!aadharValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientAadhar"] = [aadharValidation.message];
+    }
 
-      const mobileValidation = dataValidator.isValidMobileNumber(patientData.patientMobile);
-      if (!mobileValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientMobile"] = mobileValidation.message;
-      }
+    const mobileValidation = dataValidator.isValidMobileNumber(patientData.patientMobile);
+    if (!mobileValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientMobile"] = [mobileValidation.message];
+    }
 
-      const passwordValidation = dataValidator.isValidPassword(patientData.patientPassword);
-      if (!passwordValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientPassword"] = passwordValidation.message;
-      }
+    const passwordValidation = dataValidator.isValidPassword(patientData.patientPassword);
+    if (!passwordValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientPassword"] = [passwordValidation.message];
+    }
 
-      const genderValidation = dataValidator.isValidGender(patientData.patientGender);
-      if (!genderValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientGender"] = genderValidation.message;
-      }
-      const ageValidation = dataValidator.isValidAge(patientData.patientAge);
-      if (!ageValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientGender"] = ageValidation.message;
-      }
+    const genderValidation = dataValidator.isValidGender(patientData.patientGender);
+    if (!genderValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientGender"] = [genderValidation.message];
+    }
+    const ageValidation = dataValidator.isValidAge(patientData.patientAge);
+    if (!ageValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientAge"] = [ageValidation.message];
+    }
 
+    const addressValidation = dataValidator.isValidAddress(patientData.patientAddress);
+    if (!addressValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientAddress"] = [addressValidation.message];
+    }
 
-      const addressValidation = dataValidator.isValidAddress(patientData.patientAddress);
-      if (!addressValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientAddress"] = addressValidation.message;
-      }
+    const idProofImageValidation = dataValidator.isValidImageWith1MBConstraint(idProofImageFile);
+    if (!idProofImageValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientIdProofImage"] = [idProofImageValidation.message];
+    }
 
-      const idProofImageValidation =  dataValidator.isValidImageWith1MBConstraint(idProofImageFile);
-      if (!idProofImageValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientIdProofImage"] = idProofImageValidation.message;
-      }
+    const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(profileImageFile);
+    if (!profileImageValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["patientProfileImage"] = [profileImageValidation.message];
+    }
 
-      const profileImageValidation = dataValidator.isValidImageWith1MBConstraint(profileImageFile);
-      if (!profileImageValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["patientProfileImage"] = profileImageValidation.message;
-      }
-
-      return validationResults;
+    return validationResults;
   }
 };
 //
@@ -1335,4 +1359,172 @@ exports.searchPatients = async (req, res) => {
 //
 //
 //
+// Add Medical Record
+exports.addMedicalRecord = async (req, res) => {
+  const token = req.headers.token;
+  const { patientId, hospitalStaffId, staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber } = req.body;
+
+  // Check if patientId is missing
+  if (!patientId) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Patient ID is missing"
+    });
+  }
+
+  // Check if hospitalStaffId is missing
+  if (!hospitalStaffId) {
+    return res.status(400).json({
+      status: "failed",
+      message: "Hospital Staff ID is missing"
+    });
+  }
+
+  if (!token) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
+    if (err) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Invalid token"
+      });
+    }
+
+    if (decoded.hospitalStaffId != hospitalStaffId) {
+      return res.status(403).json({
+        status: "error",
+        message: "Unauthorized access"
+      });
+    }
+
+    const uploadReportImage = multer({
+      storage: multer.memoryStorage(),
+    }).single("reportImage");
+
+    uploadReportImage(req, res, async (err) => {
+      if (err || !req.file) {
+        return res.status(400).json({
+          status: "error",
+          message: "File upload failed",
+          results: err ? err.message : "Report image is required.",
+        });
+      }
+
+      // Validation
+      const validationResults = validateMedicalRecordData({ staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, reportImage: req.file });
+
+      if (!validationResults.isValid) {
+        if (req.file && req.file.path) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({
+          status: "failed",
+          message: "Validation failed",
+          results: validationResults.errors,
+        });
+      }
+
+      try {
+        const reportImageFileLocation = await uploadFileToS3(req.file);
+
+        const medicalRecordData = {
+          staffReport,
+          reportImage: reportImageFileLocation,
+          medicineAndLabCosts,
+          byStanderName,
+          byStanderMobileNumber
+        };
+
+        const record = await MedicalRecord.addMedicalRecord(patientId, hospitalStaffId, medicalRecordData);
+
+        // If record addition is successful, delete the temporary file
+        if (req.file && req.file.path) {
+          fs.unlinkSync(req.file.path);
+        }
+
+        return res.status(200).json({
+          status: "success",
+          message: "Medical record added successfully",
+          data: record,
+        });
+      } catch (error) {
+        // Handle errors from the model
+        console.error("Error adding medical record:", error);
+        if (error.message === "Patient not found or not admitted") {
+          return res.status(404).json({
+            status: "failed",
+            message: "Patient not found or not admitted"
+          });
+        } else {
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    });
+  });
+
+  async function uploadFileToS3(file) {
+    const fileName = `medicalReport-${Date.now()}${path.extname(file.originalname)}`;
+    const uploadParams = {
+      Bucket: process.env.S3_BUCKET_NAME,
+      Key: `medicalReports/${fileName}`,
+      Body: file.buffer,
+      ACL: "public-read",
+      ContentType: file.mimetype,
+    };
+
+    const command = new PutObjectCommand(uploadParams);
+    await s3Client.send(command);
+    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+  }
+
+  function validateMedicalRecordData(data) {
+    const validationResults = {
+      isValid: true,
+      errors: {},
+    };
+
+    const reportImageValidation = dataValidator.isValidImageWith1MBConstraint(data.reportImage);
+    if (!reportImageValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["reportImage"] = [reportImageValidation.message];
+    }
+
+    const staffReportValidation = dataValidator.isValidText(data.staffReport);
+    if (!staffReportValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["staffReport"] = [staffReportValidation.message];
+    }
+
+    const medicineAndLabCostsValidation = dataValidator.isValidCost(data.medicineAndLabCosts);
+    if (!medicineAndLabCostsValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["medicineAndLabCosts"] = [medicineAndLabCostsValidation.message];
+    }
+
+    const byStanderNameValidation = dataValidator.isValidName(data.byStanderName);
+    if (!byStanderNameValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["byStanderName"] = [byStanderNameValidation.message];
+    }
+
+    const byStanderMobileNumberValidation = dataValidator.isValidMobileNumber(data.byStanderMobileNumber);
+    if (!byStanderMobileNumberValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["byStanderMobileNumber"] = [byStanderMobileNumberValidation.message];
+    }
+
+    return validationResults;
+  }
+};
+
+
 
