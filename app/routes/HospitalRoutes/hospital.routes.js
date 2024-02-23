@@ -86,6 +86,21 @@ router.post("/viewAllInsuranceProviders", HospitalController.viewAllInsurancePro
 // View one insurance provider route
 router.post("/viewOneInsuranceProvider", HospitalController.viewOneInsuranceProvider);
 
+// Hospital search insurance providers route
+router.post("/searchInsuranceProviders", HospitalController.searchInsuranceProviders);
+
+// Hospital suspend insurance provider route
+router.post("/suspendInsuranceProvider", HospitalController.suspendInsuranceProvider);
+
+// Hospital unsuspend insurance provider route
+router.post("/unsuspendInsuranceProvider", HospitalController.unsuspendInsuranceProvider);
+
+// Hospital view all suspended insurance providers route
+router.post("/viewAllSuspendedInsuranceProviders", HospitalController.viewAllSuspendedInsuranceProviders);
+
+// Hospital view one suspended insurance provider route
+router.post("/viewOneSuspendedInsuranceProvider", HospitalController.viewOneSuspendedInsuranceProvider);
+
 
 
 

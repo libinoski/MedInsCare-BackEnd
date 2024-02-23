@@ -81,7 +81,7 @@ const NotificationToHospitalStaffs = function (notification) {
 //
 //
 //
-// REGISTER
+// HOSPITAL REGISTER
 Hospital.register = async (newHospital) => {
   try {
     const checkEmailQuery =
@@ -126,7 +126,7 @@ Hospital.register = async (newHospital) => {
 //
 //
 //
-// LOGIN
+// HOSPITAL LOGIN
 Hospital.login = async (email, password) => {
   const query =
     "SELECT * FROM Hospitals WHERE hospitalEmail = ? AND isActive = 1 AND deleteStatus = 0";
@@ -159,7 +159,7 @@ Hospital.login = async (email, password) => {
 //
 //
 //
-// CHANGE PASSWORD
+// HOSPITAL CHANGE PASSWORD
 Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
   const checkHospitalQuery =
     "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
@@ -209,7 +209,7 @@ Hospital.changePassword = async (hospitalId, oldPassword, newPassword) => {
 //
 //
 //
-// UPDATE IMAGE
+// HOSPITAL UPDATE IMAGE
 Hospital.updateImage = async (hospitalId, newImageFilename) => {
   const checkHospitalQuery =
     "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
@@ -235,7 +235,7 @@ Hospital.updateImage = async (hospitalId, newImageFilename) => {
 //
 //
 //
-// VIEW PROFILE
+// HOSPITAL VIEW PROFILE
 Hospital.getProfile = async (hospitalId) => {
   const query =
     "SELECT hospitalId,hospitalImage, hospitalName, hospitalEmail, hospitalWebSite, hospitalAadhar, hospitalMobile, hospitalAddress, registeredDate FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
@@ -256,7 +256,7 @@ Hospital.getProfile = async (hospitalId) => {
 //
 //
 //
-// Hospital Update Profile
+// HOSITAL UPDATE PROFILE
 Hospital.updateProfile = async (updatedHospital) => {
   const checkHospitalQuery =
     "SELECT * FROM Hospitals WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
@@ -323,7 +323,7 @@ Hospital.updateProfile = async (updatedHospital) => {
 //
 //
 //
-// REGISTER STAFF
+// HOSPITAL REGISTER STAFF
 Hospital.registerStaff = async (newHospitalStaff) => {
   try {
     const checkHospitalQuery =
@@ -377,7 +377,7 @@ Hospital.registerStaff = async (newHospitalStaff) => {
 //
 //
 //
-// DELETE STAFF
+// HOSPITAL DELETE STAFF
 Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -413,7 +413,7 @@ Hospital.deleteStaff = async (hospitalStaffId, hospitalId) => {
 //
 //
 //
-// SUSPEND STAFF
+// HOSPITAL SUSPEND STAFF
 Hospital.suspendStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -449,7 +449,7 @@ Hospital.suspendStaff = async (hospitalStaffId, hospitalId) => {
 //
 //
 //
-// UNSUSPEND STAFF
+// HOSPITAL UNSUSPEND STAFF
 Hospital.unSuspendStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -485,7 +485,7 @@ Hospital.unSuspendStaff = async (hospitalStaffId, hospitalId) => {
 //
 //
 //
-// VIEW ALL SUSPENDED STAFFS
+// HOSPITAL VIEW ALL SUSPENDED STAFFS
 Hospital.viewAllSuspendedStaffs = async (hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -511,7 +511,7 @@ Hospital.viewAllSuspendedStaffs = async (hospitalId) => {
 //
 //
 //
-// VIEW ONE SUSPENDED STAFF
+// HOSPITAL VIEW ONE SUSPENDED STAFF
 Hospital.viewOneSuspendedStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -543,7 +543,7 @@ Hospital.viewOneSuspendedStaff = async (hospitalStaffId, hospitalId) => {
 //
 //
 //
-// UPDATE STAFF
+// HOSPITAL UPDATE STAFF
 Hospital.updateStaff = async (updatedHospitalStaff) => {
   try {
     const checkHospitalQuery =
@@ -624,7 +624,7 @@ Hospital.updateStaff = async (updatedHospitalStaff) => {
 //
 //
 //
-// VIEW ALL STAFFS
+// HOSPITAL VIEW ALL STAFFS
 Hospital.viewAllStaffs = async (hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -649,7 +649,7 @@ Hospital.viewAllStaffs = async (hospitalId) => {
 //
 //
 //
-// VIEW ONE STAFF
+// HOSPITAL VIEW ONE STAFF
 Hospital.viewOneStaff = async (hospitalStaffId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -681,7 +681,7 @@ Hospital.viewOneStaff = async (hospitalStaffId, hospitalId) => {
 //
 //
 //
-// SEARCH STAFF
+// HOSPITAL SEARCH STAFF
 Hospital.searchStaff = async (hospitalId, searchQuery) => {
   try {
     const checkHospitalQuery =
@@ -743,7 +743,7 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
 //
 //
 //
-//
+// HOSPITAL SEND NOTIFICATION TO CLIENT
 Hospital.sendNotificationToStaff = async (hospitalId, hospitalStaffId, notificationMessage) => {
   try {
     const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
@@ -780,7 +780,7 @@ Hospital.sendNotificationToStaff = async (hospitalId, hospitalStaffId, notificat
 //
 //
 //
-// ADD NEWS
+// HOSPITAL ADD NEWS
 Hospital.addNews = async (hospitalId, newHospitalNews) => {
   try {
     const checkHospitalQuery =
@@ -805,7 +805,7 @@ Hospital.addNews = async (hospitalId, newHospitalNews) => {
 //
 //
 //
-// DELETE NEWS
+// HOSPITAL DELETE NEWS
 Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
   try {
     const checkHospitalQuery =
@@ -839,7 +839,7 @@ Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
 //
 //
 //
-// UPDATE NEWS
+// HOSPITAL UPDATE NEWS
 Hospital.updateNews = async (hospitalNewsId,hospitalId,updatedHospitalNews) => {
   try {
     const checkHospitalQuery =
@@ -877,7 +877,7 @@ Hospital.updateNews = async (hospitalNewsId,hospitalId,updatedHospitalNews) => {
 //
 //
 //
-// VIEW ALL NEWS
+// HOSPITAL VIEW ALL NEWS
 Hospital.viewAllNews = async (hospitalId) => {
   try {
     const checkHospitalQuery = `
@@ -907,7 +907,7 @@ Hospital.viewAllNews = async (hospitalId) => {
 //
 //
 //
-// VIEW ONE NEWS
+// HOSPITAL VIEW ONE NEWS
 Hospital.viewOneNews = async (hospitalNewsId, hospitalId) => {
   try {
     const verifyHospitalQuery = `
@@ -1116,8 +1116,199 @@ Hospital.viewOneInsuranceProvider = async (hospitalId, insuranceProviderId) => {
     throw error;
   }
 };
+//
+//
+//
+//
+//
+// HOSPITAL SEARCH INSURANCE PROVIDERS
+Hospital.searchInsuranceProviders = async (hospitalId, searchQuery) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
 
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
 
+    const query = `
+      SELECT 
+        insuranceProviderId, 
+        hospitalId,
+        insuranceProviderName, 
+        insuranceProviderEmail, 
+        insuranceProviderAadhar, 
+        insuranceProviderMobile, 
+        insuranceProviderAddress, 
+        insuranceProviderProfileImage, 
+        insuranceProviderIdProofImage
+      FROM Insurance_Providers 
+      WHERE hospitalId = ? 
+        AND (
+          insuranceProviderId LIKE ? OR
+          insuranceProviderName LIKE ? OR
+          insuranceProviderAadhar LIKE ? OR
+          insuranceProviderMobile LIKE ? OR
+          insuranceProviderEmail LIKE ? OR
+          insuranceProviderAddress LIKE ? 
+        )
+    `;
+
+    const searchParams = [
+      hospitalId,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+    ];
+
+    const result = await dbQuery(query, searchParams);
+
+    if (result.length === 0) {
+      throw new Error("No insurance providers found");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error searching insurance providers:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+// HOPITAL SUSPEND INSURANCE PROVIDER
+Hospital.suspendOneInsuranceProvider = async (insuranceProviderId, hospitalId) => {
+  try {
+    // Validate existence of the hospital
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Validate existence and active status of the insurance provider
+    const checkInsuranceProviderQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0";
+    const insuranceProviderCheckResult = await dbQuery(checkInsuranceProviderQuery, [insuranceProviderId, hospitalId]);
+    if (insuranceProviderCheckResult.length === 0) {
+      throw new Error("Insurance Provider not found or already suspended");
+    }
+
+    // Suspend the insurance provider
+    const suspendQuery = "UPDATE Insurance_Providers SET isSuspended = 1, isActive = 0 WHERE insuranceProviderId = ? AND hospitalId = ?";
+    await dbQuery(suspendQuery, [insuranceProviderId, hospitalId]);
+
+    return true; // Indicates successful suspension
+  } catch (error) {
+    console.error("Error suspending insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+// HOPITAL UNSUSPEND INSURANCE PROVIDER
+Hospital.unsuspendOneInsuranceProvider = async (insuranceProviderId, hospitalId) => {
+  try {
+    // Validate existence of the hospital
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Validate existence and suspended status of the insurance provider
+    const checkInsuranceProviderQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 1";
+    const insuranceProviderCheckResult = await dbQuery(checkInsuranceProviderQuery, [insuranceProviderId, hospitalId]);
+    if (insuranceProviderCheckResult.length === 0) {
+      throw new Error("Insurance Provider not found or not suspended");
+    }
+
+    // Unsuspend the insurance provider
+    const unsuspendQuery = "UPDATE Insurance_Providers SET isSuspended = 0, isActive = 1 WHERE insuranceProviderId = ? AND hospitalId = ?";
+    await dbQuery(unsuspendQuery, [insuranceProviderId, hospitalId]);
+
+    return true; // Indicates successful unsuspension
+  } catch (error) {
+    console.error("Error unsuspending insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// HOPITAL VIEW ALL SUSPENDED INSURANCE PROVIDERS
+Hospital.viewAllSuspendedInsuranceProviders = async (hospitalId) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewSuspendedProvidersQuery =
+      "SELECT * FROM Insurance_Providers WHERE hospitalId = ? AND isSuspended = 1 AND isActive = 0 AND deleteStatus = 0";
+    const suspendedProviders = await dbQuery(viewSuspendedProvidersQuery, [hospitalId]);
+
+    return suspendedProviders;
+  } catch (error) {
+    console.error("Error viewing all suspended insurance providers:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// HOPITAL VIEW ONE SUSPENDED INSURANCE PROVIDER
+Hospital.viewOneSuspendedInsuranceProvider = async (insuranceProviderId, hospitalId) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewOneSuspendedProviderQuery =
+      "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isSuspended = 1 AND isActive = 0 AND deleteStatus = 0";
+    const suspendedProviderDetails = await dbQuery(viewOneSuspendedProviderQuery, [
+      insuranceProviderId,
+      hospitalId,
+    ]);
+
+    if (suspendedProviderDetails.length === 0) {
+      throw new Error("Suspended insurance provider not found");
+    }
+
+    return suspendedProviderDetails[0]; // Returning the suspended insurance provider details directly
+  } catch (error) {
+    console.error("Error viewing suspended insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
 
 
 

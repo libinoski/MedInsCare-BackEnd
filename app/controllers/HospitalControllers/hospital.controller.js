@@ -3490,4 +3490,528 @@ exports.viewOneInsuranceProvider = async (req, res) => {
 //
 //
 //
+// HOSPITAL SEARCH INSURANCE PROVIDERS
+exports.searchInsuranceProviders = async (req, res) => {
+  const token = req.headers.token;
+  const { hospitalId, searchQuery } = req.body;
+
+  try {
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Check if searchQuery is missing or empty
+    if (!searchQuery || searchQuery.trim() === "") {
+      return res.status(400).json({
+        status: "error",
+        results: "Search query cannot be empty"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid or missing token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        // Token is valid, proceed to search insurance providers
+        try {
+          const searchResult = await Hospital.searchInsuranceProviders(
+            hospitalId,
+            searchQuery
+          );
+
+          return res.status(200).json({
+            status: "success",
+            message: "Insurance Providers found successfully",
+            data: searchResult,
+          });
+        } catch (error) {
+          console.error("Error searching insurance providers:", error);
+
+          if (error.message === "Hospital not found") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else if (error.message === "No insurance providers found") {
+            return res.status(422).json({
+              status: "failed",
+              error: error.message
+            });
+          }
+
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error searching insurance providers:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
 //
+//
+//
+//
+//
+// HOSPITAL SUSPEND INSURANCE PROVIDER
+exports.suspendInsuranceProvider = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, insuranceProviderId } = req.body;
+
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          }
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        try {
+          const suspensionStatus = await Hospital.suspendOneInsuranceProvider(
+            insuranceProviderId,
+            hospitalId
+          );
+
+          if (suspensionStatus) {
+            return res.status(200).json({
+              status: "success",
+              message: "Insurance Provider suspended successfully",
+              data: { insuranceProviderId },
+            });
+          } else {
+            throw new Error("Error suspending insurance provider");
+          }
+        } catch (error) {
+          console.error("Error suspending insurance provider:", error);
+
+          if (
+            error.message === "Insurance Provider not found or already suspended" ||
+            error.message === "Hospital not found"
+          ) {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          }
+
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error suspending insurance provider:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL UNSUSPEND INSURANCE PROVIDER
+exports.unsuspendInsuranceProvider = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          }
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        try {
+          const unsuspensionStatus = await Hospital.unsuspendOneInsuranceProvider(
+            insuranceProviderId,
+            hospitalId
+          );
+
+          if (unsuspensionStatus) {
+            return res.status(200).json({
+              status: "success",
+              message: "Insurance Provider unsuspended successfully",
+              data: { insuranceProviderId },
+            });
+          } else {
+            throw new Error("Error unsuspending insurance provider");
+          }
+        } catch (error) {
+          console.error("Error unsuspending insurance provider:", error);
+
+          if (
+            error.message === "Insurance Provider not found or not suspended" ||
+            error.message === "Hospital not found"
+          ) {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          }
+
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error unsuspending insurance provider:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL VIEW ALL SUSPENDED INSURANCE PROVIDERS
+exports.viewAllSuspendedInsuranceProviders = async (req, res) => {
+  const token = req.headers.token;
+  const { hospitalId } = req.body;
+
+  // Check if token is missing
+  if (!token) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
+  }
+
+  // Check if hospitalId is missing
+  if (!hospitalId) {
+    return res.status(401).json({
+      status: "failed",
+      message: "Hospital ID is missing"
+    });
+  }
+
+  try {
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        // Token is valid, proceed to fetch all suspended insurance providers
+        try {
+          const suspendedProviders = await Hospital.viewAllSuspendedInsuranceProviders(hospitalId);
+          return res.status(200).json({
+            status: "success",
+            message: "All Suspended Insurance Providers retrieved successfully",
+            data: suspendedProviders,
+          });
+        } catch (error) {
+          console.error("Error viewing all suspended insurance providers:", error);
+          if (error.message === "Hospital not found") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          }
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error verifying token:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ONE SUSPENDED INSURANCE PROVIDER
+exports.viewOneSuspendedInsuranceProvider = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        // Token is valid, proceed to fetch details of one suspended insurance provider
+        try {
+          const suspendedProviderDetails = await Hospital.viewOneSuspendedInsuranceProvider(
+            insuranceProviderId,
+            hospitalId
+          );
+          return res.status(200).json({
+            status: "success",
+            message: "Suspended Insurance Provider details",
+            data: suspendedProviderDetails,
+          });
+        } catch (error) {
+          if (
+            error.message === "Suspended insurance provider not found" ||
+            error.message === "Hospital not found"
+          ) {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else {
+            console.error("Error viewing suspended insurance provider details:", error);
+            return res.status(500).json({
+              status: "error",
+              message: "Internal server error",
+              error: error.message,
+            });
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error verifying token:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//
+//
+
