@@ -941,6 +941,127 @@ Hospital.viewOneNews = async (hospitalNewsId, hospitalId) => {
 //
 //
 //
+// HOSPITAL VIEW ALL UNAPPROVED INSURANCE PROVIDERS
+Hospital.viewAllUnapprovedInsuranceProviders = async (hospitalId) => {
+  try {
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewUnapprovedProvidersQuery = `
+      SELECT * FROM Insurance_Providers 
+      WHERE hospitalId = ? AND isApproved = 0 AND deleteStatus = 0
+    `;
+    const unapprovedProviders = await dbQuery(viewUnapprovedProvidersQuery, [hospitalId]);
+
+    return unapprovedProviders;
+  } catch (error) {
+    console.error("Error viewing unapproved insurance providers:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+// HOSPITAL VIEW ONE UNAPPROVED INSURANCE PROVIDER
+Hospital.viewOneUnapprovedInsuranceProvider = async (hospitalId, insuranceProviderId) => {
+  try {
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewUnapprovedProviderQuery = `
+      SELECT * FROM Insurance_Providers 
+      WHERE hospitalId = ? AND insuranceProviderId = ? AND isApproved = 0 AND deleteStatus = 0
+    `;
+    const unapprovedProviderResult = await dbQuery(viewUnapprovedProviderQuery, [hospitalId, insuranceProviderId]);
+
+    if (unapprovedProviderResult.length === 0) {
+      throw new Error("Unapproved insurance provider not found or already approved");
+    }
+
+    return unapprovedProviderResult[0];
+  } catch (error) {
+    console.error("Error viewing unapproved insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL APPROVE ONE INSURANCE PROVIDER
+Hospital.approveOneInsuranceProvider = async (hospitalId, insuranceProviderId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Validate existence and status of the insurance provider
+    const insuranceProviderCheckQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isApproved = 0 AND deleteStatus = 0";
+    const insuranceProviderCheckRes = await dbQuery(insuranceProviderCheckQuery, [insuranceProviderId, hospitalId]);
+    if (insuranceProviderCheckRes.length === 0) {
+      throw new Error("Insurance provider not found or already approved");
+    }
+
+    // Approve the insurance provider
+    const approveQuery = "UPDATE Insurance_Providers SET isApproved = 1 WHERE insuranceProviderId = ? AND hospitalId = ?";
+    await dbQuery(approveQuery, [insuranceProviderId, hospitalId]);
+
+    return insuranceProviderId; // Return the approved insuranceProviderId
+  } catch (error) {
+    console.error("Error in approveInsuranceProvider model:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL DELETE ONE INSURANCE PROVIDER
+Hospital.deleteOneInsuranceProvider = async (hospitalId, insuranceProviderId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Validate existence and status of the insurance provider
+    const insuranceProviderCheckQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND deleteStatus = 0";
+    const insuranceProviderCheckRes = await dbQuery(insuranceProviderCheckQuery, [insuranceProviderId, hospitalId]);
+    if (insuranceProviderCheckRes.length === 0) {
+      throw new Error("Insurance provider not found or already deleted");
+    }
+
+    // Mark the insurance provider as deleted
+    const deleteQuery = "UPDATE Insurance_Providers SET deleteStatus = 1 WHERE insuranceProviderId = ? AND hospitalId = ?";
+    await dbQuery(deleteQuery, [insuranceProviderId, hospitalId]);
+
+    return insuranceProviderId; // Return the deleted insuranceProviderId
+  } catch (error) {
+    console.error("Error deleting insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
 // HOSPITAL VIEW ALL INSURANCE PROVIDERS
 Hospital.viewAllInsuranceProviders = async (hospitalId) => {
   try {
@@ -957,7 +1078,7 @@ Hospital.viewAllInsuranceProviders = async (hospitalId) => {
 
     // Fetch all insurance providers associated with the hospital
     const viewAllInsuranceProvidersQuery =
-      "SELECT * FROM Insurance_Providers WHERE hospitalId = ? AND isActive = 1 AND isSuspended = 0 AND isApproved = 1";
+      "SELECT * FROM Insurance_Providers WHERE hospitalId = ? AND isActive = 1 AND isSuspended = 0 AND isApproved = 1 AND deleteStatus = 0 ";
     const allInsuranceProviders = await dbQuery(viewAllInsuranceProvidersQuery, [validHospitalId]);
 
     return allInsuranceProviders;
@@ -995,12 +1116,6 @@ Hospital.viewOneInsuranceProvider = async (hospitalId, insuranceProviderId) => {
     throw error;
   }
 };
-//
-//
-//
-//
-//
-//
 
 
 

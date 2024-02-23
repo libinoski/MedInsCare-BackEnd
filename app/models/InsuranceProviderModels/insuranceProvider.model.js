@@ -3,8 +3,11 @@ const bcrypt = require("bcrypt");
 const db = require("../db");
 const { promisify } = require("util");
 const dbQuery = promisify(db.query.bind(db));
-
-// Hospital Model
+//
+//
+//
+//
+//
 const Hospital = function (hospital) {
   this.hospitalId = hospital.hospitalId;
   this.hospitalName = hospital.hospitalName;
@@ -26,7 +29,7 @@ const Hospital = function (hospital) {
 //
 //
 //
-// Insurance Provider Model
+// 
 const InsuranceProvider = function (insuranceProvider) {
   this.insuranceProviderId = insuranceProvider.insuranceProviderId;
   this.hospitalId = insuranceProvider.hospitalId;
@@ -50,7 +53,7 @@ const InsuranceProvider = function (insuranceProvider) {
 //
 //
 //
-// REGISTER
+// INSURANCE PROVIDER REGISTER
 InsuranceProvider.register = async (newInsuranceProvider) => {
   try {
     const checkEmailQuery =
@@ -132,6 +135,7 @@ InsuranceProvider.login = async (email, password) => {
 //
 //
 //
+// INSURANCE PROVIDER CHANGE PASSWORD
 InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newPassword) => {
   const checkInsuranceProviderQuery =
     "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -184,6 +188,7 @@ InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newP
 //
 //
 //
+// INSURANCE PROVIDER CHANGE ID PROOF IMAGE
 InsuranceProvider.changeIdProofImage = async (insuranceProviderId,newIdProofImageFilename) => {
   const verifyQuery = `
         SELECT insuranceProviderId
@@ -220,6 +225,7 @@ InsuranceProvider.changeIdProofImage = async (insuranceProviderId,newIdProofImag
 //
 //
 //
+// INSURANCE PROVIDER CHANGE PROFILE IMAGE
 InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileImageFilename) => {
   const verifyQuery = `
         SELECT insuranceProviderId
@@ -255,7 +261,7 @@ InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileIma
 //
 //
 //
-// Insurance provider update Profile
+// INSURANCE PROVIDER VIEW PROFILE
 InsuranceProvider.viewProfile = async (insuranceProviderId) => {
   const query =
     "SELECT * FROM Hospital_Staffs WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -276,7 +282,7 @@ InsuranceProvider.viewProfile = async (insuranceProviderId) => {
 //
 //
 //
-// UPDATE PROFILE
+// INSURANCE PROVIDER UPDATE PROFILE
 InsuranceProvider.updateProfile = async (updatedInsuranceProvider) => {
   const checkInsuranceProviderQuery =
     "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -386,7 +392,7 @@ InsuranceProvider.viewAllNews = async (insuranceProviderId) => {
 //
 //
 //
-// VIEW ONE NEWS
+// INSURANCE PROVIDER VIEW ONE NEWS
 InsuranceProvider.viewOneNews = async (hospitalNewsId, insuranceProviderId) => {
   try {
     const hospitalIdQuery = "SELECT hospitalId FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND isSuspended = 0";
@@ -433,7 +439,7 @@ InsuranceProvider.viewOneNews = async (hospitalNewsId, insuranceProviderId) => {
 //
 //
 //
-//
+// INSURANCE PROVIDER SEND NOTIFICATION TO CLIENT
 InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientId, notificationMessage) => {
   try {
     const checkInsuranceProviderQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";

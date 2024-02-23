@@ -12,6 +12,7 @@ require("dotenv").config();
 //
 //
 //
+// BUCKET CONFIGURATION
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -296,7 +297,7 @@ exports.login = async (req, res) => {
 //
 //
 //
-// CHANGE PASSWORD
+// INSURANCE PROVIDER CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
   const token = req.headers.token;
   const { insuranceProviderId, oldPassword, newPassword } = req.body;
@@ -410,7 +411,7 @@ exports.changePassword = async (req, res) => {
 //
 //
 //
-// UPDATE ID PROOF IMAGE
+// INSURANCE PROVIDER UPDATE ID PROOF IMAGE
 exports.changeIdProofImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -562,7 +563,7 @@ exports.changeIdProofImage = async (req, res) => {
 //
 //
 //
-// UPDATE PROFILE IMAGE
+// INSURANCE PROVIDER UPDATE PROFILE IMAGE
 exports.changeProfileImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -1166,7 +1167,7 @@ exports.viewOneNews = async (req, res) => {
 //
 //
 //
-// SEND NOTIFICATION TO CLIENT
+// INSURANCE PROVIDER SEND NOTIFICATION TO CLIENT
 exports.sendNotificationToClient = async (req, res) => {
   try {
     const token = req.headers.token;

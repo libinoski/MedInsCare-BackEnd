@@ -35,7 +35,6 @@ const Patient = function (patient) {
 //
 //
 //
-// Insurance Provider Model
 const InsuranceProvider = function (insuranceProvider) {
     this.insuranceProviderId = insuranceProvider.insuranceProviderId;
     this.hospitalId = insuranceProvider.hospitalId;
@@ -60,7 +59,27 @@ const InsuranceProvider = function (insuranceProvider) {
 //
 //
 //
-// Hospital Staff Model
+const InsurancePackage = function (insurancePackage) {
+    this.packageId = insurancePackage.packageId;
+    this.insuranceProviderId = insurancePackage.insuranceProviderId;
+    this.hospitalId = insurancePackage.hospitalId;
+    this.packageTitle = insurancePackage.packageTitle;
+    this.packageDetails = insurancePackage.packageDetails;
+    this.packageImage = insurancePackage.packageImage;
+    this.packageDuration = insurancePackage.packageDuration;
+    this.packageAmount = insurancePackage.packageAmount;
+    this.packageTAndC = insurancePackage.packageTAndC;
+    this.addedDate = insurancePackage.addedDate;
+    this.updatedDate = insurancePackage.updatedDate;
+    this.updateStatus = insurancePackage.updateStatus;
+    this.deleteStatus = insurancePackage.deleteStatus;
+    this.isActive = insurancePackage.isActive;
+};
+//
+//
+//
+//
+// 
 const HospitalStaff = function (hospitalStaff) {
     this.hospitalId = hospitalStaff.hospitalId;
     this.hospitalStaffName = hospitalStaff.hospitalStaffName;
@@ -84,7 +103,7 @@ const HospitalStaff = function (hospitalStaff) {
 //
 //
 //
-// Hospital Model
+// 
 const Hospital = function (hospital) {
     this.hospitalId = hospital.hospitalId;
     this.hospitalName = hospital.hospitalName;
@@ -120,27 +139,6 @@ const Client = function (client) {
     this.packageTAndC = client.packageTAndC;
 };
 //
-//
-//
-//
-//
-// Insurance Packages Model
-const InsurancePackage = function (insurancePackage) {
-    this.packageId = insurancePackage.packageId;
-    this.insuranceProviderId = insurancePackage.insuranceProviderId;
-    this.hospitalId = insurancePackage.hospitalId;
-    this.packageTitle = insurancePackage.packageTitle;
-    this.packageDetails = insurancePackage.packageDetails;
-    this.packageImage = insurancePackage.packageImage;
-    this.packageDuration = insurancePackage.packageDuration;
-    this.packageAmount = insurancePackage.packageAmount;
-    this.packageTAndC = insurancePackage.packageTAndC;
-    this.addedDate = insurancePackage.addedDate;
-    this.updatedDate = insurancePackage.updatedDate;
-    this.updateStatus = insurancePackage.updateStatus;
-    this.deleteStatus = insurancePackage.deleteStatus;
-    this.isActive = insurancePackage.isActive;
-};
 //
 //
 //
@@ -555,7 +553,7 @@ Patient.viewAllInsuranceProviders = async (patientId) => {
 //
 //
 //
-//VIEW ONE INSURANCE PROVIDER
+// PATIENT VIEW ONE INSURANCE PROVIDER
 Patient.viewOneInsuranceProvider = async (patientId, insuranceProviderId) => {
     try {
         const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
@@ -586,7 +584,7 @@ Patient.viewOneInsuranceProvider = async (patientId, insuranceProviderId) => {
 //
 //
 //
-// VIEW ALL INSURANCE PACKAGES
+// PATIENT VIEW ALL INSURANCE PACKAGES
 Patient.viewAllInsurancePackages = async (patientId) => {
     try {
         // Fetch hospitalId associated with the patientId
@@ -615,6 +613,7 @@ Patient.viewAllInsurancePackages = async (patientId) => {
 //
 //
 //
+// PATIENT VIEW ONE INSURANCE PACKAGE
 Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
     try {
         // Fetch hospitalId associated with the patientId
@@ -645,7 +644,8 @@ Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
 //
 //
 //
-Patient.chooseInsurancePackage = async (patientId, packageId) => {
+// PATIENT CHOOSE ONE INSURANCE PACKAGE
+Patient.chooseOneInsurancePackage = async (patientId, packageId) => {
     try {
         // Fetch hospitalId associated with the patientId
         const hospitalIdQuery = `

@@ -7,7 +7,7 @@ const dbQuery = promisify(db.query.bind(db));
 //
 //
 //
-// Hospital Staff Model
+//
 const HospitalStaff = function (hospitalStaff) {
   this.hospitalId = hospitalStaff.hospitalId;
   this.hospitalStaffName = hospitalStaff.hospitalStaffName;
@@ -29,7 +29,7 @@ const HospitalStaff = function (hospitalStaff) {
 //
 //
 //
-// Patient Model
+// 
 const Patient = function (patient) {
   this.patientId = patient.patientId;
   this.hospitalStaffId = patient.hospitalStaffId;
@@ -55,7 +55,7 @@ const Patient = function (patient) {
 //
 //
 //
-// MedicalRecords Model
+// 
 const MedicalRecord = function (record) {
   this.recordId = record.recordId;
   this.patientId = record.patientId;
@@ -84,7 +84,7 @@ const MedicalRecord = function (record) {
 //
 //
 //
-// Hospital staff Login
+// HOSPITAL STAFF LOGIN
 HospitalStaff.login = async (email, password) => {
   const query = `
         SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
@@ -127,7 +127,7 @@ HospitalStaff.login = async (email, password) => {
 //
 //
 //
-// HospitalStaff Change Password
+// HOSPITAL STAFF CHANGE PASSWORD
 HospitalStaff.changePassword = async (hospitalStaffId,oldPassword,newPassword) => {
   const checkStaffQuery = `
         SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
@@ -195,7 +195,7 @@ HospitalStaff.changePassword = async (hospitalStaffId,oldPassword,newPassword) =
 //
 //
 //
-// HospitalStaff Update ID Proof Image
+// HOSPITAL STAFF CHANGE ID PROOF IMAGE
 HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilename) => {
   const verifyQuery = `
         SELECT hospitalStaffId
@@ -230,7 +230,7 @@ HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilenam
 //
 //
 //
-// HospitalStaff Update Profile Image
+// HOSPITAL STAFF CHANGE PROFILE IMAGE
 HospitalStaff.changeProfileImage = async (hospitalStaffId,newProfileImageFilename) => {
   const verifyQuery = `
         SELECT hospitalStaffId
@@ -265,7 +265,7 @@ HospitalStaff.changeProfileImage = async (hospitalStaffId,newProfileImageFilenam
 //
 //
 //
-// Hospitalstaff update Profile
+// HOSPITAL STAFF VIEW PROFILE
 HospitalStaff.viewProfile = async (hospitalStaffId) => {
   const query =
     "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended= 0";
@@ -285,7 +285,7 @@ HospitalStaff.viewProfile = async (hospitalStaffId) => {
 //
 //
 //
-// Hospitalstaff update Profile
+// HOSPITAL STAFF UPDATE PROFILE
 HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
   const checkHospitalStaffQuery =
     "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0";
@@ -346,7 +346,7 @@ HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
 //
 //
 //
-// VIEW ALL NEWS
+// HOSPITAL STAFF VIEW ALL NEWS
 HospitalStaff.viewAllNews = async (hospitalStaffId) => {
   try {
     // Fetch hospitalId associated with the hospitalStaffId
@@ -393,7 +393,7 @@ HospitalStaff.viewAllNews = async (hospitalStaffId) => {
 //
 //
 //
-// VIEW ONE NEWS
+// HOSPITAL STAFF VIEW ONE NEWS
 HospitalStaff.viewOneNews = async (hospitalNewsId, hospitalStaffId) => {
   try {
     const hospitalIdQuery = "SELECT hospitalId FROM Hospital_Staffs WHERE hospitalStaffId = ? AND isActive = 1";
@@ -437,7 +437,7 @@ HospitalStaff.viewOneNews = async (hospitalNewsId, hospitalStaffId) => {
 };
 //
 //
-// Hospital staff Register new patient
+// HOSPITAL STAFF REGISTER PATIENT
 HospitalStaff.registerPatient = async (patientData) => {
   try {
     const staffHospitalQuery = `
@@ -493,7 +493,7 @@ HospitalStaff.registerPatient = async (patientData) => {
 //
 //
 //
-// Hospital staff View One patient
+// HOSPITAL STAFF  VIEW ONE PATIENT
 HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
   try {
     const viewOnePatientQuery = `
@@ -536,7 +536,7 @@ HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
 //
 //
 //
-// Hospital staff View All patients
+// HOSPITAL STAFF VIEW ALL PATIENTS
 HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
   try {
     const viewAllPatientsQuery = `
@@ -571,7 +571,7 @@ HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
 //
 //
 //
-// Hospital staff Search Patients
+// HOSPITAL STAFF SEARCH PATIENTS
 HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
   const hospitalStatusQuery = `
         SELECT H.isActive, H.deleteStatus
@@ -648,7 +648,7 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
 //
 //
 //
-// ADD MEDICAL RECORD
+// HOSPITAL STAFF  ADD MEDICAL RECORD
 HospitalStaff.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
   try {
     // Fetch patient details

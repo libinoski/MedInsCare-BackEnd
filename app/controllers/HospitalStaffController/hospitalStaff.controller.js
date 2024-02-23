@@ -12,6 +12,7 @@ require("dotenv").config();
 //
 //
 //
+// BUCKET CONFIGURATION
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -23,7 +24,7 @@ const s3Client = new S3Client({
 //
 //
 //
-// LOGIN
+// HOSPITAL STAFF LOGIN
 exports.login = async (req, res) => {
   const { hospitalStaffEmail, hospitalStaffPassword } = req.body;
 
@@ -103,7 +104,7 @@ exports.login = async (req, res) => {
 //
 //
 //
-// CHANGE PASSWORD
+// HOSPITAL STAFF CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -244,7 +245,7 @@ exports.changePassword = async (req, res) => {
 //
 //
 //
-// UPDATE ID PROOF IMAGE
+// HOSPITAL STAFF CHANGE ID PROOF IMAGE
 exports.changeIdProofImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -397,7 +398,7 @@ exports.changeIdProofImage = async (req, res) => {
 //
 //
 //
-// UPDATE PROFILE IMAGE
+// HOSPITAL STAFF CHANGE PROFILE IMAGE
 exports.changeProfileImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -550,7 +551,7 @@ exports.changeProfileImage = async (req, res) => {
 //
 //
 //
-// VIEW PROFILE
+// HOSPITAL STAFF VIEW PROFILE
 exports.viewProfile = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -1012,7 +1013,7 @@ exports.viewOneNews = async (req, res) => {
 //
 //
 //
-// REGISTER PATIENT
+// HOSPITAL STAFF REGISTER PATIENT
 exports.registerPatient = async (req, res) => {
   const token = req.headers.token;
   const hospitalStaffId = req.body.hospitalStaffId;
@@ -1274,7 +1275,7 @@ exports.registerPatient = async (req, res) => {
 //
 //
 //
-// VIEW ONE PATIENT
+// HOSPITAL STAFF VIEW ONE PATIENT
 exports.viewOnePatient = async (req, res) => {
   try {
     const { hospitalStaffId, patientId } = req.body;
@@ -1372,7 +1373,7 @@ exports.viewOnePatient = async (req, res) => {
 //
 //
 //
-// VIEW ALL PATIENTS
+// HOSPITAL STAFF VIEW ALL PATIENTS
 exports.viewAllPatients = async (req, res) => {
   try {
     const token = req.headers.token;
@@ -1459,7 +1460,7 @@ exports.viewAllPatients = async (req, res) => {
 //
 //
 //
-// SEARCH PATIENTS
+// HOSPITAL STAFF SEARCH PATIENTS
 exports.searchPatients = async (req, res) => {
   try {
     const { hospitalStaffId, searchQuery } = req.body;
@@ -1557,7 +1558,7 @@ exports.searchPatients = async (req, res) => {
 //
 //
 //
-// Add Medical Record
+// HOSPITAL STAFF ADD MEDICAL RECORD
 exports.addMedicalRecord = async (req, res) => {
   const token = req.headers.token;
   const { patientId, hospitalStaffId, staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber } = req.body;

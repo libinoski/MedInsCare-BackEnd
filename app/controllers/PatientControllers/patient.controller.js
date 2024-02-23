@@ -973,7 +973,7 @@ exports.viewAllNews = async (req, res) => {
 //
 //
 //
-// INSURANCE PROVIDER VIEW  ONE NEWS
+// PATIENT VIEW  ONE NEWS
 exports.viewOneNews = async (req, res) => {
     try {
         const token = req.headers.token;
@@ -1079,7 +1079,7 @@ exports.viewOneNews = async (req, res) => {
 //
 //
 //
-// VIEW ALL INSURANCE PROVIDERS
+// PATIENT VIEW ALL INSURANCE PROVIDERS
 exports.viewAllInsuranceProviders = async (req, res) => {
     const token = req.headers.token;
     const { patientId } = req.body;
@@ -1277,7 +1277,7 @@ exports.viewOneInsuranceProvider = async (req, res) => {
 //
 //
 //
-// VIEW ALL INSURANCE PACKAGES
+// PATIENT VIEW ALL INSURANCE PACKAGES
 exports.viewAllInsurancePackages = async (req, res) => {
     const token = req.headers.token;
     const { patientId } = req.body;
@@ -1369,7 +1369,7 @@ exports.viewAllInsurancePackages = async (req, res) => {
 //
 //
 //
-// VIEW ONE INSURANCE PACKAGE
+// PATIENT VIEW ONE INSURANCE PACKAGE
 exports.viewOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
     const { patientId, insurancePackageId } = req.body;
@@ -1469,7 +1469,8 @@ exports.viewOneInsurancePackage = async (req, res) => {
 //
 //
 //
-exports.chooseInsurancePackage = async (req, res) => {
+// PATIENT CHOOSE ONE PACKAGE
+exports.chooseOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
     const { patientId, packageId } = req.body;
 
@@ -1532,7 +1533,7 @@ exports.chooseInsurancePackage = async (req, res) => {
 
                 // Token is valid, proceed to choose insurance package
                 try {
-                    const clientDetails = await Patient.chooseInsurancePackage(patientId, packageId);
+                    const clientDetails = await Patient.chooseOneInsurancePackage(patientId, packageId);
                     return res.status(200).json({
                         status: "success",
                         message: "Insurance Package chosen successfully",
