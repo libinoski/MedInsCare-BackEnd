@@ -1,72 +1,96 @@
-//hospital.routes.js
 const express = require('express');
 const router = express.Router();
 const HospitalController = require('../../controllers/HospitalControllers/hospital.controller');
 
-// Route for hospital registration
+// Hospital registration route
 router.post("/hospitalRegistration", HospitalController.register);
 
-// Route for hospital login
+// Hospital login route
 router.post("/hospitalLogin", HospitalController.login);
 
-// Route for changing hospital password
+// Hospital change password route
 router.post("/hospitalChangePassword", HospitalController.changePassword);
 
-// Route for changing hospital image
+// Hospital change image route
 router.post("/hospitalChangeImage", HospitalController.changeImage);
 
-// Route for viewing hospital profile
+// Hospital view profile route
 router.post("/hospitalViewProfile", HospitalController.viewProfile);
 
-// Route for updating hospital profile
+// Hospital update profile route
 router.post("/hospitalUpdateProfile", HospitalController.updateProfile);
 
-// Route for registering hospital staff
+// Hospital staff registration route
 router.post("/hospitalStaffRegister", HospitalController.registerStaff);
 
-// Route for deleting hospital staff
+// Hospital staff deletion route
 router.post("/deleteHospitalStaff", HospitalController.deleteStaff);
 
-// Route for updating hospital staff
+// Hospital staff update route
 router.post("/updateHospitalStaff", HospitalController.updateStaff);
 
-// Route for suspending hospital staff
+// Hospital staff suspension route
 router.post("/suspendHospitalStaff", HospitalController.suspendStaff);
 
-// Route for unsuspending hospital staff
+// Hospital staff unsuspension route
 router.post("/unSuspendHospitalStaff", HospitalController.unsuspendStaff);
 
-// Route for viewing all suspended hospital staffs
+// View all suspended hospital staff route
 router.post("/viewAllSuspendedHospitalStaffs", HospitalController.viewAllSuspendedStaffs);
 
-// Route for viewing one suspended hospital staff
+// View one suspended hospital staff route
 router.post("/viewOneSuspendedHospitalStaff", HospitalController.viewOneSuspendedStaff);
 
-// Route for viewing all hospital staffs
+// View all hospital staff route
 router.post("/viewAllHospitalStaffs", HospitalController.viewAllStaffs);
 
-// Route for viewing one hospital staff
+// View one hospital staff route
 router.post("/viewOneHospitalStaff", HospitalController.viewOneStaff);
 
-// Route for searching hospital staff
+// Search hospital staff route
 router.post("/searchHospitalStaff", HospitalController.searchStaffs);
 
-// Route for sending notification to staff
-router.post("/sendnotificationToStaff", HospitalController.sendNotificationToStaff);
+// Send notification to staff route
+router.post("/sendNotificationToStaff", HospitalController.sendNotificationToStaff);
 
-// Route for adding hospital news
+// Add hospital news route
 router.post("/addHospitalNews", HospitalController.addNews);
 
-// Route for deleting hospital news
+// Delete hospital news route
 router.post("/deleteHospitalNews", HospitalController.deleteNews);
 
-// Route for updating hospital news
+// Update hospital news route
 router.post("/updateHospitalNews", HospitalController.updateNews);
 
-// Route for viewing all hospital news
+// View all hospital news route
 router.post("/viewAllHospitalNews", HospitalController.viewAllNews);
 
-// Route for viewing one hospital news
+// View one hospital news route
 router.post("/viewOneHospitalNews", HospitalController.viewOneNews);
+
+// View all unapproved insurance providers route
+router.post("/viewAllUnapprovedInsuranceProviders", HospitalController.viewAllUnapprovedInsuranceProviders);
+
+// View one unapproved insurance provider route
+router.post("/viewOneUnapprovedInsuranceProvider", HospitalController.viewOneUnapprovedInsuranceProvider);
+
+// Approve one insurance provider route
+router.post("/approveOneInsuranceProvider", HospitalController.approveOneInsuranceProvider);
+
+// Delete one insurance provider route
+router.post("/deleteOneInsuranceProvider", HospitalController.deleteOneInsuranceProvider);
+
+// View all insurance providers route
+router.post("/viewAllInsuranceProviders", HospitalController.viewAllInsuranceProviders);
+
+// View one insurance provider route
+router.post("/viewOneInsuranceProvider", HospitalController.viewOneInsuranceProvider);
+
+
+
+
+
+
+
 
 module.exports = router;

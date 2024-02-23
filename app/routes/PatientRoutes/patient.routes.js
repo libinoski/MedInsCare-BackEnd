@@ -1,47 +1,51 @@
 const express = require('express');
 const router = express.Router();
-const PatientControler = require('../../controllers/PatientControllers/patient.controller');
+const PatientController = require('../../controllers/PatientControllers/patient.controller');
 
-// Route for patient login
-router.post("/patientLogin", PatientControler.login);
+// Patient login route
+router.post("/patientLogin", PatientController.login);
 
-// Route for changing patient password
-router.post("/patientChangePassword", PatientControler.changePassword);
+// Change patient password route
+router.post("/patientChangePassword", PatientController.changePassword);
 
-// Route for changing patient's ID proof image
-router.post("/patientchangeIdProofImage", PatientControler.changeIdProofImage);
+// Change patient's ID proof image route
+router.post("/patientChangeIdProofImage", PatientController.changeIdProofImage);
 
-// Route for changing patient's profile image
-router.post("/patientchangeProfileImage", PatientControler.changeProfileImage);
+// Change patient's profile image route
+router.post("/patientChangeProfileImage", PatientController.changeProfileImage);
 
-// Route for viewing patient's profile
-router.post("/patientViewProfile", PatientControler.viewProfile);
+// View patient's profile route
+router.post("/patientViewProfile", PatientController.viewProfile);
 
-// Route for viewing patient's associated hospital profile
-router.post("/patientViewHospitalProfile", PatientControler.viewHospitalProfile);
+// View patient's associated hospital profile route
+router.post("/patientViewHospitalProfile", PatientController.viewHospitalProfile);
 
-// Route for updating patient's profile
-router.post("/patientUpdateProfile", PatientControler.updateProfile);
+// Update patient's profile route
+router.post("/patientUpdateProfile", PatientController.updateProfile);
 
-// Route for viewing all news available to the patient
-router.post("/patientViewAllNews", PatientControler.viewAllNews);
+// View all news available to the patient route
+router.post("/patientViewAllNews", PatientController.viewAllNews);
 
-// Route for viewing a specific piece of news
-router.post("/patientViewOneNews", PatientControler.viewOneNews);
+// View a specific piece of news route
+router.post("/patientViewOneNews", PatientController.viewOneNews);
 
-// Route for viewing all insurance providers available to the patient
-router.post("/patientViewAllInsuranceProviders", PatientControler.viewAllInsuranceProviders);
+// View all insurance providers available to the patient route
+router.post("/patientViewAllInsuranceProviders", PatientController.viewAllInsuranceProviders);
 
-// Route for viewing details of a specific insurance provider
-router.post("/patientViewOneInsuranceProvider", PatientControler.viewOneInsuranceProvider);
+// View details of a specific insurance provider route
+router.post("/patientViewOneInsuranceProvider", PatientController.viewOneInsuranceProvider);
 
-// Route for viewing all insurance packages available to the patient
-router.post("/patientViewAllInsurancePackages", PatientControler.viewAllInsurancePackages);
+// View all insurance packages available to the patient route
+router.post("/patientViewAllInsurancePackages", PatientController.viewAllInsurancePackages);
 
-// Route for viewing details of a specific insurance package
-router.post("/patientViewOneInsurancePackage", PatientControler.viewOneInsurancePackage);
+// View details of a specific insurance package route
+router.post("/patientViewOneInsurancePackage", PatientController.viewOneInsurancePackage);
 
-// Route for choosing an insurance package
-router.post("/patientChooseInsurancePackage", PatientControler.chooseOneInsurancePackage);
+// Choose an insurance package route
+router.post("/patientChooseInsurancePackage", PatientController.chooseOneInsurancePackage);
+
+
+
+
 
 module.exports = router;

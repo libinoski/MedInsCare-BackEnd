@@ -2,34 +2,39 @@ const express = require('express');
 const router = express.Router();
 const InsuranceProviderController = require('../../controllers/InsuranceProviderControllers/insuranceProvider.controller');
 
-// Route for insurance provider registration
+// Insurance provider registration route
 router.post("/insuranceProviderRegister", InsuranceProviderController.register);
 
-// Route for insurance provider login
+// Insurance provider login route
 router.post("/insuranceProviderLogin", InsuranceProviderController.login);
 
-// Route for insurance provider to change their password
+// Insurance provider change password route
 router.post("/insuranceProviderChangePassword", InsuranceProviderController.changePassword);
 
-// Route for insurance provider to update their ID proof image
+// Insurance provider change ID proof image route
 router.post("/insuranceProviderChangeIdProofImage", InsuranceProviderController.changeIdProofImage);
 
-// Route for insurance provider to update their profile image
+// Insurance provider change profile image route
 router.post("/insuranceProviderChangeProfileImage", InsuranceProviderController.changeProfileImage);
 
-// Route for insurance provider to view their profile
+// Insurance provider view profile route
 router.post("/insuranceProviderViewProfile", InsuranceProviderController.viewProfile);
 
-// Route for insurance provider to update their profile
+// Insurance provider update profile route
 router.post("/insuranceProviderUpdateProfile", InsuranceProviderController.updateProfile);
 
-// Route for insurance provider to view all news
+// Insurance provider view all news route
 router.post("/insuranceProviderViewAllNews", InsuranceProviderController.viewAllNews);
 
-// Route for insurance provider to view a specific news item
+// Insurance provider view one news item route
 router.post("/insuranceProviderViewOneNews", InsuranceProviderController.viewOneNews);
 
-// Route for insurance provider to send notifications to clients
+// Insurance provider send notification to client route
 router.post("/sendNotificationToClient", InsuranceProviderController.sendNotificationToClient);
+
+
+
+
+
 
 module.exports = router;
