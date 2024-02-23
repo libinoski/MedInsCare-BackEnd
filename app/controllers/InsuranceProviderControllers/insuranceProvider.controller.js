@@ -1268,7 +1268,7 @@ exports.sendNotificationToClient = async (req, res) => {
         if (error.message === "Insurance Provider not found" || error.message === "Client not found or not active") {
           return res.status(422).json({
             status: "error",
-            message: error.message
+            error: error.message
           });
         }
 

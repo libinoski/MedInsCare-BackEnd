@@ -1346,7 +1346,7 @@ exports.registerPatient = async (req, res) => {
           return res.status(422).json({
             status: "failed",
             message: "Validation error during registration",
-            errors: error.errors,
+            error: error.errors,
           });
         } else {
           if (idProofImageFile && idProofImageFile.filename) {
@@ -2012,7 +2012,7 @@ exports.requestDischarge = async (req, res) => {
         if (error.message === "Hospital staff not found or not active" || error.message === "Patient not found or already discharged") {
           return res.status(422).json({
             status: "error",
-            message: error.message
+            error: error.message
           });
         }
 
@@ -2097,7 +2097,7 @@ exports.viewAllApprovedDischargeRequests = async (req, res) => {
         if (error.message === "Hospital staff not found or not active") {
           return res.status(422).json({
             status: "error",
-            message: error.message
+            error: error.message
           });
         }
 

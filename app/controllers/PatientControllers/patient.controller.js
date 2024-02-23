@@ -686,7 +686,7 @@ exports.viewHospitalProfile = async (req, res) => {
                     if (error.message === "Patient not found" || error.message === "Hospital not found") {
                         return res.status(422).json({
                             status: "error",
-                            message: error.message
+                            error: error.message
                         });
                     }
                     console.error("Error fetching hospital profile:", error);

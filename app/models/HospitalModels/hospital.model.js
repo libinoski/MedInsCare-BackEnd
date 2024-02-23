@@ -708,6 +708,7 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
             WHERE hospitalId = ? 
                 AND deleteStatus = 0 
                 AND isSuspended = 0
+                AND isActive = 1
                 AND (
                     hospitalStaffId LIKE ? OR
                     hospitalStaffName LIKE ? OR
@@ -743,7 +744,8 @@ Hospital.searchStaff = async (hospitalId, searchQuery) => {
 //
 //
 //
-// HOSPITAL SEND NOTIFICATION TO CLIENT
+//
+// HOSPITAL SEND NOTIFICATION TO STAFF
 Hospital.sendNotificationToStaff = async (hospitalId, hospitalStaffId, notificationMessage) => {
   try {
     const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
@@ -1124,13 +1126,18 @@ Hospital.viewOneInsuranceProvider = async (hospitalId, insuranceProviderId) => {
 // HOSPITAL SEARCH INSURANCE PROVIDERS
 Hospital.searchInsuranceProviders = async (hospitalId, searchQuery) => {
   try {
-    const checkHospitalQuery =
-      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    // First, check if the hospital is active and not deleted
+    const checkHospitalQuery = `
+      SELECT * FROM Hospitals 
+      WHERE hospitalId = ? 
+        AND isActive = 1 
+        AND deleteStatus = 0
+    `;
     
     const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
 
     if (hospitalCheckResult.length === 0) {
-      throw new Error("Hospital not found");
+      throw new Error("Hospital not found or not active");
     }
 
     const query = `
@@ -1146,13 +1153,17 @@ Hospital.searchInsuranceProviders = async (hospitalId, searchQuery) => {
         insuranceProviderIdProofImage
       FROM Insurance_Providers 
       WHERE hospitalId = ? 
+        AND isApproved = 1 
+        AND deleteStatus = 0 
+        AND isSuspended = 0 
+        AND isActive = 1
         AND (
           insuranceProviderId LIKE ? OR
           insuranceProviderName LIKE ? OR
           insuranceProviderAadhar LIKE ? OR
           insuranceProviderMobile LIKE ? OR
           insuranceProviderEmail LIKE ? OR
-          insuranceProviderAddress LIKE ? 
+          insuranceProviderAddress LIKE ?
         )
     `;
 
@@ -1163,13 +1174,13 @@ Hospital.searchInsuranceProviders = async (hospitalId, searchQuery) => {
       `%${searchQuery}%`,
       `%${searchQuery}%`,
       `%${searchQuery}%`,
-      `%${searchQuery}%`,
+      `%${searchQuery}%`
     ];
 
     const result = await dbQuery(query, searchParams);
 
     if (result.length === 0) {
-      throw new Error("No insurance providers found");
+      throw new Error("No insurance providers found matching the criteria");
     }
 
     return result;
@@ -1308,7 +1319,238 @@ Hospital.viewOneSuspendedInsuranceProvider = async (insuranceProviderId, hospita
 //
 //
 //
+// HOSPITAL SEND NOTIFICATION TO INSURANCE PROVIDER
+Hospital.sendNotificationToInsuranceProvider = async (hospitalId, insuranceProviderId, notificationMessage) => {
+  try {
+    // Check if the hospital exists and is active
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Check if the insurance provider exists and is active
+    const checkInsuranceProviderQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0";
+    const insuranceProviderCheckResult = await dbQuery(checkInsuranceProviderQuery, [insuranceProviderId]);
+    if (insuranceProviderCheckResult.length === 0) {
+      throw new Error("Insurance Provider not found or not active");
+    }
+
+    // Insert the notification into the database
+    const insertNotificationQuery = "INSERT INTO Notification_To_Insurance_Providers (hospitalId, insuranceProviderId, message) VALUES (?, ?, ?)";
+    const result = await dbQuery(insertNotificationQuery, [hospitalId, insuranceProviderId, notificationMessage]);
+
+    // Retrieve the inserted notification ID
+    const notificationId = result.insertId;
+
+    // Construct the notification details object
+    const notificationDetails = {
+      notificationId: notificationId,
+      hospitalId: hospitalId,
+      insuranceProviderId: insuranceProviderId,
+      message: notificationMessage,
+    };
+
+    return notificationDetails;
+  } catch (error) {
+    console.error("Error sending notification to insurance provider:", error);
+    throw error;
+  }
+};
 //
+//
+//
+//
+// HOSPITAL VIEW ALL PATIENTS
+Hospital.viewAllPatients = async (hospitalId) => {
+  try {
+      const query = `
+          SELECT 
+              patientId, 
+              hospitalId, 
+              hospitalStaffId, 
+              patientName, 
+              patientEmail, 
+              patientAadhar, 
+              patientMobile, 
+              patientProfileImage, 
+              patientIdProofImage, 
+              patientAddress, 
+              patientGender, 
+              patientAge, 
+              patientRegisteredDate, 
+          FROM Patients
+          WHERE hospitalId = ? AND isActive = 1
+          ORDER BY patientRegisteredDate DESC;
+      `;
+
+      // Execute the query with the provided hospitalId
+      const result = await dbQuery(query, [hospitalId]);
+
+      // Check if any patients were found
+      if (result.length === 0) {
+          throw new Error("No patients found for this hospital.");
+      }
+
+      // Return the list of patients
+      return result;
+  } catch (error) {
+      console.error("Error viewing all patients for hospital:", error);
+      throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ONE PATIENT
+Hospital.viewOnePatient = async (patientId, hospitalId) => {
+  try {
+    const query = `
+      SELECT 
+          patientId, 
+          hospitalId, 
+          hospitalStaffId, 
+          patientName, 
+          patientEmail, 
+          patientAadhar, 
+          patientMobile, 
+          patientProfileImage, 
+          patientIdProofImage, 
+          patientAddress, 
+          patientGender, 
+          patientAge, 
+          patientRegisteredDate
+      FROM Patients
+      WHERE patientId = ? AND hospitalId = ? AND isActive = 1;
+    `;
+
+    // Execute the query with the provided patientId and hospitalId
+    const result = await dbQuery(query, [patientId, hospitalId]);
+
+    // Check if any patient was found
+    if (result.length === 0) {
+      throw new Error("No patient found for this hospital.");
+    }
+
+    // Return the patient data
+    return result[0]; // Assuming patientId is unique, so only one result expected
+  } catch (error) {
+    console.error("Error viewing patient for hospital:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL SEARCH PATIENT 
+Hospital.searchPatients = async (hospitalId, searchQuery) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Correctly include conditions for deleteStatus, isActive, and dischargeStatus in the query
+    const query = `
+      SELECT 
+        patientId, 
+        hospitalId,
+        patientName, 
+        patientEmail, 
+        patientAadhar, 
+        patientMobile, 
+        patientAddress, 
+        patientProfileImage, 
+        patientIdProofImage
+      FROM Patients 
+      WHERE hospitalId = ? 
+        AND deleteStatus = 0 
+        AND isActive = 1 
+        AND dischargeStatus = 0
+        AND (
+          patientId LIKE ? OR
+          patientName LIKE ? OR
+          patientAadhar LIKE ? OR
+          patientMobile LIKE ? OR
+          patientEmail LIKE ? OR
+          patientAddress LIKE ? 
+        )
+    `;
+
+    const searchParams = [
+      hospitalId,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
+    ];
+
+    const result = await dbQuery(query, searchParams);
+
+    if (result.length === 0) {
+      throw new Error("No patients found");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error searching patients:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL SEND NOTIFICATION TO PATIENT 
+Hospital.sendNotificationToPatient = async (hospitalId, patientId, notificationMessage) => {
+  try {
+    // Check if the hospital exists and is active
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Check if the patient exists and is active
+    const checkPatientQuery = "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0";
+    const patientCheckResult = await dbQuery(checkPatientQuery, [patientId]);
+    if (patientCheckResult.length === 0) {
+      throw new Error("Patient not found or not active");
+    }
+
+    // Insert the notification into the database
+    const insertNotificationQuery = "INSERT INTO Notification_To_Patients (hospitalId, patientId, message) VALUES (?, ?, ?)";
+    const result = await dbQuery(insertNotificationQuery, [hospitalId, patientId, notificationMessage]);
+
+    // Retrieve the inserted notification ID
+    const notificationId = result.insertId;
+
+    // Construct the notification details object
+    const notificationDetails = {
+      notificationId: notificationId,
+      hospitalId: hospitalId,
+      patientId: patientId,
+      message: notificationMessage,
+    };
+
+    return notificationDetails;
+  } catch (error) {
+    console.error("Error sending notification to patient:", error);
+    throw error;
+  }
+};
+
+
 
 
 
