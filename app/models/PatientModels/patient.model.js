@@ -697,7 +697,75 @@ Patient.chooseOneInsurancePackage = async (patientId, packageId) => {
 //
 //
 //
-//
+// PATIENT SEARCH INSURANCE PROVIDERS
+Patient.searchInsuranceProviders = async (patientId, searchQuery) => {
+    try {
+        // Fetch hospitalId associated with the patientId
+        const hospitalIdQuery = `
+        SELECT hospitalId
+        FROM Patients 
+        WHERE patientId = ? 
+          AND isActive = 1 
+          AND deleteStatus = 0
+      `;
+
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found or not active");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Now that we have the hospitalId, we can proceed with the search
+        const query = `
+        SELECT 
+          insuranceProviderId, 
+          hospitalId,
+          insuranceProviderName, 
+          insuranceProviderEmail, 
+          insuranceProviderAadhar, 
+          insuranceProviderMobile, 
+          insuranceProviderAddress, 
+          insuranceProviderProfileImage, 
+          insuranceProviderIdProofImage
+        FROM Insurance_Providers 
+        WHERE hospitalId = ? 
+          AND isApproved = 1 
+          AND deleteStatus = 0 
+          AND isSuspended = 0 
+          AND isActive = 1
+          AND (
+            insuranceProviderId LIKE ? OR
+            insuranceProviderName LIKE ? OR
+            insuranceProviderAadhar LIKE ? OR
+            insuranceProviderMobile LIKE ? OR
+            insuranceProviderEmail LIKE ? OR
+            insuranceProviderAddress LIKE ?
+          )
+      `;
+
+        const searchParams = [
+            hospitalId,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+            `%${searchQuery}%`,
+        ];
+
+        const result = await dbQuery(query, searchParams);
+
+        if (result.length === 0) {
+            throw new Error("No insurance providers found matching the criteria");
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Error searching insurance providers:", error);
+        throw error;
+    }
+};
 
 
 

@@ -369,7 +369,7 @@ exports.changeIdProofImage = async (req, res) => {
 //
 //
 //
-//PATIENT CHANGE PROFILE IMAGE
+// PATIENT CHANGE PROFILE IMAGE
 exports.changeProfileImage = async (req, res) => {
     const token = req.headers.token;
 
@@ -521,7 +521,7 @@ exports.changeProfileImage = async (req, res) => {
 //
 //
 //
-// VIEW PROFILE
+// PATIENT VIEW PROFILE
 exports.viewProfile = async (req, res) => {
     try {
         const token = req.headers.token;
@@ -616,7 +616,7 @@ exports.viewProfile = async (req, res) => {
 //
 //
 //
-//
+// PATIENT VIEW HOSPITAL PROFILE
 exports.viewHospitalProfile = async (req, res) => {
     try {
         const token = req.headers.token;
@@ -707,7 +707,6 @@ exports.viewHospitalProfile = async (req, res) => {
         });
     }
 };
-
 //
 //
 //
@@ -972,8 +971,7 @@ exports.viewAllNews = async (req, res) => {
 //
 //
 //
-//
-// PATIENT VIEW  ONE NEWS
+// PATIENT VIEW ONE NEWS
 exports.viewOneNews = async (req, res) => {
     try {
         const token = req.headers.token;
@@ -1171,10 +1169,10 @@ exports.viewAllInsuranceProviders = async (req, res) => {
 //
 //
 //
-//VIEW ONE INSURANCE PROVIDER
+// PATIENT VIEW ONE INSURANCE PROVIDER
 exports.viewOneInsuranceProvider = async (req, res) => {
     const token = req.headers.token;
-    const { patientId, insuranceProviderId } = req.body; // Include insuranceProviderId in the request body
+    const { patientId, insuranceProviderId } = req.body;
 
     // Check if token is missing
     if (!token) {
@@ -1469,7 +1467,7 @@ exports.viewOneInsurancePackage = async (req, res) => {
 //
 //
 //
-// PATIENT CHOOSE ONE PACKAGE
+// PATIENT CHOOSE ONE INSURANCE PACKAGE
 exports.chooseOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
     const { patientId, packageId } = req.body;
@@ -1564,6 +1562,107 @@ exports.chooseOneInsurancePackage = async (req, res) => {
         });
     }
 };
+//
+//
+//
+//
+//
+// PATIENT SEARCH INSURANCE PROVIDERS
+exports.searchInsuranceProviders = async (req, res) => {
+    const token = req.headers.token;
+    const { patientId, searchQuery } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+        return res.status(403).json({
+            status: "failed",
+            message: "Token is missing"
+        });
+    }
+
+    // Check if patientId is missing
+    if (!patientId) {
+        return res.status(401).json({
+            status: "failed",
+            message: "Patient ID is missing"
+        });
+    }
+
+    // Check if searchQuery is missing or empty
+    if (!searchQuery || searchQuery.trim() === "") {
+        return res.status(400).json({
+            status: "error",
+            message: "Search query cannot be empty"
+        });
+    }
+
+    // Verifying the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
+        if (err) {
+            if (err.name === "JsonWebTokenError") {
+                return res.status(403).json({
+                    status: "error",
+                    message: "Invalid or missing token"
+                });
+            } else if (err.name === "TokenExpiredError") {
+                return res.status(403).json({
+                    status: "error",
+                    message: "Token has expired"
+                });
+            } else {
+                return res.status(403).json({
+                    status: "failed",
+                    message: "Unauthorized access"
+                });
+            }
+        }
+
+        if (decoded.patientId != patientId) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Unauthorized access"
+            });
+        }
+
+        // Token is valid, proceed to search insurance providers
+        try {
+            const searchResult = await Patient.searchInsuranceProviders(patientId, searchQuery);
+
+            return res.status(200).json({
+                status: "success",
+                message: "Insurance Providers found successfully",
+                data: searchResult,
+            });
+        } catch (error) {
+            console.error("Error searching insurance providers:", error);
+
+            if (error.message === "Patient not found or not active") {
+                return res.status(422).json({
+                    status: "error",
+                    error: error.message
+                });
+            } else if (error.message === "No insurance providers found matching the criteria") {
+                return res.status(404).json({
+                    status: "failed",
+                    message: error.message
+                });
+            }
+
+            return res.status(500).json({
+                status: "error",
+                message: "Internal server error",
+                error: error.message,
+            });
+        }
+    });
+};
+//
+//
+//
+//
+//
+//
+
 
 
 

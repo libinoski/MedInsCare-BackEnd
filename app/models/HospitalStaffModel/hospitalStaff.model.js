@@ -812,11 +812,9 @@ HospitalStaff.requestDischarge = async (hospitalStaffId, patientId, message) => 
 //
 //
 //
-//
 // HOSPITAL STAFF VIEW ALL APPROVED DISCHARGE REQUESTS
 HospitalStaff.viewAllApprovedDischargeRequests = async (hospitalStaffId) => {
   try {
-    // First, find the hospitalId associated with this hospitalStaffId to ensure we're filtering requests correctly.
     const staffHospitalQuery = `
       SELECT hospitalId
       FROM Hospital_Staffs
@@ -833,7 +831,7 @@ HospitalStaff.viewAllApprovedDischargeRequests = async (hospitalStaffId) => {
     // Now, fetch all approved discharge requests for this hospital.
     const fetchQuery = `
       SELECT * FROM Discharge_Requests
-      WHERE hospitalId = ? AND isApproved = 1
+      WHERE hospitalId = ? AND isApproved = 1 AND deleteStatus = 0
     `;
     const dischargeRequests = await dbQuery(fetchQuery, [hospitalId]);
 
@@ -843,6 +841,11 @@ HospitalStaff.viewAllApprovedDischargeRequests = async (hospitalStaffId) => {
     throw error;
   }
 };
+//
+//
+//
+//
+//
 
 
 

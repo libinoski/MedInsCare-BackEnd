@@ -1549,10 +1549,284 @@ Hospital.sendNotificationToPatient = async (hospitalId, patientId, notificationM
     throw error;
   }
 };
+//
+//
+//
+//
+// HOSPITAL VIEW ALL DISCHARGE REQUESTS WITH ADDITIONAL DETAILS
+Hospital.viewAllDischargeRequests = async (hospitalId) => {
+  try {
+    // Check if the hospital exists and is active
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
 
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
 
+    // Query to select all discharge requests with additional details for the specified hospital
+    const viewAllDischargeRequestsQuery = `
+      SELECT 
+        dr.*, 
+        p.patientName, 
+        p.patientEmail, 
+        p.patientRegisteredDate, 
+        hs.hospitalStaffName, 
+        hs.hospitalStaffEmail
+      FROM Discharge_Requests dr
+      JOIN Patients p ON dr.patientId = p.patientId AND p.dischargeStatus = 0 AND p.deleteStatus = 0 AND p.isActive = 1
+      JOIN Hospital_Staffs hs ON dr.hospitalStaffId = hs.hospitalStaffId AND hs.isSuspended = 0 AND hs.isActive = 1 AND hs.deleteStatus = 0
+      WHERE dr.hospitalId = ? AND dr.deleteStatus = 0
+      ORDER BY dr.sendDate DESC;`;
 
+    // Execute the query with the provided hospitalId
+    const allDischargeRequests = await dbQuery(viewAllDischargeRequestsQuery, [hospitalId]);
 
+    // Check if discharge requests were found
+    if (allDischargeRequests.length === 0) {
+      throw new Error("No discharge requests found for this hospital.");
+    }
+
+    // Return the list of discharge requests with the requested additional details
+    return allDischargeRequests;
+  } catch (error) {
+    console.error("Error viewing all discharge requests with additional details:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ONE DISCHARGE REQUEST WITH ADDITIONAL DETAILS
+Hospital.viewOneDischargeRequest = async (requestId, hospitalId) => {
+  try {
+    // Validate the hospital's existence and activity status
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found or not active.");
+    }
+
+    // Query to select one discharge request with additional details
+    const viewOneDischargeRequestQuery = `
+      SELECT 
+        dr.*, 
+        p.patientName, 
+        p.patientEmail, 
+        p.patientRegisteredDate, 
+        hs.hospitalStaffName, 
+        hs.hospitalStaffEmail
+      FROM Discharge_Requests dr
+      JOIN Patients p ON dr.patientId = p.patientId AND p.dischargeStatus = 0 AND p.deleteStatus = 0 AND p.isActive = 1
+      JOIN Hospital_Staffs hs ON dr.hospitalStaffId = hs.hospitalStaffId AND hs.isSuspended = 0 AND hs.isActive = 1 AND hs.deleteStatus = 0
+      WHERE dr.requestId = ? AND dr.hospitalId = ? AND dr.deleteStatus = 0`;
+
+    // Execute the query with provided requestId and hospitalId
+    const dischargeRequestDetails = await dbQuery(viewOneDischargeRequestQuery, [requestId, hospitalId]);
+
+    // Check if the discharge request was found
+    if (dischargeRequestDetails.length === 0) {
+      throw new Error("Discharge request not found or not available.");
+    }
+
+    // Return the discharge request details
+    return dischargeRequestDetails[0]; // Assuming requestId is unique, so only one result expected
+  } catch (error) {
+    console.error("Error viewing discharge request details:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL APPROVE ONE DISCHARGE REQUEST
+Hospital.approveOneDischargeRequest = async (hospitalId, requestId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Validate existence and status of the discharge request
+    const dischargeRequestCheckQuery = "SELECT * FROM Discharge_Requests WHERE requestId = ? AND hospitalId = ? AND isApproved = 0 AND deleteStatus = 0";
+    const dischargeRequestCheckRes = await dbQuery(dischargeRequestCheckQuery, [requestId, hospitalId]);
+    if (dischargeRequestCheckRes.length === 0) {
+      throw new Error("Discharge request not found or already approved");
+    }
+
+    // Approve the discharge request and set the current date and time as the approved date
+    const approveDischargeRequestQuery = "UPDATE Discharge_Requests SET isApproved = 1, approvedDate = CURRENT_TIMESTAMP() WHERE requestId = ? AND hospitalId = ?";
+    await dbQuery(approveDischargeRequestQuery, [requestId, hospitalId]);
+
+    return requestId; // Return the approved requestId
+  } catch (error) {
+    console.error("Error in approveOneDischargeRequest model:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL DELETE ONE DISCHARGE REQUEST
+Hospital.deleteOneDischargeRequest = async (hospitalId, requestId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Validate existence of the discharge request
+    const dischargeRequestCheckQuery = "SELECT * FROM Discharge_Requests WHERE requestId = ? AND hospitalId = ? AND deleteStatus = 0";
+    const dischargeRequestCheckRes = await dbQuery(dischargeRequestCheckQuery, [requestId, hospitalId]);
+    if (dischargeRequestCheckRes.length === 0) {
+      throw new Error("Discharge request not found or already deleted");
+    }
+
+    // Mark the discharge request as deleted
+    const deleteDischargeRequestQuery = "UPDATE Discharge_Requests SET deleteStatus = 1 WHERE requestId = ? AND hospitalId = ?";
+    await dbQuery(deleteDischargeRequestQuery, [requestId, hospitalId]);
+
+    // Just return the requestId
+    return requestId;
+  } catch (error) {
+    console.error("Error in deleteOneDischargeRequest model:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ALL MEDICAL RECORDS OF ALL PATIENTS
+Hospital.viewAllMedicalRecords = async (hospitalId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found or not active.");
+    }
+
+    // Query to select all medical records for the specified hospital
+    const viewAllMedicalRecordsQuery = `
+      SELECT 
+        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
+        staffReport, reportImage, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
+        hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
+        admissionDate, dateGenerated
+      FROM Medical_Records
+      WHERE hospitalId = ? AND deleteStatus = 0
+      ORDER BY dateGenerated DESC;`;
+
+    // Execute the query with the provided hospitalId
+    const allMedicalRecords = await dbQuery(viewAllMedicalRecordsQuery, [hospitalId]);
+
+    // Check if medical records were found
+    if (allMedicalRecords.length === 0) {
+      throw new Error("No medical records found for this hospital.");
+    }
+
+    // Return the list of all medical records
+    return allMedicalRecords;
+  } catch (error) {
+    console.error("Error viewing all medical records:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ONE MEDICAL RECORD OF ONE PATIENT
+Hospital.viewOneMedicalRecord = async (hospitalId, recordId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found or not active.");
+    }
+
+    // Query to select one medical record for the specified hospital and recordId
+    const viewOneMedicalRecordQuery = `
+      SELECT 
+        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
+        staffReport, reportImage, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
+        hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
+        admissionDate, dateGenerated
+      FROM Medical_Records
+      WHERE recordId = ? AND hospitalId = ? AND deleteStatus = 0;`;
+
+    // Execute the query with the provided recordId and hospitalId
+    const medicalRecord = await dbQuery(viewOneMedicalRecordQuery, [recordId, hospitalId]);
+
+    // Check if the medical record was found
+    if (medicalRecord.length === 0) {
+      throw new Error("Medical record not found or does not belong to this hospital.");
+    }
+
+    // Return the medical record details
+    return medicalRecord[0]; // Assuming recordId is unique, so only one result expected
+  } catch (error) {
+    console.error("Error viewing one medical record:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ALL MEDICAL RECORDS OF ONE PATIENT
+Hospital.viewAllMedicalRecordsOfOnePatient = async (hospitalId, patientId) => {
+  try {
+    // Validate existence of the hospital
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found or not active.");
+    }
+
+    // Validate existence of the patient
+    const patientCheckQuery = "SELECT * FROM Patients WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const patientCheckRes = await dbQuery(patientCheckQuery, [patientId, hospitalId]);
+    if (patientCheckRes.length === 0) {
+      throw new Error("Patient not found or not active in this hospital.");
+    }
+
+    // Query to select all medical records for the specified patient in the hospital
+    const viewAllMedicalRecordsOfOnePatientQuery = `
+      SELECT 
+        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
+        staffReport, reportImage, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
+        hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
+        admissionDate, dateGenerated
+      FROM Medical_Records
+      WHERE patientId = ? AND hospitalId = ? AND deleteStatus = 0
+      ORDER BY dateGenerated DESC;`;
+
+    // Execute the query with the provided patientId and hospitalId
+    const medicalRecords = await dbQuery(viewAllMedicalRecordsOfOnePatientQuery, [patientId, hospitalId]);
+
+    // Return the list of medical records for the patient
+    return medicalRecords;
+  } catch (error) {
+    console.error("Error viewing all medical records of one patient:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
 
 
 
