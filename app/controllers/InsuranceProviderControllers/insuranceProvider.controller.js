@@ -1288,3 +1288,200 @@ exports.sendNotificationToClient = async (req, res) => {
     });
   }
 };
+//
+//
+//
+//
+// INSURANCE PROVIDER VIEW ALL CLIENTS
+exports.viewAllClients = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_INSURANCE,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        try {
+          // Check if decoded token matches insuranceProviderId from request body
+          if (decoded.insuranceProviderId != insuranceProviderId) {
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
+
+          const allClientsData = await InsuranceProvider.viewAllClients(insuranceProviderId);
+          return res.status(200).json({
+            status: "success",
+            message: "All clients retrieved successfully",
+            data: allClientsData,
+          });
+        } catch (error) {
+          console.error("Error viewing all clients:", error);
+
+          if (error.message === "No clients found for this insurance provider") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          }
+
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error during viewAllClients:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//INSURANCE PROVIDER VIEW ONE CLIENT
+exports.viewOneClient = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { clientId, insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if clientId is missing
+    if (!clientId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Client ID is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_INSURANCE,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        try {
+          // Check if decoded token matches insuranceProviderId from request body
+          if (decoded.insuranceProviderId != insuranceProviderId) {
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
+
+          const clientData = await InsuranceProvider.viewOneClient(clientId, insuranceProviderId);
+          return res.status(200).json({
+            status: "success",
+            message: "Client data retrieved successfully",
+            data: clientData,
+          });
+        } catch (error) {
+          console.error("Error viewing one client:", error);
+
+          if (error.message === "Client not found for this insurance provider") {
+            return res.status(404).json({
+              status: "error",
+              error: error.message
+            });
+          }
+
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error during viewOneClient:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//

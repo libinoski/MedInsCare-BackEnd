@@ -1067,12 +1067,26 @@ exports.viewAllNotifications = async (req, res) => {
         }
 
         const notifications = await HospitalStaff.viewAllNotifications(hospitalStaffId);
+
         return res.status(200).json({
           status: "success",
           message: "All notifications retrieved successfully",
           data: notifications
         });
       } catch (error) {
+        // Handle specific errors returned by the model
+        if (error.message === "Hospital staff not found") {
+          return res.status(422).json({
+            status: "error",
+            message: "Hospital staff not found"
+          });
+        } else if (error.message === "No notifications found for this hospital staff") {
+          return res.status(422).json({
+            status: "error",
+            message: "No notifications found for this hospital staff"
+          });
+        }
+
         console.error("Error viewing all notifications for hospital staff:", error);
         return res.status(500).json({
           status: "error",

@@ -1366,8 +1366,106 @@ exports.viewAllInsurancePackages = async (req, res) => {
 //
 //
 //
+// PATIENT VIEW ALL INSURACE PACKAGES OF ONE PROVIDER
+exports.viewAllInsurancePackagesOfOneProvider = async (req, res) => {
+    const token = req.headers.token;
+    const { patientId, insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+        return res.status(403).json({
+            status: "failed",
+            message: "Token is missing"
+        });
+    }
+
+    // Check if patientId is missing
+    if (!patientId) {
+        return res.status(401).json({
+            status: "failed",
+            message: "Patient ID is missing"
+        });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+        return res.status(401).json({
+            status: "failed",
+            message: "Insurance Provider ID is missing"
+        });
+    }
+
+    try {
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                // Check if decoded token matches patientId from request body
+                if (decoded.patientId != patientId) {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Unauthorized access"
+                    });
+                }
+
+                // Token is valid, proceed to fetch all insurance packages for the provider
+                try {
+                    const allInsurancePackages = await Patient.viewAllInsurancePackagesOfOneProvider(patientId, insuranceProviderId);
+                    return res.status(200).json({
+                        status: "success",
+                        message: "All Insurance Packages of Provider retrieved successfully",
+                        data: allInsurancePackages,
+                    });
+                } catch (error) {
+                    console.error("Error viewing all insurance packages of provider:", error);
+                    if (error.message === "Patient not found" || error.message === "Insurance provider not found or not approved in this hospital") {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    }
+                    return res.status(500).json({
+                        status: "error",
+                        message: "Internal server error",
+                        error: error.message,
+                    });
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error verifying token:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
 //
-// PATIENT VIEW ONE INSURANCE PACKAGE
+//
+//
+//
+// PATIENT VIEW ONE INSURANCE PACKAGE OF ONE PROVIDER
 exports.viewOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
     const { patientId, insurancePackageId } = req.body;

@@ -103,7 +103,6 @@ const HospitalStaff = function (hospitalStaff) {
 //
 //
 //
-// 
 const Hospital = function (hospital) {
     this.hospitalId = hospital.hospitalId;
     this.hospitalName = hospital.hospitalName;
@@ -125,6 +124,7 @@ const Hospital = function (hospital) {
 //
 //
 //
+//
 const Client = function (client) {
     this.clientId = client.clientId;
     this.patientId = client.patientId;
@@ -138,7 +138,6 @@ const Client = function (client) {
     this.packageAmount = client.packageAmount;
     this.packageTAndC = client.packageTAndC;
 };
-//
 //
 //
 //
@@ -182,7 +181,6 @@ Patient.login = async (email, password) => {
         throw error;
     }
 };
-//
 //
 //
 //
@@ -238,7 +236,6 @@ Patient.changePassword = async (patientId, oldPassword, newPassword) => {
 //
 //
 //
-//
 // PATIENT CHANGE ID PROOF IMAGE
 Patient.changeIdProofImage = async (patientId, newIdProofImageFilename) => {
     const verifyQuery = `
@@ -270,7 +267,6 @@ Patient.changeIdProofImage = async (patientId, newIdProofImageFilename) => {
         throw error;
     }
 };
-//
 //
 //
 //
@@ -310,7 +306,6 @@ Patient.changeProfileImage = async (patientId, newProfileImageFilename) => {
 //
 //
 //
-//
 // PATIENT VIEW PROFILE
 Patient.viewProfile = async (patientId) => {
     const query =
@@ -327,7 +322,6 @@ Patient.viewProfile = async (patientId) => {
         throw error;
     }
 };
-//
 //
 //
 //
@@ -431,7 +425,6 @@ Patient.updateProfile = async (updatedPatient) => {
 //
 //
 //
-//
 // PATIENT VIEW ALL NEWS
 Patient.viewAllNews = async (patientId) => {
     try {
@@ -475,7 +468,6 @@ Patient.viewAllNews = async (patientId) => {
         throw error;
     }
 };
-//
 //
 //
 //
@@ -612,8 +604,55 @@ Patient.viewAllInsurancePackages = async (patientId) => {
 //
 //
 //
+// PATIENT VIEW ALL INSURANCE PACKAGES OF ONE PROVIDER
+Patient.viewAllInsurancePackagesOfOneProvider = async (patientId, insuranceProviderId) => {
+    try {
+        // Fetch hospitalId associated with the patientId to ensure context
+        const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Ensure the insurance provider is associated with the same hospital and is approved
+        const providerCheckQuery = `
+            SELECT insuranceProviderId FROM Insurance_Providers 
+            WHERE insuranceProviderId = ? 
+            AND hospitalId = ? 
+            AND isActive = 1 
+            AND isApproved = 1`;
+        const providerCheckResult = await dbQuery(providerCheckQuery, [insuranceProviderId, hospitalId]);
+
+        if (providerCheckResult.length === 0) {
+            throw new Error("Insurance provider not found or not approved in this hospital");
+        }
+
+        // Fetch all insurance packages offered by the insurance provider within the hospital context
+        const viewAllPackagesQuery = `
+            SELECT * FROM Insurance_Packages 
+            WHERE insuranceProviderId = ? 
+            AND hospitalId = ? 
+            AND isActive = 1`;
+        const allPackagesResult = await dbQuery(viewAllPackagesQuery, [insuranceProviderId, hospitalId]);
+
+        if (allPackagesResult.length === 0) {
+            throw new Error("No insurance packages found for this provider in the hospital");
+        }
+
+        return allPackagesResult;
+    } catch (error) {
+        console.error("Error viewing all insurance packages of provider:", error);
+        throw error;
+    }
+};
 //
-// PATIENT VIEW ONE INSURANCE PACKAGE
+//
+//
+//
+// PATIENT VIEW ONE INSURANCE PACKAGE OF ONE PROVIDER
 Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
     try {
         // Fetch hospitalId associated with the patientId
@@ -696,7 +735,6 @@ Patient.chooseOneInsurancePackage = async (patientId, packageId) => {
 //
 //
 //
-//
 // PATIENT SEARCH INSURANCE PROVIDERS
 Patient.searchInsuranceProviders = async (patientId, searchQuery) => {
     try {
@@ -766,7 +804,10 @@ Patient.searchInsuranceProviders = async (patientId, searchQuery) => {
         throw error;
     }
 };
-
+//
+//
+//
+//
 
 
 

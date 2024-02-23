@@ -464,6 +464,11 @@ HospitalStaff.viewAllNotifications = async (hospitalStaffId) => {
     `;
     const allNotifications = await dbQuery(viewAllNotificationsQuery, [hospitalId, hospitalStaffId]);
 
+    // Check if there are no notifications found
+    if (allNotifications.length === 0) {
+      throw new Error("No notifications found for this hospital staff");
+    }
+
     return allNotifications;
   } catch (error) {
     console.error("Error viewing all notifications for hospital staff:", error);
