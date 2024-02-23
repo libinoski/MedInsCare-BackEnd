@@ -3,8 +3,11 @@ const bcrypt = require("bcrypt");
 const db = require("../db");
 const { promisify } = require("util");
 const dbQuery = promisify(db.query.bind(db));
-
-// Hospital Model
+//
+//
+//
+//
+//
 const Hospital = function (hospital) {
   this.hospitalId = hospital.hospitalId;
   this.hospitalName = hospital.hospitalName;
@@ -26,7 +29,7 @@ const Hospital = function (hospital) {
 //
 //
 //
-// Insurance Provider Model
+// 
 const InsuranceProvider = function (insuranceProvider) {
   this.insuranceProviderId = insuranceProvider.insuranceProviderId;
   this.hospitalId = insuranceProvider.hospitalId;
@@ -50,7 +53,7 @@ const InsuranceProvider = function (insuranceProvider) {
 //
 //
 //
-// REGISTER
+// INSURANCE PROVIDER REGISTER
 InsuranceProvider.register = async (newInsuranceProvider) => {
   try {
     const checkEmailQuery =
@@ -132,6 +135,7 @@ InsuranceProvider.login = async (email, password) => {
 //
 //
 //
+// INSURANCE PROVIDER CHANGE PASSWORD
 InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newPassword) => {
   const checkInsuranceProviderQuery =
     "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -184,6 +188,7 @@ InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newP
 //
 //
 //
+// INSURANCE PROVIDER CHANGE ID PROOF IMAGE
 InsuranceProvider.changeIdProofImage = async (insuranceProviderId,newIdProofImageFilename) => {
   const verifyQuery = `
         SELECT insuranceProviderId
@@ -220,6 +225,7 @@ InsuranceProvider.changeIdProofImage = async (insuranceProviderId,newIdProofImag
 //
 //
 //
+// INSURANCE PROVIDER CHANGE PROFILE IMAGE
 InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileImageFilename) => {
   const verifyQuery = `
         SELECT insuranceProviderId
@@ -255,7 +261,7 @@ InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileIma
 //
 //
 //
-// Insurance provider update Profile
+// INSURANCE PROVIDER VIEW PROFILE
 InsuranceProvider.viewProfile = async (insuranceProviderId) => {
   const query =
     "SELECT * FROM Hospital_Staffs WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -276,7 +282,7 @@ InsuranceProvider.viewProfile = async (insuranceProviderId) => {
 //
 //
 //
-// UPDATE PROFILE
+// INSURANCE PROVIDER UPDATE PROFILE
 InsuranceProvider.updateProfile = async (updatedInsuranceProvider) => {
   const checkInsuranceProviderQuery =
     "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -338,7 +344,102 @@ InsuranceProvider.updateProfile = async (updatedInsuranceProvider) => {
 //
 //
 //
+// INSURANCE PROVIDER VIEW ALL NEWS
+InsuranceProvider.viewAllNews = async (insuranceProviderId) => {
+  try {
+    // Fetch hospitalId associated with the insuranceProviderId
+    const hospitalIdQuery = `
+      SELECT hospitalId
+      FROM Insurance_Providers
+      WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0
+    `;
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [insuranceProviderId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch all hospital news based on the retrieved hospitalId
+    const viewAllNewsQuery = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalId = ? AND deleteStatus = 0
+    `;
+    const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
+
+    return allNews;
+  } catch (error) {
+    console.error("Error viewing all hospital news:", error);
+    throw error;
+  }
+};
 //
+//
+//
+//
+//
+// INSURANCE PROVIDER VIEW ONE NEWS
+InsuranceProvider.viewOneNews = async (hospitalNewsId, insuranceProviderId) => {
+  try {
+    const hospitalIdQuery = "SELECT hospitalId FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND isSuspended = 0";
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [insuranceProviderId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch the hospital news
+    const query = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0
+    `;
+    const result = await dbQuery(query, [hospitalNewsId, hospitalId]);
+
+    if (result.length === 0) {
+      throw new Error("Hospital news not found");
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error("Error fetching hospital news:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// INSURANCE PROVIDER SEND NOTIFICATION TO CLIENT
 InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientId, notificationMessage) => {
   try {
     const checkInsuranceProviderQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
@@ -371,7 +472,163 @@ InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientI
     throw error;
   }
 };
+//
+//
+//
+//
+//
+// INSURANCE PROVIDER VIEW ALL CLIENTS
+InsuranceProvider.viewAllClients = async (insuranceProviderId) => {
+  const query = `
+    SELECT 
+      c.clientId, 
+      c.patientId, 
+      c.packageId, 
+      c.insuranceProviderId, 
+      c.hospitalId,
+      p.patientName, 
+      p.patientEmail, 
+      p.patientAadhar, 
+      p.patientMobile, 
+      p.patientProfileImage,
+      ip.packageTitle, 
+      ip.packageDetails, 
+      ip.packageAmount,
+      ip.packageDuration,
+      h.hospitalName, 
+      h.hospitalEmail
+    FROM 
+      Clients c
+    INNER JOIN 
+      Patients p ON c.patientId = p.patientId
+    INNER JOIN 
+      Insurance_Packages ip ON c.packageId = ip.packageId
+    INNER JOIN 
+      Hospitals h ON c.hospitalId = h.hospitalId
+    WHERE 
+      c.insuranceProviderId = ?
+      AND p.isActive = 1 
+      AND ip.isActive = 1 
+      AND h.isActive = 1
+    ORDER BY 
+      c.clientId ASC;
+  `;
 
+  try {
+    const clients = await dbQuery(query, [insuranceProviderId]);
+    
+    if (clients.length === 0) {
+      throw new Error("No clients found for this insurance provider.");
+    }
+
+    return clients.map(client => ({
+      clientId: client.clientId,
+      patientId: client.patientId,
+      packageId: client.packageId,
+      insuranceProviderId: client.insuranceProviderId,
+      hospitalId: client.hospitalId,
+      patientDetails: {
+        name: client.patientName,
+        email: client.patientEmail,
+        aadhar: client.patientAadhar,
+        mobile: client.patientMobile,
+        profileImage: client.patientProfileImage,
+      },
+      packageDetails: {
+        title: client.packageTitle,
+        details: client.packageDetails,
+        amount: client.packageAmount,
+        duration: client.packageDuration 
+      },
+      hospitalDetails: {
+        name: client.hospitalName,
+        email: client.hospitalEmail
+      }
+    }));
+  } catch (error) {
+    console.error("Error viewing all clients for insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// INSURANCE PROVIDER VIEW ONE CLIENT
+InsuranceProvider.viewOneClient = async (clientId, insuranceProviderId) => {
+  const query = `
+    SELECT 
+      c.clientId, 
+      c.patientId, 
+      c.packageId, 
+      c.insuranceProviderId, 
+      c.hospitalId,
+      p.patientName, 
+      p.patientEmail, 
+      p.patientAadhar, 
+      p.patientMobile, 
+      p.patientProfileImage,
+      ip.packageTitle, 
+      ip.packageDetails, 
+      ip.packageAmount,
+      ip.packageDuration,
+      h.hospitalName, 
+      h.hospitalEmail
+    FROM 
+      Clients c
+    INNER JOIN 
+      Patients p ON c.patientId = p.patientId
+    INNER JOIN 
+      Insurance_Packages ip ON c.packageId = ip.packageId
+    INNER JOIN 
+      Hospitals h ON c.hospitalId = h.hospitalId
+    WHERE 
+      c.clientId = ?
+      AND c.insuranceProviderId = ?
+      AND p.isActive = 1 
+      AND ip.isActive = 1 
+      AND h.isActive = 1
+    ORDER BY 
+      c.clientId ASC;
+  `;
+
+  try {
+    const client = await dbQuery(query, [clientId, insuranceProviderId]);
+    
+    if (client.length === 0) {
+      throw new Error("Client not found for this insurance provider.");
+    }
+
+    // Map the result to a more structured format
+    return {
+      clientId: client[0].clientId,
+      patientId: client[0].patientId,
+      packageId: client[0].packageId,
+      insuranceProviderId: client[0].insuranceProviderId,
+      hospitalId: client[0].hospitalId,
+      patientDetails: {
+        name: client[0].patientName,
+        email: client[0].patientEmail,
+        aadhar: client[0].patientAadhar,
+        mobile: client[0].patientMobile,
+        profileImage: client[0].patientProfileImage,
+      },
+      packageDetails: {
+        title: client[0].packageTitle,
+        details: client[0].packageDetails,
+        amount: client[0].packageAmount,
+        duration: client[0].packageDuration
+      },
+      hospitalDetails: {
+        name: client[0].hospitalName,
+        email: client[0].hospitalEmail
+      }
+    };
+  } catch (error) {
+    console.error("Error viewing one client for insurance provider:", error);
+    throw error;
+  }
+};
 
 
 

@@ -7,7 +7,7 @@ const dbQuery = promisify(db.query.bind(db));
 //
 //
 //
-// Hospital Staff Model
+//
 const HospitalStaff = function (hospitalStaff) {
   this.hospitalId = hospitalStaff.hospitalId;
   this.hospitalStaffName = hospitalStaff.hospitalStaffName;
@@ -29,7 +29,7 @@ const HospitalStaff = function (hospitalStaff) {
 //
 //
 //
-// Patient Model
+// 
 const Patient = function (patient) {
   this.patientId = patient.patientId;
   this.hospitalStaffId = patient.hospitalStaffId;
@@ -55,7 +55,7 @@ const Patient = function (patient) {
 //
 //
 //
-// MedicalRecords Model
+// 
 const MedicalRecord = function (record) {
   this.recordId = record.recordId;
   this.patientId = record.patientId;
@@ -84,7 +84,7 @@ const MedicalRecord = function (record) {
 //
 //
 //
-// Hospital staff Login
+// HOSPITAL STAFF LOGIN
 HospitalStaff.login = async (email, password) => {
   const query = `
         SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
@@ -127,7 +127,7 @@ HospitalStaff.login = async (email, password) => {
 //
 //
 //
-// HospitalStaff Change Password
+// HOSPITAL STAFF CHANGE PASSWORD
 HospitalStaff.changePassword = async (hospitalStaffId,oldPassword,newPassword) => {
   const checkStaffQuery = `
         SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
@@ -195,7 +195,7 @@ HospitalStaff.changePassword = async (hospitalStaffId,oldPassword,newPassword) =
 //
 //
 //
-// HospitalStaff Update ID Proof Image
+// HOSPITAL STAFF CHANGE ID PROOF IMAGE
 HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilename) => {
   const verifyQuery = `
         SELECT hospitalStaffId
@@ -230,7 +230,7 @@ HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilenam
 //
 //
 //
-// HospitalStaff Update Profile Image
+// HOSPITAL STAFF CHANGE PROFILE IMAGE
 HospitalStaff.changeProfileImage = async (hospitalStaffId,newProfileImageFilename) => {
   const verifyQuery = `
         SELECT hospitalStaffId
@@ -265,7 +265,7 @@ HospitalStaff.changeProfileImage = async (hospitalStaffId,newProfileImageFilenam
 //
 //
 //
-// Hospitalstaff update Profile
+// HOSPITAL STAFF VIEW PROFILE
 HospitalStaff.viewProfile = async (hospitalStaffId) => {
   const query =
     "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended= 0";
@@ -285,7 +285,7 @@ HospitalStaff.viewProfile = async (hospitalStaffId) => {
 //
 //
 //
-// Hospitalstaff update Profile
+// HOSPITAL STAFF UPDATE PROFILE
 HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
   const checkHospitalStaffQuery =
     "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0";
@@ -346,7 +346,180 @@ HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
 //
 //
 //
-// Hospital staff Register new patient
+// HOSPITAL STAFF VIEW ALL NEWS
+HospitalStaff.viewAllNews = async (hospitalStaffId) => {
+  try {
+    // Fetch hospitalId associated with the hospitalStaffId
+    const hospitalIdQuery = `
+      SELECT hospitalId
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Hospital staff not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch all hospital news based on the retrieved hospitalId
+    const viewAllNewsQuery = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalId = ? AND deleteStatus = 0
+    `;
+    const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
+
+    return allNews;
+  } catch (error) {
+    console.error("Error viewing all hospital news:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL STAFF VIEW ONE NEWS
+HospitalStaff.viewOneNews = async (hospitalNewsId, hospitalStaffId) => {
+  try {
+    const hospitalIdQuery = "SELECT hospitalId FROM Hospital_Staffs WHERE hospitalStaffId = ? AND isActive = 1";
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Hospital staff not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch the hospital news
+    const query = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0
+    `;
+    const result = await dbQuery(query, [hospitalNewsId, hospitalId]);
+
+    if (result.length === 0) {
+      throw new Error("Hospital news not found");
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error("Error fetching hospital news:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL STAFF VIEW ALL NOTIFICATIONS FROM HOSPITAL
+HospitalStaff.viewAllNotifications = async (hospitalStaffId) => {
+  try {
+    // Fetch hospitalId associated with the hospitalStaffId
+    const hospitalIdQuery = `
+      SELECT hospitalId
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Hospital staff not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Fetch all notifications for the hospital staff
+    const viewAllNotificationsQuery = `
+      SELECT *
+      FROM Notification_To_Hospital_Staffs
+      WHERE hospitalId = ? AND hospitalStaffId = ?
+    `;
+    const allNotifications = await dbQuery(viewAllNotificationsQuery, [hospitalId, hospitalStaffId]);
+
+    // Check if there are no notifications found
+    if (allNotifications.length === 0) {
+      throw new Error("No notifications found for this hospital staff");
+    }
+
+    return allNotifications;
+  } catch (error) {
+    console.error("Error viewing all notifications for hospital staff:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//HOSPITAL STAFF VIEW ONE NOTIFICATION FROM HOSPITAL
+HospitalStaff.viewOneNotification = async (notificationId, hospitalStaffId) => {
+  try {
+    // Fetch hospitalId associated with the hospitalStaffId
+    const hospitalIdQuery = `
+      SELECT hospitalId
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Hospital staff not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Fetch the notification for the hospital staff
+    const viewOneNotificationQuery = `
+      SELECT *
+      FROM Notification_To_Hospital_Staffs
+      WHERE hospitalId = ? AND hospitalStaffId = ? AND notificationId = ?
+    `;
+    const notification = await dbQuery(viewOneNotificationQuery, [hospitalId, hospitalStaffId, notificationId]);
+
+    if (notification.length === 0) {
+      throw new Error("Notification not found");
+    }
+
+    return notification[0];
+  } catch (error) {
+    console.error("Error viewing one notification for hospital staff:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL STAFF REGISTER PATIENT
 HospitalStaff.registerPatient = async (patientData) => {
   try {
     const staffHospitalQuery = `
@@ -402,7 +575,7 @@ HospitalStaff.registerPatient = async (patientData) => {
 //
 //
 //
-// Hospital staff View One patient
+// HOSPITAL STAFF  VIEW ONE PATIENT
 HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
   try {
     const viewOnePatientQuery = `
@@ -445,7 +618,7 @@ HospitalStaff.viewOnePatient = async (hospitalStaffId, patientId) => {
 //
 //
 //
-// Hospital staff View All patients
+// HOSPITAL STAFF VIEW ALL PATIENTS
 HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
   try {
     const viewAllPatientsQuery = `
@@ -480,7 +653,7 @@ HospitalStaff.viewAllPatients = async (hospitalStaffId) => {
 //
 //
 //
-// Hospital staff Search Patients
+// HOSPITAL STAFF SEARCH PATIENTS
 HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
   const hospitalStatusQuery = `
         SELECT H.isActive, H.deleteStatus
@@ -557,8 +730,8 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
 //
 //
 //
-// ADD MEDICAL RECORD
-MedicalRecord.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
+// HOSPITAL STAFF  ADD MEDICAL RECORD
+HospitalStaff.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
   try {
     // Fetch patient details
     const patientQuery = `
@@ -602,6 +775,82 @@ MedicalRecord.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecor
     throw error;
   }
 };
+//
+//
+//
+//
+// HOSPITAL STAFF  REQUEST DISCHARGE OF ONE PATIENT
+HospitalStaff.requestDischarge = async (hospitalStaffId, patientId, message) => {
+  try {
+    const checkStaffQuery = `
+      SELECT hospitalId FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspened = 0
+    `;
+    const staffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
+    if (staffResult.length === 0) {
+      throw new Error("Hospital staff not found or not active");
+    }
+    const hospitalId = staffResult[0].hospitalId;
+
+    const checkPatientQuery = `
+      SELECT patientId FROM Patients
+      WHERE patientId = ? AND hospitalId = ? AND dischargeStatus = 0
+    `;
+    const patientResult = await dbQuery(checkPatientQuery, [patientId, hospitalId]);
+    if (patientResult.length === 0) {
+      throw new Error("Patient not found or already discharged");
+    }
+
+    const insertDischargeRequestQuery = `
+      INSERT INTO Discharge_Requests (hospitalId, hospitalStaffId, patientId, message)
+      VALUES (?, ?, ?, ?)
+    `;
+    await dbQuery(insertDischargeRequestQuery, [hospitalId, hospitalStaffId, patientId, message]);
+
+    return true; // Indicating successful operation
+  } catch (error) {
+    console.error("Error requesting patient discharge:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL STAFF VIEW ALL APPROVED DISCHARGE REQUESTS
+HospitalStaff.viewAllApprovedDischargeRequests = async (hospitalStaffId) => {
+  try {
+    const staffHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0
+    `;
+    const hospitalResult = await dbQuery(staffHospitalQuery, [hospitalStaffId]);
+    
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital staff not found or not active");
+    }
+
+    const hospitalId = hospitalResult[0].hospitalId;
+
+    // Now, fetch all approved discharge requests for this hospital.
+    const fetchQuery = `
+      SELECT * FROM Discharge_Requests
+      WHERE hospitalId = ? AND isApproved = 1 AND deleteStatus = 0
+    `;
+    const dischargeRequests = await dbQuery(fetchQuery, [hospitalId]);
+
+    return dischargeRequests;
+  } catch (error) {
+    console.error("Error viewing approved discharge requests:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
 
 
 
