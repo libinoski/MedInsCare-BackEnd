@@ -516,7 +516,6 @@ exports.changeProfileImage = async (req, res) => {
         }
     );
 };
-
 //
 //
 //
@@ -530,7 +529,7 @@ exports.viewProfile = async (req, res) => {
 
         // Check if token is missing
         if (!token) {
-            return res.status(401).json({
+            return res.status(403).json({
                 status: "failed",
                 message: "Token is missing"
             });
@@ -538,9 +537,9 @@ exports.viewProfile = async (req, res) => {
 
         // Check if patientId is missing
         if (!patientId) {
-            return res.status(400).json({
+            return res.status(401).json({
                 status: "failed",
-                results: "Patient ID is missing"
+                message: "Patient ID is missing"
             });
         }
 
@@ -614,6 +613,101 @@ exports.viewProfile = async (req, res) => {
         });
     }
 };
+//
+//
+//
+//
+exports.viewHospitalProfile = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
+
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Verify the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token",
+                            error: "Token verification failed"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        console.error("Error during profile image change:", err);
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                // Check if decoded token matches patientId from request body
+                if (decoded.patientId != patientId) {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Unauthorized access"
+                    });
+                }
+
+                // Fetch hospital profile data
+                try {
+                    const hospitalProfileData = await Patient.viewHospitalProfile(
+                        patientId
+                    );
+                    return res.status(200).json({
+                        status: "success",
+                        message: "Hospital profile retrieved successfully",
+                        data: hospitalProfileData
+                    });
+                } catch (error) {
+                    if (error.message === "Patient not found" || error.message === "Hospital not found") {
+                        return res.status(422).json({
+                            status: "error",
+                            message: error.message
+                        });
+                    }
+                    console.error("Error fetching hospital profile:", error);
+                    return res.status(500).json({
+                        status: "error",
+                        message: "Internal server error",
+                        details: error.message
+                    });
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error fetching hospital profile:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            details: error.message
+        });
+    }
+};
+
 //
 //
 //
@@ -786,6 +880,205 @@ exports.updateProfile = async (req, res) => {
 //
 //
 //
+// PATIENT VIEW ALL NEWS
+exports.viewAllNews = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
+
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_HOSPITAL,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                try {
+                    // Check if decoded token matches patientId from request body
+                    if (decoded.patientId != patientId) {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Unauthorized access"
+                        });
+                    }
+
+                    const allNewsData = await Patient.viewAllNews(patientId); // Using the viewAllNews method from the model
+                    return res.status(200).json({
+                        status: "success",
+                        message: "All hospital news retrieved successfully",
+                        data: allNewsData,
+                    });
+                } catch (error) {
+                    console.error("Error viewing all hospital news:", error);
+
+                    if (error.message === "Patient not found" || error.message === "Hospital not found or inactive") {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    }
+
+                    return res.status(500).json({
+                        status: "error",
+                        message: "Internal server error",
+                        error: error.message,
+                    });
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error during viewAllHospitalNews:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+//
+//
+//
+//
+//
+// INSURANCE PROVIDER VIEW  ONE NEWS
+exports.viewOneNews = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId, hospitalNewsId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
+
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Check if hospitalNewsId is missing
+        if (!hospitalNewsId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Hospital News ID is missing"
+            });
+        }
+
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_HOSPITAL,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                try {
+                    // Check if decoded token matches patientId from request body
+                    if (decoded.patientId != patientId) {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Unauthorized access"
+                        });
+                    }
+
+                    const newsItemData = await Patient.viewOneNews(
+                        hospitalNewsId,
+                        patientId
+                    );
+                    return res.status(200).json({
+                        status: "success",
+                        message: "Hospital news retrieved successfully",
+                        data: newsItemData,
+                    });
+                } catch (error) {
+                    console.error("Error viewing one hospital news:", error);
+                    if (
+                        error.message === "Hospital news not found" ||
+                        error.message === "Hospital not found" ||
+                        error.message === "Patient not found"
+                    ) {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    } else {
+                        return res.status(500).json({
+                            status: "error",
+                            message: "Internal server error",
+                            error: error.message,
+                        });
+                    }
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error during viewOneHospitalNews:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+//
+//
+//
+//
 // VIEW ALL INSURANCE PROVIDERS
 exports.viewAllInsuranceProviders = async (req, res) => {
     const token = req.headers.token;
@@ -879,7 +1172,7 @@ exports.viewAllInsuranceProviders = async (req, res) => {
 //
 //
 //VIEW ONE INSURANCE PROVIDER
-exports.viewOnensuranceProvider = async (req, res) => {
+exports.viewOneInsuranceProvider = async (req, res) => {
     const token = req.headers.token;
     const { patientId, insuranceProviderId } = req.body; // Include insuranceProviderId in the request body
 
@@ -1076,6 +1369,7 @@ exports.viewAllInsurancePackages = async (req, res) => {
 //
 //
 //
+// VIEW ONE INSURANCE PACKAGE
 exports.viewOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
     const { patientId, insurancePackageId } = req.body;
@@ -1148,6 +1442,105 @@ exports.viewOneInsurancePackage = async (req, res) => {
                 } catch (error) {
                     console.error("Error viewing insurance package:", error);
                     if (error.message === "Patient not found" || error.message === "Insurance package not found") {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    }
+                    return res.status(500).json({
+                        status: "error",
+                        message: "Internal server error",
+                        error: error.message,
+                    });
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error verifying token:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+//
+//
+//
+//
+//
+exports.chooseInsurancePackage = async (req, res) => {
+    const token = req.headers.token;
+    const { patientId, packageId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+        return res.status(403).json({
+            status: "failed",
+            message: "Token is missing"
+        });
+    }
+
+    // Check if patientId is missing
+    if (!patientId) {
+        return res.status(401).json({
+            status: "failed",
+            message: "Patient ID is missing"
+        });
+    }
+
+    // Check if packageId is missing
+    if (!packageId) {
+        return res.status(401).json({
+            status: "failed",
+            message: "Package ID is missing"
+        });
+    }
+
+    try {
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                // Check if decoded token matches patientId from request body
+                if (decoded.patientId != patientId) {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Unauthorized access"
+                    });
+                }
+
+                // Token is valid, proceed to choose insurance package
+                try {
+                    const clientDetails = await Patient.chooseInsurancePackage(patientId, packageId);
+                    return res.status(200).json({
+                        status: "success",
+                        message: "Insurance Package chosen successfully",
+                        data: clientDetails,
+                    });
+                } catch (error) {
+                    console.error("Error choosing insurance package:", error);
+                    if (error.message === "Patient not found" || error.message === "Insurance package not found for this hospital") {
                         return res.status(422).json({
                             status: "error",
                             error: error.message

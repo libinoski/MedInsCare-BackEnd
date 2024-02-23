@@ -106,6 +106,45 @@ const Hospital = function (hospital) {
 //
 //
 //
+const Client = function (client) {
+    this.clientId = client.clientId;
+    this.patientId = client.patientId;
+    this.packageId = client.packageId;
+    this.insuranceProviderId = client.insuranceProviderId;
+    this.hospitalId = client.hospitalId;
+    this.packageTitle = client.packageTitle;
+    this.packageDetails = client.packageDetails;
+    this.packageImage = client.packageImage;
+    this.packageDuration = client.packageDuration;
+    this.packageAmount = client.packageAmount;
+    this.packageTAndC = client.packageTAndC;
+};
+//
+//
+//
+//
+//
+// Insurance Packages Model
+const InsurancePackage = function (insurancePackage) {
+    this.packageId = insurancePackage.packageId;
+    this.insuranceProviderId = insurancePackage.insuranceProviderId;
+    this.hospitalId = insurancePackage.hospitalId;
+    this.packageTitle = insurancePackage.packageTitle;
+    this.packageDetails = insurancePackage.packageDetails;
+    this.packageImage = insurancePackage.packageImage;
+    this.packageDuration = insurancePackage.packageDuration;
+    this.packageAmount = insurancePackage.packageAmount;
+    this.packageTAndC = insurancePackage.packageTAndC;
+    this.addedDate = insurancePackage.addedDate;
+    this.updatedDate = insurancePackage.updatedDate;
+    this.updateStatus = insurancePackage.updateStatus;
+    this.deleteStatus = insurancePackage.deleteStatus;
+    this.isActive = insurancePackage.isActive;
+};
+//
+//
+//
+//
 // PATIENT LOGIN
 Patient.login = async (email, password) => {
     const query = `
@@ -295,33 +334,71 @@ Patient.viewProfile = async (patientId) => {
 //
 //
 //
+// PATIENT VIEW HOSPITAL PROFILE
+Patient.viewHospitalProfile = async (patientId) => {
+    try {
+        // Fetch hospitalId associated with the patientId
+        const hospitalIdQuery = `
+        SELECT hospitalId
+        FROM Patients
+        WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0 
+      `;
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Query hospital profile using the fetched hospitalId
+        const profileQuery = `
+        SELECT *
+        FROM Hospitals
+        WHERE hospitalId = ? AND isActive = 1
+      `;
+        const profileResult = await dbQuery(profileQuery, [hospitalId]);
+
+        if (profileResult.length === 0) {
+            throw new Error("Hospital not found");
+        }
+
+        return profileResult[0];
+    } catch (error) {
+        throw error;
+    }
+};
+//
+//
+//
+//
 // PATIENT UPDATE PROFILE
 Patient.updateProfile = async (updatedPatient) => {
     const checkPatientQuery =
-      "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1";
-  
+        "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1";
+
     try {
-      const selectRes = await dbQuery(checkPatientQuery, [
-        updatedPatient.patientId,
-      ]);
-  
-      if (selectRes.length === 0) {
-        throw new Error("Patient not found");
-      }
-  
-      // Check if patientAadhar already exists for another patient
-      const checkAadharQuery =
-        "SELECT * FROM Patients WHERE patientAadhar = ? AND patientId != ? AND isActive = 1";
-      const aadharRes = await dbQuery(checkAadharQuery, [
-        updatedPatient.patientAadhar,
-        updatedPatient.patientId,
-      ]);
-  
-      if (aadharRes.length > 0) {
-        throw new Error("Aadhar Number Already Exists.");
-      }
-  
-      const updateQuery = `
+        const selectRes = await dbQuery(checkPatientQuery, [
+            updatedPatient.patientId,
+        ]);
+
+        if (selectRes.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        // Check if patientAadhar already exists for another patient
+        const checkAadharQuery =
+            "SELECT * FROM Patients WHERE patientAadhar = ? AND patientId != ? AND isActive = 1";
+        const aadharRes = await dbQuery(checkAadharQuery, [
+            updatedPatient.patientAadhar,
+            updatedPatient.patientId,
+        ]);
+
+        if (aadharRes.length > 0) {
+            throw new Error("Aadhar Number Already Exists.");
+        }
+
+        const updateQuery = `
               UPDATE Patients
               SET
                   updateStatus = 1,
@@ -332,29 +409,121 @@ Patient.updateProfile = async (updatedPatient) => {
                   patientAadhar = ?
               WHERE patientId = ? AND isActive = 1
           `;
-  
-      const updateValues = [
-        updatedPatient.patientName,
-        updatedPatient.patientMobile,
-        updatedPatient.patientAddress,
-        updatedPatient.patientAadhar,
-        updatedPatient.patientId,
-      ];
-  
-      await dbQuery(updateQuery, updateValues);
-  
-      console.log("Updated patient details:", {
-        id: updatedPatient.patientId,
-        ...updatedPatient,
-      });
-      return updatedPatient; // Returning the updated data without additional status and message
+
+        const updateValues = [
+            updatedPatient.patientName,
+            updatedPatient.patientMobile,
+            updatedPatient.patientAddress,
+            updatedPatient.patientAadhar,
+            updatedPatient.patientId,
+        ];
+
+        await dbQuery(updateQuery, updateValues);
+
+        console.log("Updated patient details:", {
+            id: updatedPatient.patientId,
+            ...updatedPatient,
+        });
+        return updatedPatient; // Returning the updated data without additional status and message
     } catch (error) {
-      throw error;
+        throw error;
     }
-  };
+};
 //
 //
 //
+//
+//
+// PATIENT VIEW ALL NEWS
+Patient.viewAllNews = async (patientId) => {
+    try {
+        // Fetch hospitalId associated with the patientId
+        const hospitalIdQuery = `
+        SELECT hospitalId
+        FROM Patients
+        WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0 
+      `;
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Verify hospital existence and active status
+        const verifyHospitalQuery = `
+        SELECT hospitalId
+        FROM Hospitals
+        WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+      `;
+        const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+        if (hospitalResult.length === 0) {
+            throw new Error("Hospital not found or inactive");
+        }
+
+        // Fetch all hospital news based on the retrieved hospitalId
+        const viewAllNewsQuery = `
+        SELECT *
+        FROM Hospital_News
+        WHERE hospitalId = ? AND deleteStatus = 0
+      `;
+        const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
+
+        return allNews;
+    } catch (error) {
+        console.error("Error viewing all hospital news:", error);
+        throw error;
+    }
+};
+//
+//
+//
+//
+//
+// PATIENT VIEW ONE NEWS
+Patient.viewOneNews = async (hospitalNewsId, patientId) => {
+    try {
+        const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0";
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Verify hospital existence and active status
+        const verifyHospitalQuery = `
+        SELECT hospitalId
+        FROM Hospitals
+        WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+      `;
+        const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+        if (hospitalResult.length === 0) {
+            throw new Error("Hospital not found or inactive");
+        }
+
+        // Fetch the hospital news
+        const query = `
+        SELECT *
+        FROM Hospital_News
+        WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0
+      `;
+        const result = await dbQuery(query, [hospitalNewsId, hospitalId]);
+
+        if (result.length === 0) {
+            throw new Error("Hospital news not found");
+        }
+
+        return result[0];
+    } catch (error) {
+        console.error("Error fetching hospital news:", error);
+        throw error;
+    }
+};
 //
 //
 //
@@ -423,7 +592,7 @@ Patient.viewAllInsurancePackages = async (patientId) => {
         // Fetch hospitalId associated with the patientId
         const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
         const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
-        
+
         if (hospitalIdResult.length === 0) {
             throw new Error("Patient not found");
         }
@@ -451,7 +620,7 @@ Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
         // Fetch hospitalId associated with the patientId
         const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
         const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
-        
+
         if (hospitalIdResult.length === 0) {
             throw new Error("Patient not found");
         }
@@ -476,8 +645,59 @@ Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
 //
 //
 //
+Patient.chooseInsurancePackage = async (patientId, packageId) => {
+    try {
+        // Fetch hospitalId associated with the patientId
+        const hospitalIdQuery = `
+            SELECT hospitalId
+            FROM Patients
+            WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0 
+        `;
+        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
 
-  
+        if (hospitalIdResult.length === 0) {
+            throw new Error("Patient not found");
+        }
+
+        const hospitalId = hospitalIdResult[0].hospitalId;
+
+        // Fetch insuranceProviderId associated with the packageId
+        const insuranceProviderIdQuery = `
+            SELECT insuranceProviderId
+            FROM Insurance_Packages
+            WHERE packageId = ? AND hospitalId = ? AND isActive = 1
+        `;
+        const insuranceProviderIdResult = await dbQuery(insuranceProviderIdQuery, [packageId, hospitalId]);
+
+        if (insuranceProviderIdResult.length === 0) {
+            throw new Error("Insurance package not found for this hospital");
+        }
+
+        const insuranceProviderId = insuranceProviderIdResult[0].insuranceProviderId;
+
+        // Insert into Clients table
+        const insertClientQuery = `
+            INSERT INTO Clients (patientId, packageId, insuranceProviderId, hospitalId)
+            VALUES (?, ?, ?, ?)
+        `;
+        const insertResult = await dbQuery(insertClientQuery, [patientId, packageId, insuranceProviderId, hospitalId]);
+
+        // Retrieve the generated clientId
+        const clientId = insertResult.insertId;
+
+        // Return the clientId
+        return { clientId, patientId, packageId, insuranceProviderId, hospitalId };
+    } catch (error) {
+        console.error("Error choosing insurance package:", error);
+        throw error;
+    }
+};
+//
+//
+//
+//
+//
+//
 
 
 
@@ -495,4 +715,5 @@ Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
 
 
 
-module.exports = { Hospital, InsuranceProvider, Patient, HospitalStaff };
+
+module.exports = { Hospital, InsuranceProvider, Patient, HospitalStaff, Client, InsurancePackage };

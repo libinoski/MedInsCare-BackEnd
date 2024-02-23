@@ -338,6 +338,101 @@ InsuranceProvider.updateProfile = async (updatedInsuranceProvider) => {
 //
 //
 //
+// INSURANCE PROVIDER VIEW ALL NEWS
+InsuranceProvider.viewAllNews = async (insuranceProviderId) => {
+  try {
+    // Fetch hospitalId associated with the insuranceProviderId
+    const hospitalIdQuery = `
+      SELECT hospitalId
+      FROM Insurance_Providers
+      WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0
+    `;
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [insuranceProviderId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch all hospital news based on the retrieved hospitalId
+    const viewAllNewsQuery = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalId = ? AND deleteStatus = 0
+    `;
+    const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
+
+    return allNews;
+  } catch (error) {
+    console.error("Error viewing all hospital news:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// VIEW ONE NEWS
+InsuranceProvider.viewOneNews = async (hospitalNewsId, insuranceProviderId) => {
+  try {
+    const hospitalIdQuery = "SELECT hospitalId FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND isSuspended = 0";
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [insuranceProviderId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch the hospital news
+    const query = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0
+    `;
+    const result = await dbQuery(query, [hospitalNewsId, hospitalId]);
+
+    if (result.length === 0) {
+      throw new Error("Hospital news not found");
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error("Error fetching hospital news:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
 //
 InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientId, notificationMessage) => {
   try {

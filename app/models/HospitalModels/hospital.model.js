@@ -941,4 +941,71 @@ Hospital.viewOneNews = async (hospitalNewsId, hospitalId) => {
 //
 //
 //
+// HOSPITAL VIEW ALL INSURANCE PROVIDERS
+Hospital.viewAllInsuranceProviders = async (hospitalId) => {
+  try {
+    // Check if the hospital exists and is active
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Hospital ID is valid
+    const validHospitalId = hospitalCheckResult[0].hospitalId;
+
+    // Fetch all insurance providers associated with the hospital
+    const viewAllInsuranceProvidersQuery =
+      "SELECT * FROM Insurance_Providers WHERE hospitalId = ? AND isActive = 1 AND isSuspended = 0 AND isApproved = 1";
+    const allInsuranceProviders = await dbQuery(viewAllInsuranceProvidersQuery, [validHospitalId]);
+
+    return allInsuranceProviders;
+  } catch (error) {
+    console.error("Error viewing all insurance providers:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL VIEW ONE INSURANCE PROVIDER
+Hospital.viewOneInsuranceProvider = async (hospitalId, insuranceProviderId) => {
+  try {
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const viewInsuranceProviderQuery =
+      "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isActive = 1 AND isSuspended = 0 AND isApproved = 1";
+    const insuranceProvider = await dbQuery(viewInsuranceProviderQuery, [insuranceProviderId, hospitalId]);
+
+    if (insuranceProvider.length === 0) {
+      throw new Error("Insurance provider not found for this hospital");
+    }
+
+    return insuranceProvider[0];
+  } catch (error) {
+    console.error("Error viewing insurance provider:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+
+
+
+
+
+
+
 module.exports = { Hospital, HospitalStaff, HospitalNews, NotificationToHospitalStaffs };

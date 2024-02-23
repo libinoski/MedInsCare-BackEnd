@@ -346,6 +346,97 @@ HospitalStaff.updateProfile = async (updatedHospitalStaff) => {
 //
 //
 //
+// VIEW ALL NEWS
+HospitalStaff.viewAllNews = async (hospitalStaffId) => {
+  try {
+    // Fetch hospitalId associated with the hospitalStaffId
+    const hospitalIdQuery = `
+      SELECT hospitalId
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Hospital staff not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch all hospital news based on the retrieved hospitalId
+    const viewAllNewsQuery = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalId = ? AND deleteStatus = 0
+    `;
+    const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
+
+    return allNews;
+  } catch (error) {
+    console.error("Error viewing all hospital news:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// VIEW ONE NEWS
+HospitalStaff.viewOneNews = async (hospitalNewsId, hospitalStaffId) => {
+  try {
+    const hospitalIdQuery = "SELECT hospitalId FROM Hospital_Staffs WHERE hospitalStaffId = ? AND isActive = 1";
+    const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
+
+    if (hospitalIdResult.length === 0) {
+      throw new Error("Hospital staff not found");
+    }
+
+    const hospitalId = hospitalIdResult[0].hospitalId;
+
+    // Verify hospital existence and active status
+    const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or inactive");
+    }
+
+    // Fetch the hospital news
+    const query = `
+      SELECT *
+      FROM Hospital_News
+      WHERE hospitalNewsId = ? AND hospitalId = ? AND deleteStatus = 0
+    `;
+    const result = await dbQuery(query, [hospitalNewsId, hospitalId]);
+
+    if (result.length === 0) {
+      throw new Error("Hospital news not found");
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error("Error fetching hospital news:", error);
+    throw error;
+  }
+};
+//
+//
 // Hospital staff Register new patient
 HospitalStaff.registerPatient = async (patientData) => {
   try {
@@ -558,7 +649,7 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
 //
 //
 // ADD MEDICAL RECORD
-MedicalRecord.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
+HospitalStaff.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
   try {
     // Fetch patient details
     const patientQuery = `

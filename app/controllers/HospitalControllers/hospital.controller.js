@@ -2944,4 +2944,202 @@ exports.viewOneNews = async (req, res) => {
 //
 //
 //
+// HOSPITAL VIEW ALL INSURANCE PROVIDERS
+exports.viewAllInsuranceProviders = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        try {
+          // Check if decoded token matches hospitalId from request body
+          if (decoded.hospitalId != hospitalId) {
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
+
+          const allInsuranceProviders = await Hospital.viewAllInsuranceProviders(hospitalId);
+          return res.status(200).json({
+            status: "success",
+            message: "All insurance providers retrieved successfully",
+            data: allInsuranceProviders,
+          });
+        } catch (error) {
+          console.error("Error viewing all insurance providers:", error);
+
+          if (error.message === "Hospital not found") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          }
+
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error during viewInsuranceProviders:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//
+// HOSPITAL VIEW ONE INSURANCE PROVIDER
+exports.viewOneInsuranceProvider = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, insuranceProviderId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        try {
+          // Check if decoded token matches hospitalId from request body
+          if (decoded.hospitalId != hospitalId) {
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
+
+          const insuranceProviderData = await Hospital.viewOneInsuranceProvider(
+            hospitalId,
+            insuranceProviderId
+          );
+          return res.status(200).json({
+            status: "success",
+            message: "Insurance provider retrieved successfully",
+            data: insuranceProviderData,
+          });
+        } catch (error) {
+          console.error("Error viewing one insurance provider:", error);
+          if (
+            error.message === "Insurance provider not found for this hospital" ||
+            error.message === "Hospital not found"
+          ) {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else {
+            return res.status(500).json({
+              status: "error",
+              message: "Internal server error",
+              error: error.message,
+            });
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error during viewOneInsuranceProvider:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
 //
