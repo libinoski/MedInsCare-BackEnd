@@ -1,0 +1,23 @@
+
+1. [Patient Authentication and Profile Management]
+   - Patient login route: `POST http://localhost:1313/api/patient/patientLogin`
+   - Change patient password route: `POST http://localhost:1313/api/patient/patientChangePassword`
+   - Change patient's ID proof image route: `POST http://localhost:1313/api/patient/patientChangeIdProofImage`
+   - Change patient's profile image route: `POST http://localhost:1313/api/patient/patientChangeProfileImage`
+   - View patient's profile route: `POST http://localhost:1313/api/patient/patientViewProfile`
+   - View patient's associated hospital profile route: `POST http://localhost:1313/api/patient/patientViewHospitalProfile`
+   - Update patient's profile route: `POST http://localhost:1313/api/patient/patientUpdateProfile`
+
+2. [News and Information]
+   - View all news available to the patient route: `POST http://localhost:1313/api/patient/patientViewAllNews`
+   - View a specific piece of news route: `POST http://localhost:1313/api/patient/patientViewOneNews`
+
+3. [Insurance Providers and Packages]
+   - View all insurance providers available to the patient route: `POST http://localhost:1313/api/patient/patientViewAllInsuranceProviders`
+   - View details of a specific insurance provider route: `POST http://localhost:1313/api/patient/patientViewOneInsuranceProvider`
+   - View all insurance packages available to the patient route: `POST http://localhost:1313/api/patient/patientViewAllInsurancePackages`
+   - View details of a specific insurance package route: `POST http://localhost:1313/api/patient/patientViewOneInsurancePackage`
+   - Choose an insurance package route: `POST http://localhost:1313/api/patient/patientChooseInsurancePackage`
+   - Patient search insurance providers route: `POST http://localhost:1313/api/patient/patientSearchInsuranceProviders`
+   - Patient review one insurance provider route: `POST http://localhost:1313/api/patient/patientReviewOneInsuranceProvider`
+

@@ -1,0 +1,24 @@
+1. [Insurance Provider Authentication and Profile Management]
+
+-Insurance provider registration route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderRegister
+-Insurance provider login route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderLogin
+-Insurance provider change password route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderChangePassword
+-Insurance provider change ID proof image route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderChangeIdProofImage
+-Insurance provider change profile image route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderChangeProfileImage
+-Insurance provider view profile route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderViewProfile
+-Insurance provider update profile route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderUpdateProfile
+
+2. [News and Notifications Management]
+
+-Insurance provider view all news route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderViewAllNews
+-Insurance provider view one news item route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderViewOneNews
+-Insurance provider send notification to client route: POST http://localhost:1313/api/mic/insuranceProvider/sendNotificationToClient
+
+3. [Client Management]
+
+-Insurance provider view all clients route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderViewAllClients
+-Insurance provider view one client route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderViewOneClient
+
+4. [Insurance Package Management]
+
+-Add insurance package route: POST http://localhost:1313/api/mic/insuranceProvider/addInsurancePackage

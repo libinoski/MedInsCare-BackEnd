@@ -1,0 +1,27 @@
+1. [Authentication and Profile Management]
+   - Login route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffLogin`
+   - Change password route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffChangePassword`
+   - Change ID proof image route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffChangeIdProofImage`
+   - Change profile image route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffChangeProfileImage`
+   - View profile route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewProfile`
+   - Update profile route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffUpdateProfile`
+
+2. [Hospital News Management]
+   - View all hospital news route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewAllHospitalNews`
+   - View one hospital news item route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewOneHospitalNews`
+
+3. [Notifications Management]
+   - View all notifications from hospital route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewAllNotifications`
+   - View one notification from hospital route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewOneNotification`
+
+4. [Patient Management]
+   - Register patient route: `POST http://localhost:1313/api/hospital-staff/registerPatient`
+   - View all patients route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewAllPatients`
+   - View one patient route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewOnePatient`
+   - Search patients route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffSearchPatient`
+
+5. [Medical Records and Discharge Management]
+   - Add medical record route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffAddMedicalRecord`
+   - Request discharge of one patient route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffRequestDischarge`
+   - View all approved discharge requests route for hospital staff: `POST http://localhost:1313/api/hospital-staff/hospitalStaffViewAllApprovedDischargeRequests`
+

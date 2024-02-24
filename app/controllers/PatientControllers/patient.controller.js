@@ -1564,7 +1564,6 @@ exports.viewOneInsurancePackage = async (req, res) => {
 //
 //
 //
-//
 // PATIENT CHOOSE ONE INSURANCE PACKAGE
 exports.chooseOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
@@ -1664,7 +1663,6 @@ exports.chooseOneInsurancePackage = async (req, res) => {
 //
 //
 //
-//
 // PATIENT SEARCH INSURANCE PROVIDERS
 exports.searchInsuranceProviders = async (req, res) => {
     const token = req.headers.token;
@@ -1758,9 +1756,145 @@ exports.searchInsuranceProviders = async (req, res) => {
 //
 //
 //
+// PATIENT REVIEW ONE INSURANCE PROVIDER
+exports.reviewOneInsuranceProvider = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, patientId, insuranceProviderId, reviewContent } = req.body;
+
+    // Check if token is provided
+    if (!token) {
+      return res.status(403).json({
+        status: "error",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is provided
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Check if patientId is provided
+    if (!patientId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Patient ID is missing"
+      });
+    }
+
+    // Check if insuranceProviderId is provided
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Token verification
+    jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Invalid or missing token"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Token has expired"
+          });
+        } else {
+          return res.status(403).json({
+            status: "error",
+            message: "Unauthorized access"
+          });
+        }
+      }
+
+      // Check if the decoded hospitalId matches the provided hospitalId
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: "error",
+          message: "Unauthorized access"
+        });
+      }
+
+      // Function to validate review content
+      function validateReviewContent(reviewContent) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        // Your validation logic here
+        const reviewValidation = dataValidator.isValidText(reviewContent);
+        if (!reviewValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["reviewContent"] = [reviewValidation.message];
+        }
+
+        return validationResults;
+      }
+
+      // Validate review content
+      const validationResults = validateReviewContent(reviewContent);
+
+      // If validation fails, return error response
+      if (!validationResults.isValid) {
+        return res.status(400).json({
+          status: "error",
+          message: "Validation failed",
+          errors: validationResults.errors
+        });
+      }
+
+      try {
+        // Call the reviewOneInsuranceProvider method from the Patient model
+        const reviewDetails = await Patient.reviewOneInsuranceProvider(hospitalId, insuranceProviderId, patientId, reviewContent);
+
+        // Return success response
+        return res.status(200).json({
+          status: "success",
+          message: "Review submitted successfully",
+          data: reviewDetails
+        });
+      } catch (error) {
+        // Handle errors
+        console.error("Error submitting review by patient:", error);
+
+        // Return appropriate error response
+        if (error.message === "Hospital not found" || error.message === "Insurance Provider not found or not active in this hospital" || error.message === "Patient not found or not active in this hospital") {
+          return res.status(422).json({
+            status: "error",
+            error: error.message
+          });
+        }
+
+        return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message
+        });
+      }
+    });
+  } catch (error) {
+    // Handle unexpected errors
+    console.error("Error in reviewOneInsuranceProvider controller:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
 //
 //
-
-
+//
+//
+//
 
 

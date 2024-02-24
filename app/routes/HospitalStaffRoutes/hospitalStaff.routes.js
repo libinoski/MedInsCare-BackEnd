@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const HospitalStaffController = require('../../controllers/HospitalStaffController/hospitalStaff.controller');
 
+// -------------------
+// Authentication and Profile Management
+// -------------------
+
 // Login route for hospital staff
 router.post("/hospitalStaffLogin", HospitalStaffController.login);
 
@@ -20,17 +24,29 @@ router.post("/hospitalStaffViewProfile", HospitalStaffController.viewProfile);
 // Update profile route for hospital staff
 router.post("/hospitalStaffUpdateProfile", HospitalStaffController.updateProfile);
 
+// -------------------
+// Hospital News Management
+// -------------------
+
 // View all hospital news route for hospital staff
 router.post("/hospitalStaffViewAllHospitalNews", HospitalStaffController.viewAllNews);
 
 // View one hospital news item route for hospital staff
 router.post("/hospitalStaffViewOneHospitalNews", HospitalStaffController.viewOneNews);
 
+// -------------------
+// Notifications Management
+// -------------------
+
 // View all notifications from hospital route for hospital staff
 router.post("/hospitalStaffViewAllNotifications", HospitalStaffController.viewAllNotifications);
 
 // View one notification from hospital route for hospital staff
 router.post("/hospitalStaffViewOneNotification", HospitalStaffController.viewOneNotification);
+
+// -------------------
+// Patient Management
+// -------------------
 
 // Register patient route
 router.post("/registerPatient", HospitalStaffController.registerPatient);
@@ -44,6 +60,10 @@ router.post("/hospitalStaffViewOnePatient", HospitalStaffController.viewOnePatie
 // Search patients route for hospital staff
 router.post("/hospitalStaffSearchPatient", HospitalStaffController.searchPatients);
 
+// -------------------
+// Medical Records and Discharge Management
+// -------------------
+
 // Add medical record route for hospital staff
 router.post("/hospitalStaffAddMedicalRecord", HospitalStaffController.addMedicalRecord);
 
@@ -52,11 +72,5 @@ router.post("/hospitalStaffRequestDischarge", HospitalStaffController.requestDis
 
 // View all approved discharge requests route for hospital staff
 router.post("/hospitalStaffViewAllApprovedDischargeRequests", HospitalStaffController.viewAllApprovedDischargeRequests);
-
-
-
-
-
-
 
 module.exports = router;

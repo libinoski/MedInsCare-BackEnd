@@ -629,6 +629,46 @@ InsuranceProvider.viewOneClient = async (clientId, insuranceProviderId) => {
     throw error;
   }
 };
+//
+//
+//
+//
+//
+// ADD INSURANCE PACKAGE
+InsuranceProvider.addInsurancePackage = async (insuranceProviderId, packageData) => {
+  try {
+    // Fetch insurance provider details to verify existence and active status
+    const providerQuery = `
+      SELECT IP.insuranceProviderId, IP.hospitalId, IP.insuranceProviderName, IP.insuranceProviderEmail,
+             IP.isActive, IP.isSuspended
+      FROM Insurance_Providers IP
+      WHERE IP.insuranceProviderId = ? AND IP.deleteStatus = 0
+    `;
+    const providerDetails = await dbQuery(providerQuery, [insuranceProviderId]);
+
+    // Check if insurance provider exists and is active
+    if (providerDetails.length === 0 || providerDetails[0].isSuspended || !providerDetails[0].isActive) {
+      throw new Error("Insurance provider not found, not active, or suspended.");
+    }
+
+    // Prepare the insurance package data
+    const { hospitalId } = providerDetails[0];
+    const insurancePackage = {
+      insuranceProviderId: insuranceProviderId,
+      hospitalId: hospitalId,
+      ...packageData, // Spread the rest of packageData which contains fields like packageTitle, packageDetails, etc.
+    };
+
+    // Insert insurance package into the database
+    const insertQuery = "INSERT INTO Insurance_Packages SET ?";
+    const insertRes = await dbQuery(insertQuery, insurancePackage);
+
+    // Return the newly created package details along with its ID
+    return { packageId: insertRes.insertId, ...insurancePackage };
+  } catch (error) {
+    throw error;
+  }
+};
 
 
 

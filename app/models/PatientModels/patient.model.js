@@ -142,6 +142,17 @@ const Client = function (client) {
 //
 //
 //
+const Review = function(review) {
+    this.reviewId = review.reviewId;
+    this.hospitalId = review.hospitalId;
+    this.insuranceProviderId = review.insuranceProviderId;
+    this.patientId = review.patientId;
+    this.reviewContent = review.reviewContent;
+    this.sendDate = review.sendDate;
+    this.isActive = review.isActive;
+    this.deleteStatus = review.deleteStatus;
+};
+
 // PATIENT LOGIN
 Patient.login = async (email, password) => {
     const query = `
@@ -808,6 +819,53 @@ Patient.searchInsuranceProviders = async (patientId, searchQuery) => {
 //
 //
 //
+// PATIENT REVIEW ONE INSURANCE PROVIDER
+Patient.reviewOneInsuranceProvider = async function(hospitalId, insuranceProviderId, patientId, reviewContent) {
+    try {
+        // Validate hospital
+        const hospitalExistsQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const hospitalResult = await dbQuery(hospitalExistsQuery, [hospitalId]);
+        if (hospitalResult.length === 0) throw new Error("Hospital not found");
+
+        // Validate insurance provider
+        const providerExistsQuery = "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const providerResult = await dbQuery(providerExistsQuery, [insuranceProviderId, hospitalId]);
+        if (providerResult.length === 0) throw new Error("Insurance Provider not found or not active in this hospital");
+
+        // Validate patient
+        const patientExistsQuery = "SELECT * FROM Patients WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+        const patientResult = await dbQuery(patientExistsQuery, [patientId, hospitalId]);
+        if (patientResult.length === 0) throw new Error("Patient not found or not active in this hospital");
+
+        // Insert review
+        const insertReviewQuery = "INSERT INTO Reviews (hospitalId, insuranceProviderId, patientId, reviewContent) VALUES (?, ?, ?, ?)";
+        const insertResult = await dbQuery(insertReviewQuery, [hospitalId, insuranceProviderId, patientId, reviewContent]);
+        const reviewId = insertResult.insertId;
+
+        // Fetch sendDate for accuracy
+        const fetchReviewQuery = "SELECT sendDate FROM Reviews WHERE reviewId = ?";
+        const reviewResult = await dbQuery(fetchReviewQuery, [reviewId]);
+        const sendDate = reviewResult[0].sendDate;
+
+        // Return the relevant review details
+        return {
+            reviewId: reviewId,
+            hospitalId: hospitalId,
+            patientId: patientId,
+            insuranceProviderId: insuranceProviderId,
+            reviewContent: reviewContent,
+            sendDate: sendDate,
+        };
+    } catch (error) {
+        console.error("Error submitting review by patient:", error);
+        throw error;
+    }
+};
+//
+//
+//
+//
+//
 
 
 
@@ -824,5 +882,4 @@ Patient.searchInsuranceProviders = async (patientId, searchQuery) => {
 
 
 
-
-module.exports = { Hospital, InsuranceProvider, Patient, HospitalStaff, Client, InsurancePackage };
+module.exports = { Hospital, InsuranceProvider, Patient, HospitalStaff, Client, InsurancePackage, Review };

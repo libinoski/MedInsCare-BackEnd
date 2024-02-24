@@ -4749,7 +4749,6 @@ exports.viewOneDischargeRequestWithDetails = async (req, res) => {
 //
 //
 //
-//
 // HOSPITAL APPROVE ONE DISCHARGE REQUEST
 exports.approveOneDischargeRequest = async (req, res) => {
   const token = req.headers.token;

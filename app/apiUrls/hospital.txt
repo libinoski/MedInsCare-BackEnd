@@ -1,0 +1,58 @@
+Sure, here are the API URLs with `http://localhost:1313/api` prepended:
+
+1. [Hospital Authentication and Profile Management]
+   - Hospital registration: `POST http://localhost:1313/api/mic/hospital/hospitalRegistration`
+   - Hospital login: `POST http://localhost:1313/api/mic/hospital/hospitalLogin`
+   - Hospital change password: `POST http://localhost:1313/api/mic/hospital/hospitalChangePassword`
+   - Hospital change image: `POST http://localhost:1313/api/mic/hospital/hospitalChangeImage`
+   - Hospital view profile: `POST http://localhost:1313/api/mic/hospital/hospitalViewProfile`
+   - Hospital update profile: `POST http://localhost:1313/api/mic/hospital/hospitalUpdateProfile`
+
+2. [Hospital Staff Management]
+   - Hospital staff registration: `POST http://localhost:1313/api/mic/hospital/hospitalStaffRegister`
+   - Update hospital staff: `POST http://localhost:1313/api/mic/hospital/updateHospitalStaff`
+   - Delete hospital staff: `POST http://localhost:1313/api/mic/hospital/deleteHospitalStaff`
+   - Suspend hospital staff: `POST http://localhost:1313/api/mic/hospital/suspendHospitalStaff`
+   - Unsuspend hospital staff: `POST http://localhost:1313/api/mic/hospital/unSuspendHospitalStaff`
+   - View all suspended hospital staffs: `POST http://localhost:1313/api/mic/hospital/viewAllSuspendedHospitalStaffs`
+   - View one suspended hospital staff: `POST http://localhost:1313/api/mic/hospital/viewOneSuspendedHospitalStaff`
+   - View all hospital staff: `POST http://localhost:1313/api/mic/hospital/viewAllHospitalStaffs`
+   - View one hospital staff: `POST http://localhost:1313/api/mic/hospital/viewOneHospitalStaff`
+   - Search hospital staff: `POST http://localhost:1313/api/mic/hospital/searchHospitalStaff`
+   - Send notification to staff: `POST http://localhost:1313/api/mic/hospital/sendNotificationToStaff`
+
+3. [Hospital News Management]
+   - Add hospital news: `POST http://localhost:1313/api/mic/hospital/addHospitalNews`
+   - Update hospital news: `POST http://localhost:1313/api/mic/hospital/updateHospitalNews`
+   - Delete hospital news: `POST http://localhost:1313/api/mic/hospital/deleteHospitalNews`
+   - View all hospital news: `POST http://localhost:1313/api/mic/hospital/viewAllHospitalNews`
+   - View one hospital news: `POST http://localhost:1313/api/mic/hospital/viewOneHospitalNews`
+
+4. [Insurance Providers Management]
+   - View all unapproved insurance providers: `POST http://localhost:1313/api/mic/hospital/viewAllUnapprovedInsuranceProviders`
+   - View one unapproved insurance provider: `POST http://localhost:1313/api/mic/hospital/viewOneUnapprovedInsuranceProvider`
+   - Approve one insurance provider: `POST http://localhost:1313/api/mic/hospital/approveOneInsuranceProvider`
+   - Delete one insurance provider: `POST http://localhost:1313/api/mic/hospital/deleteOneInsuranceProvider`
+   - View all insurance providers: `POST http://localhost:1313/api/mic/hospital/viewAllInsuranceProviders`
+   - View one insurance provider: `POST http://localhost:1313/api/mic/hospital/viewOneInsuranceProvider`
+   - Hospital search insurance providers: `POST http://localhost:1313/api/mic/hospital/searchInsuranceProviders`
+   - Hospital suspend insurance provider: `POST http://localhost:1313/api/mic/hospital/suspendInsuranceProvider`
+   - Hospital unsuspend insurance provider: `POST http://localhost:1313/api/mic/hospital/unsuspendInsuranceProvider`
+   - Hospital view all suspended insurance providers: `POST http://localhost:1313/api/mic/hospital/viewAllSuspendedInsuranceProviders`
+   - Hospital view one suspended insurance provider: `POST http://localhost:1313/api/mic/hospital/viewOneSuspendedInsuranceProvider`
+   - Send notification to insurance provider: `POST http://localhost:1313/api/mic/hospital/sendNotificationToInsuranceProvider`
+
+5. [Patient Management]
+   - View all patients: `POST http://localhost:1313/api/mic/hospital/viewAllPatients`
+   - View one patient: `POST http://localhost:1313/api/mic/hospital/viewOnePatient`
+   - Search patients: `POST http://localhost:1313/api/mic/hospital/searchPatients`
+   - Send notification to patient: `POST http://localhost:1313/api/mic/hospital/sendNotificationToPatient`
+
+6. [Discharge and Medical Records Management]
+   - View all discharge requests: `POST http://localhost:1313/api/mic/hospital/viewAllDischargeRequests`
+   - View one discharge request with details: `POST http://localhost:1313/api/mic/hospital/viewOneDischargeRequestWithDetails`
+   - Approve one discharge request: `POST http://localhost:1313/api/mic/hospital/approveOneDischargeRequest`
+   - Delete one discharge request: `POST http://localhost:1313/api/mic/hospital/deleteOneDischargeRequest`
+   - View all medical records: `POST http://localhost:1313/api/mic/hospital/viewAllMedicalRecords`
+   - View one medical record: `POST http://localhost:1313/api/mic/hospital/viewOneMedicalRecord`
+   - View all medical records of one patient: `POST http://localhost:1313/api/mic/hospital/viewAllMedicalRecordsOfOnePatient`

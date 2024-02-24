@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const InsuranceProviderController = require('../../controllers/InsuranceProviderControllers/insuranceProvider.controller');
 
+// -------------------
+// Insurance Provider Authentication and Profile Management
+// -------------------
+
 // Insurance provider registration route
 router.post("/insuranceProviderRegister", InsuranceProviderController.register);
 
@@ -23,6 +27,10 @@ router.post("/insuranceProviderViewProfile", InsuranceProviderController.viewPro
 // Insurance provider update profile route
 router.post("/insuranceProviderUpdateProfile", InsuranceProviderController.updateProfile);
 
+// -------------------
+// News and Notifications Management
+// -------------------
+
 // Insurance provider view all news route
 router.post("/insuranceProviderViewAllNews", InsuranceProviderController.viewAllNews);
 
@@ -32,9 +40,21 @@ router.post("/insuranceProviderViewOneNews", InsuranceProviderController.viewOne
 // Insurance provider send notification to client route
 router.post("/sendNotificationToClient", InsuranceProviderController.sendNotificationToClient);
 
+// -------------------
+// Client Management
+// -------------------
 
+// Insurance provider view all clients route
+router.post("/insuranceProviderViewAllClients", InsuranceProviderController.viewAllClients);
 
+// Insurance provider view one client route
+router.post("/insuranceProviderViewOneClient", InsuranceProviderController.viewOneClient);
 
+// -------------------
+// Insurance Package Management
+// -------------------
 
+// Add insurance package route
+router.post("/addInsurancePackage", InsuranceProviderController.addInsurancePackage);
 
 module.exports = router;

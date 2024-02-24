@@ -44,6 +44,11 @@ router.post("/patientViewOneInsurancePackage", PatientController.viewOneInsuranc
 // Choose an insurance package route
 router.post("/patientChooseInsurancePackage", PatientController.chooseOneInsurancePackage);
 
+// Patient search insurance providers route
+router.post("/patientSearchInsuranceProviders", PatientController.searchInsuranceProviders);
+
+// Patient review one insurance provider route
+router.post("/patientReviewOneInsuranceProvider", PatientController.reviewOneInsuranceProvider);
 
 
 
