@@ -101,21 +101,30 @@ function isValidId(id, idName) {
     };
 }
 
-// Verify the validity of the content.
-function isValidContent(content, fieldName) {
+// Validate the validity of the content.
+function isValidContent(content) {
     if (isNullOrUndefined(content) || content.trim() === "") {
         return {
             isValid: false,
             message: `Content cannot be empty.`
         };
     }
-    const regex = /^[\w\s!@#$%^&*()-_=+[\]{}|;:'",.<>/?]*$/;
+    if (content.length > 2000) {
+        return {
+            isValid: false,
+            message: `Content exceeds the maximum length of 2000 characters.`
+        };
+    }
+    // Allow characters from different languages, punctuation, and whitespace
+    const regex = /^[\p{L}\p{M}\p{N}\p{P}\p{Z}]+$/u;
 
     return {
         isValid: regex.test(content),
         message: "Content contains invalid characters."
     };
 }
+
+
 
 
 // Validate the title's correctness.

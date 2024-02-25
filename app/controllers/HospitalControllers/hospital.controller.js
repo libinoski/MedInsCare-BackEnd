@@ -2290,7 +2290,7 @@ exports.addNews = async (req, res) => {
           try {
             const imageUrl = await uploadFileToS3(
               newsImageFile.buffer,
-              newsImageFile.filename,
+              newsImageFile.originalname, 
               newsImageFile.mimetype
             );
 
@@ -2406,6 +2406,7 @@ exports.addNews = async (req, res) => {
     }
   }
 };
+
 //
 //
 //
@@ -2612,7 +2613,7 @@ exports.updateNews = async (req, res) => {
             if (newsImageFile) {
               imageUrl = await uploadFileToS3(
                 newsImageFile.buffer,
-                newsImageFile.filename,
+                newsImageFile.originalname,
                 newsImageFile.mimetype
               );
             }

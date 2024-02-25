@@ -896,6 +896,8 @@ Hospital.viewAllNews = async (hospitalId) => {
     const viewAllNewsQuery = `
             SELECT * FROM Hospital_News
             WHERE hospitalId = ? AND deleteStatus = 0
+            ORDER BY addedDate DESC
+
         `;
     const allNews = await dbQuery(viewAllNewsQuery, [hospitalId]);
 
