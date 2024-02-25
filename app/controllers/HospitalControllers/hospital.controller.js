@@ -2230,14 +2230,7 @@ exports.addNews = async (req, res) => {
         }
 
         const uploadNewsImage = multer({
-          storage: multer.diskStorage({
-            destination: function (req, file, cb) {
-              cb(null, 'Files/HospitalNewsImages');
-            },
-            filename: function (req, file, cb) {
-              cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-            }
-          })
+          storage: multer.memoryStorage(),
         }).single("hospitalNewsImage");
 
         uploadNewsImage(req, res, async function (err) {
@@ -2295,7 +2288,11 @@ exports.addNews = async (req, res) => {
           }
 
           try {
-            const imageUrl = await uploadFileToS3(newsImageFile);
+            const imageUrl = await uploadFileToS3(
+              newsImageFile.buffer,
+              newsImageFile.filename,
+              newsImageFile.mimetype
+            );
 
             const newHospitalNews = {
               hospitalNewsTitle: newsData.hospitalNewsTitle,
@@ -2318,9 +2315,10 @@ exports.addNews = async (req, res) => {
               fs.unlinkSync(newsImageFile.path);
             }
             if (error.message === "Hospital not found" && newsImageFile) {
+              const s3Key = req.file.key.split('/').pop();
               const params = {
                 Bucket: process.env.S3_BUCKET_NAME,
-                Key: `Files/hospitalNewsImages/${newsImageFile.filename}`
+                Key: `Files/hospitalNewsImages/${s3Key}`
               };
               try {
                 await s3Client.send(new DeleteObjectCommand(params));
@@ -2391,18 +2389,17 @@ exports.addNews = async (req, res) => {
   }
 
   // Function to upload file to S3
-  async function uploadFileToS3(file) {
+  async function uploadFileToS3(fileBuffer, fileName, mimeType) {
     try {
-      const fileName = `hospitalNewsImage-${Date.now()}${path.extname(file.originalname)}`;
       const uploadParams = {
         Bucket: process.env.S3_BUCKET_NAME,
-        Key: `Files/hospitalNewsImages/${fileName}`,
-        Body: file.buffer,
+        Key: `hospitalNewsImages/${fileName}`,
+        Body: fileBuffer,
         ACL: "public-read",
-        ContentType: file.mimetype,
+        ContentType: mimeType,
       };
       const command = new PutObjectCommand(uploadParams);
-      const result = await s3Client.send(command);
+      await s3Client.send(command);
       return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
     } catch (error) {
       throw error;
@@ -2554,14 +2551,7 @@ exports.updateNews = async (req, res) => {
         }
 
         const uploadNewsImage = multer({
-          storage: multer.diskStorage({
-            destination: function (req, file, cb) {
-              cb(null, 'Files/HospitalNewsImages');
-            },
-            filename: function (req, file, cb) {
-              cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-            }
-          })
+          storage: multer.memoryStorage(),
         }).single("hospitalNewsImage");
 
         uploadNewsImage(req, res, async function (err) {
@@ -2617,7 +2607,15 @@ exports.updateNews = async (req, res) => {
           }
 
           try {
-            const imageUrl = await uploadFileToS3(newsImageFile);
+            let imageUrl = null;
+
+            if (newsImageFile) {
+              imageUrl = await uploadFileToS3(
+                newsImageFile.buffer,
+                newsImageFile.filename,
+                newsImageFile.mimetype
+              );
+            }
 
             const updatedHospitalNews = {
               hospitalNewsTitle,
@@ -2645,9 +2643,10 @@ exports.updateNews = async (req, res) => {
               error.message === "Hospital news not found"
             ) {
               if (newsImageFile) {
+                const s3Key = newsImageFile.key.split('/').pop(); // Extracting file name from S3 key
                 const params = {
                   Bucket: process.env.S3_BUCKET_NAME,
-                  Key: `Files/hospitalNewsImages/${newsImageFile.filename}` // Updated directory structure
+                  Key: `Files/hospitalNewsImages/${s3Key}` // Updated directory structure
                 };
                 try {
                   await s3Client.send(new DeleteObjectCommand(params));
@@ -2705,33 +2704,24 @@ exports.updateNews = async (req, res) => {
         contentValidation.message;
     }
 
-    if (!newsImageFile) {
+    if (newsImageFile && !dataValidator.isValidImageWith1MBConstraint(newsImageFile).isValid) {
       validationResults.isValid = false;
       validationResults.errors["hospitalNewsImage"] =
-        "Hospital news image is required";
-    } else {
-      const imageValidation =
-        dataValidator.isValidImageWith1MBConstraint(newsImageFile);
-      if (!imageValidation.isValid) {
-        validationResults.isValid = false;
-        validationResults.errors["hospitalNewsImage"] =
-          imageValidation.message;
-      }
+        dataValidator.isValidImageWith1MBConstraint(newsImageFile).message;
     }
 
     return validationResults;
   }
 
   // Function to upload file to S3
-  async function uploadFileToS3(file) {
+  async function uploadFileToS3(fileBuffer, fileName, mimeType) {
     try {
-      const fileName = `hospitalNewsImage-${Date.now()}${path.extname(file.originalname)}`;
       const uploadParams = {
         Bucket: process.env.S3_BUCKET_NAME,
         Key: `Files/hospitalNewsImages/${fileName}`, // Updated directory structure
-        Body: file.buffer,
+        Body: fileBuffer,
         ACL: "public-read",
-        ContentType: file.mimetype,
+        ContentType: mimeType,
       };
       const command = new PutObjectCommand(uploadParams);
       const result = await s3Client.send(command);

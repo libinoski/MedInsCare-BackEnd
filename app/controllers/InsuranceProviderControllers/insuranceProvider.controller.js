@@ -503,23 +503,26 @@ exports.changeIdProofImage = async (req, res) => {
           });
         }
 
-        async function uploadFileToS3(file) {
-          const fileName = `insuranceProviderIdProof-${Date.now()}${path.extname(file.originalname)}`;
-          const uploadParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `insuranceProviderImages/${fileName}`,
-            Body: file.buffer,
-            ACL: "public-read",
-            ContentType: file.mimetype,
-          };
-        
-          const command = new PutObjectCommand(uploadParams);
-          const result = await s3Client.send(command);
-          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+        async function uploadFileToS3(fileBuffer, fileName, mimeType) {
+          try {
+            const uploadParams = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `insuranceProviderImages/${fileName}`,
+              Body: fileBuffer,
+              ACL: "public-read",
+              ContentType: mimeType,
+            };
+          
+            const command = new PutObjectCommand(uploadParams);
+            const result = await s3Client.send(command);
+            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+          } catch (error) {
+            throw error;
+          }
         }
         
         try {
-          const idProofFileLocation = await uploadFileToS3(req.file);
+          const idProofFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
 
           await InsuranceProvider.changeIdProofImage(
             insuranceProviderId,
@@ -531,7 +534,7 @@ exports.changeIdProofImage = async (req, res) => {
           });
         } catch (error) {
           // Delete the uploaded image from S3
-          const key = idProofFileLocation.split('/').pop(); // Extracting the filename from the URL
+          const key = req.file.originalname.split('/').pop(); // Extracting the filename from the URL
           const params = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: `insuranceProviderImages/${key}` // Constructing the full key
@@ -568,147 +571,150 @@ exports.changeProfileImage = async (req, res) => {
   const token = req.headers.token;
 
   if (!token) {
-      return res.status(403).json({
-          status: "failed",
-          message: "Token is missing"
-      });
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
   }
 
   jwt.verify(
-      token,
-      process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
-      async (err, decoded) => {
-          if (err) {
-              if (err.name === "JsonWebTokenError") {
-                  return res.status(403).json({
-                      status: "failed",
-                      message: "Invalid token"
-                  });
-              } else if (err.name === "TokenExpiredError") {
-                  return res.status(403).json({
-                      status: "failed",
-                      message: "Token has expired"
-                  });
-              }
-              return res.status(403).json({
-                  status: "failed",
-                  message: "Unauthorized access"
-              });
-          }
-
-          const uploadProfileImage = multer({
-              storage: multer.memoryStorage(),
-          }).single("insuranceProviderProfileImage");
-
-          uploadProfileImage(req, res, async (err) => {
-              if (err || !req.file) {
-                  return res.status(400).json({
-                      status: "error",
-                      message: "File upload failed",
-                      results: err ? err.message : "File is required.",
-                  });
-              }
-
-              const { insuranceProviderId } = req.body;
-
-              if (!insuranceProviderId) {
-                  // Delete the uploaded file
-                  fs.unlinkSync(req.file.path);
-                  return res.status(401).json({
-                      status: "failed",
-                      message: "Insurance Provider ID is missing",
-                  });
-              }
-
-              if (decoded.insuranceProviderId != insuranceProviderId) {
-                  // Delete the uploaded file
-                  fs.unlinkSync(req.file.path);
-                  return res.status(403).json({
-                      status: "failed",
-                      message: "Unauthorized access"
-                  });
-              }
-
-              function validateProfileImage(file) {
-                  const validationResults = {
-                      isValid: true,
-                      errors: {},
-                  };
-              
-                  const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-                  if (!imageValidation.isValid) {
-                      validationResults.isValid = false;
-                      validationResults.errors["insuranceProviderProfileImage"] = [imageValidation.message];
-                  }
-              
-                  return validationResults;
-              }
-              
-              const validationResults = validateProfileImage(req.file);
-              if (!validationResults.isValid) {
-                  // Delete the uploaded file
-                  fs.unlinkSync(req.file.path);
-                  return res.status(400).json({
-                      status: "error",
-                      message: "Invalid image file",
-                      results: validationResults.errors,
-                  });
-              }
-
-              async function uploadFileToS3(file) {
-                  const fileName = `insuranceProviderProfile-${Date.now()}${path.extname(file.originalname)}`;
-                  const uploadParams = {
-                      Bucket: process.env.S3_BUCKET_NAME,
-                      Key: `insuranceProviderImages/${fileName}`,
-                      Body: file.buffer,
-                      ACL: "public-read",
-                      ContentType: file.mimetype,
-                  };
-                  
-                  const command = new PutObjectCommand(uploadParams);
-                  const result = await s3Client.send(command);
-                  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-              }
-              
-              try {
-                  const profileImageFileLocation = await uploadFileToS3(req.file);
-
-                  await InsuranceProvider.changeProfileImage(
-                      insuranceProviderId,
-                      profileImageFileLocation
-                  );
-                  return res.status(200).json({
-                      status: "success",
-                      message: "Profile image updated successfully",
-                  });
-              } catch (error) {
-                  // Delete the uploaded image from S3
-                  const key = profileImageFileLocation.split('/').pop(); // Extracting the filename from the URL
-                  const params = {
-                      Bucket: process.env.S3_BUCKET_NAME,
-                      Key: `insuranceProviderImages/${key}` // Constructing the full key
-                  };
-                  await s3Client.send(new DeleteObjectCommand(params));
-
-                  // Delete the uploaded file
-                  fs.unlinkSync(req.file.path);
-
-                  if (error.message === "Insurance provider not found") {
-                      return res.status(422).json({
-                          status: "error",
-                          error: error.message
-                      });
-                  } else {
-                      console.error("Error updating profile image:", error);
-                      return res.status(500).json({
-                          status: "error",
-                          message: "Failed to update profile image",
-                          error: error.message,
-                      });
-                  }
-              }
+    token,
+    process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
+    async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "failed",
+            message: "Invalid token"
           });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "failed",
+            message: "Token has expired"
+          });
+        }
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
       }
+
+      const uploadProfileImage = multer({
+        storage: multer.memoryStorage(),
+      }).single("insuranceProviderProfileImage");
+
+      uploadProfileImage(req, res, async (err) => {
+        if (err || !req.file) {
+          return res.status(400).json({
+            status: "error",
+            message: "File upload failed",
+            results: err ? err.message : "File is required.",
+          });
+        }
+
+        const { insuranceProviderId } = req.body;
+
+        if (!insuranceProviderId) {
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(401).json({
+            status: "failed",
+            message: "Insurance Provider ID is missing",
+          });
+        }
+
+        if (decoded.insuranceProviderId != insuranceProviderId) {
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        function validateProfileImage(file) {
+          const validationResults = {
+            isValid: true,
+            errors: {},
+          };
+      
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+          if (!imageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["insuranceProviderProfileImage"] = [imageValidation.message];
+          }
+      
+          return validationResults;
+        }
+        
+        const validationResults = validateProfileImage(req.file);
+        if (!validationResults.isValid) {
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({
+            status: "error",
+            message: "Invalid image file",
+            results: validationResults.errors,
+          });
+        }
+
+        async function uploadFileToS3(fileBuffer, fileName, mimeType) {
+          try {
+            const uploadParams = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `insuranceProviderImages/${fileName}`,
+              Body: fileBuffer,
+              ACL: "public-read",
+              ContentType: mimeType,
+            };
+          
+            const command = new PutObjectCommand(uploadParams);
+            const result = await s3Client.send(command);
+            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+          } catch (error) {
+            throw error;
+          }
+        }
+        
+        try {
+          const profileImageFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
+
+          await InsuranceProvider.changeProfileImage(
+            insuranceProviderId,
+            profileImageFileLocation
+          );
+          return res.status(200).json({
+            status: "success",
+            message: "Profile image updated successfully",
+          });
+        } catch (error) {
+          // Delete the uploaded image from S3
+          const key = profileImageFileLocation.split('/').pop(); // Extracting the filename from the URL
+          const params = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `insuranceProviderImages/${key}` // Constructing the full key
+          };
+          await s3Client.send(new DeleteObjectCommand(params));
+
+          // Delete the uploaded file
+          fs.unlinkSync(req.file.path);
+
+          if (error.message === "Insurance provider not found") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else {
+            console.error("Error updating profile image:", error);
+            return res.status(500).json({
+              status: "error",
+              message: "Failed to update profile image",
+              error: error.message,
+            });
+          }
+        }
+      });
+    }
   );
 };
 //
@@ -1488,232 +1494,237 @@ exports.viewOneClient = async (req, res) => {
 // ADD INSURANCE PACKAGE
 exports.addInsurancePackage = async (req, res) => {
   try {
-      const token = req.headers.token;
-      const {
-          insuranceProviderId,
+    const token = req.headers.token;
+    const {
+      insuranceProviderId,
+      packageTitle,
+      packageDetails,
+      packageDuration,
+      packageAmount,
+      packageTAndC
+    } = req.body;
+
+    // Check if insuranceProviderId is missing
+    if (!insuranceProviderId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Insurance Provider ID is missing"
+      });
+    }
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Verify the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER, async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Invalid token",
+            error: "Token verification failed"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Token has expired"
+          });
+        } else {
+          console.error("Error during profile image change:", err);
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+      }
+
+      // Check if decoded token matches insuranceProviderId from request body
+      if (decoded.insuranceProviderId != insuranceProviderId) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
+      }
+
+      const uploadPackageImage = multer({ storage: multer.memoryStorage() }).single("packageImage");
+
+      uploadPackageImage(req, res, async (err) => {
+        if (err) {
+          return res.status(400).json({
+            status: "error",
+            message: "File upload error",
+            results: err.message
+          });
+        }
+
+        if (!req.file) {
+          return res.status(401).json({
+            status: "error",
+            message: "Package image is required."
+          });
+        }
+
+        // Validate package data
+        const validationResults = validateMedicalPackageData({
           packageTitle,
           packageDetails,
           packageDuration,
           packageAmount,
-          packageTAndC
-      } = req.body;
+          packageTAndC,
+          packageImage: req.file
+        });
 
-      // Check if insuranceProviderId is missing
-      if (!insuranceProviderId) {
-          return res.status(401).json({
-              status: "failed",
-              message: "Insurance Provider ID is missing"
+        if (!validationResults.isValid) {
+          return res.status(400).json({
+            status: "failed",
+            message: "Validation failed",
+            results: validationResults.errors
           });
-      }
+        }
 
-      // Check if token is missing
-      if (!token) {
-          return res.status(403).json({
-              status: "failed",
-              message: "Token is missing"
+        try {
+          const packageImageFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
+
+          const packageData = {
+            packageTitle,
+            packageDetails,
+            packageDuration,
+            packageAmount,
+            packageTAndC,
+            packageImage: packageImageFileLocation
+          };
+
+          const packageRecord = await InsuranceProvider.addInsurancePackage(insuranceProviderId, packageData);
+
+          return res.status(200).json({
+            status: "success",
+            message: "Insurance package added successfully",
+            data: packageRecord
           });
-      }
+        } catch (error) {
+          console.error("Error adding insurance package:", error);
 
-      // Verify the token
-      jwt.verify(token, process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER, async (err, decoded) => {
-          if (err) {
-              if (err.name === "JsonWebTokenError") {
-                  return res.status(403).json({
-                      status: "error",
-                      message: "Invalid token",
-                      error: "Token verification failed"
-                  });
-              } else if (err.name === "TokenExpiredError") {
-                  return res.status(403).json({
-                      status: "error",
-                      message: "Token has expired"
-                  });
-              } else {
-                  console.error("Error during profile image change:", err);
-                  return res.status(403).json({
-                      status: "failed",
-                      message: "Unauthorized access"
-                  });
-              }
+          if (req.file) {
+            try {
+              await deleteFileFromS3(req.file);
+            } catch (s3Error) {
+              console.error("Error deleting package image from S3:", s3Error);
+            }
           }
 
-          // Check if decoded token matches insuranceProviderId from request body
-          if (decoded.insuranceProviderId != insuranceProviderId) {
-              return res.status(403).json({
-                  status: "failed",
-                  message: "Unauthorized access"
-              });
-          }
-
-          const uploadPackageImage = multer({ storage: multer.memoryStorage() }).single("packageImage");
-
-          uploadPackageImage(req, res, async (err) => {
-              if (err) {
-                  return res.status(400).json({
-                      status: "error",
-                      message: "File upload error",
-                      results: err.message
-                  });
-              }
-
-              if (!req.file) {
-                  return res.status(401).json({
-                      status: "error",
-                      message: "Package image is required."
-                  });
-              }
-
-              const validationResults = validateMedicalPackageData({
-                  packageTitle,
-                  packageDetails,
-                  packageDuration,
-                  packageAmount,
-                  packageTAndC,
-                  packageImage: req.file
-              });
-
-              if (!validationResults.isValid) {
-                  return res.status(400).json({
-                      status: "failed",
-                      message: "Validation failed",
-                      results: validationResults.errors
-                  });
-              }
-
+          if (error.message === "Insurance provider not found, not active, or suspended.") {
+            if (packageImageFileLocation) {
+              const packageS3Key = packageImageFileLocation.split('/').pop();
+              const packageParams = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: `packageImages/${packageS3Key}`
+              };
               try {
-                  const packageImageFileLocation = await uploadFileToS3(req.file);
-
-                  const packageData = {
-                      packageTitle,
-                      packageDetails,
-                      packageDuration,
-                      packageAmount,
-                      packageTAndC,
-                      packageImage: packageImageFileLocation
-                  };
-
-                  const packageRecord = await InsuranceProvider.addInsurancePackage(insuranceProviderId, packageData);
-
-                  return res.status(200).json({
-                      status: "success",
-                      message: "Insurance package added successfully",
-                      data: packageRecord
-                  });
-              } catch (error) {
-                  console.error("Error adding insurance package:", error);
-
-                  if (req.file) {
-                      try {
-                          await deleteFileFromS3(req.file);
-                      } catch (s3Error) {
-                          console.error("Error deleting package image from S3:", s3Error);
-                      }
-                  }
-
-                  if (error.message === "Insurance provider not found, not active, or suspended.") {
-                      if (packageImageFileLocation) {
-                          const packageS3Key = packageImageFileLocation.split('/').pop();
-                          const packageParams = {
-                              Bucket: process.env.S3_BUCKET_NAME,
-                              Key: `packageImages/${packageS3Key}`
-                          };
-                          try {
-                              await s3Client.send(new DeleteObjectCommand(packageParams));
-                          } catch (s3Error) {
-                              console.error("Error deleting package image from S3:", s3Error);
-                          }
-                      }
-                      return res.status(422).json({
-                          status: "failed",
-                          error: error.message
-                      });
-                  } else {
-                      return res.status(500).json({
-                          status: "error",
-                          message: "Internal server error during package addition",
-                          error: error.message,
-                      });
-                  }
+                await s3Client.send(new DeleteObjectCommand(packageParams));
+              } catch (s3Error) {
+                console.error("Error deleting package image from S3:", s3Error);
               }
-          });
+            }
+            return res.status(422).json({
+              status: "failed",
+              error: error.message
+            });
+          } else {
+            return res.status(500).json({
+              status: "error",
+              message: "Internal server error during package addition",
+              error: error.message,
+            });
+          }
+        }
       });
+    });
   } catch (error) {
-      console.error("Error:", error);
-      return res.status(500).json({
-          status: "error",
-          message: "Internal server error",
-          error: error.message,
-      });
+    console.error("Error:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 
   function validateMedicalPackageData(data) {
-      const validationResults = {
-          isValid: true,
-          errors: {}
-      };
+    const validationResults = {
+      isValid: true,
+      errors: {}
+    };
 
-      // Validate packageTitle
-      const packageTitleValidation = dataValidator.isValidTitle(data.packageTitle);
-      if (!packageTitleValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["packageTitle"] = [packageTitleValidation.message];
+    // Validate packageTitle
+    const packageTitleValidation = dataValidator.isValidTitle(data.packageTitle);
+    if (!packageTitleValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["packageTitle"] = [packageTitleValidation.message];
+    }
+
+    // Validate packageDetails
+    const packageDetailsValidation = dataValidator.isValidText(data.packageDetails);
+    if (!packageDetailsValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["packageDetails"] = [packageDetailsValidation.message];
+    }
+
+    // Validate packageDuration
+    const packageDurationValidation = dataValidator.isValidText(data.packageDuration);
+    if (!packageDurationValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["packageDuration"] = [packageDurationValidation.message];
+    }
+
+    // Validate packageAmount
+    const packageAmountValidation = dataValidator.isValidCost(data.packageAmount);
+    if (!packageAmountValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["packageAmount"] = [packageAmountValidation.message];
+    }
+
+    // Validate packageTAndC
+    const packageTAndCValidation = dataValidator.isValidText(data.packageTAndC);
+    if (!packageTAndCValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["packageTAndC"] = [packageTAndCValidation.message];
+    }
+
+    // Validate packageImage if it exists
+    if (data.packageImage) {
+      const packageImageValidation = dataValidator.isValidImageWith1MBConstraint(data.packageImage);
+      if (!packageImageValidation.isValid) {
+        validationResults.isValid = false;
+        validationResults.errors["packageImage"] = [packageImageValidation.message];
       }
+    }
 
-      // Validate packageDetails
-      const packageDetailsValidation = dataValidator.isValidText(data.packageDetails);
-      if (!packageDetailsValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["packageDetails"] = [packageDetailsValidation.message];
-      }
-
-      // Validate packageDuration
-      const packageDurationValidation = dataValidator.isValidText(data.packageDuration);
-      if (!packageDurationValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["packageDuration"] = [packageDurationValidation.message];
-      }
-
-      // Validate packageAmount
-      const packageAmountValidation = dataValidator.isValidCost(data.packageAmount);
-      if (!packageAmountValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["packageAmount"] = [packageAmountValidation.message];
-      }
-
-      // Validate packageTAndC
-      const packageTAndCValidation = dataValidator.isValidText(data.packageTAndC);
-      if (!packageTAndCValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["packageTAndC"] = [packageTAndCValidation.message];
-      }
-
-      // Validate packageImage if it exists
-      if (data.packageImage) {
-          const packageImageValidation = dataValidator.isValidImageWith1MBConstraint(data.packageImage);
-          if (!packageImageValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["packageImage"] = [packageImageValidation.message];
-          }
-      }
-
-      return validationResults;
+    return validationResults;
   }
 
-  async function uploadFileToS3(file) {
-      const fileName = `packageImage-${Date.now()}${path.extname(file.originalname)}`;
+  async function uploadFileToS3(fileBuffer, fileName, mimeType) {
+    try {
       const uploadParams = {
-          Bucket: process.env.S3_BUCKET_NAME,
-          Key: `packageImages/${fileName}`,
-          Body: file.buffer,
-          ACL: "public-read",
-          ContentType: file.mimetype,
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `packageImages/${fileName}`,
+        Body: fileBuffer,
+        ACL: "public-read",
+        ContentType: mimeType,
       };
 
       const command = new PutObjectCommand(uploadParams);
-      await s3Client.send(command);
+      const result = await s3Client.send(command);
       return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    } catch (error) {
+      throw error;
+    }
   }
 };
+
 
 
 

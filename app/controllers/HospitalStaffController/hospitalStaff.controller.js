@@ -1318,8 +1318,8 @@ exports.registerPatient = async (req, res) => {
       const profileImageFileName = `patientProfileImage-${Date.now()}${path.extname(profileImageFile.originalname)}`;
 
       try {
-        const idProofFileLocation = await uploadFileToS3(idProofImageFile, idProofFileName, idProofImageFile.mimetype);
-        const profileImageFileLocation = await uploadFileToS3(profileImageFile, profileImageFileName, profileImageFile.mimetype);
+        const idProofFileLocation = await uploadFileToS3(idProofImageFile.buffer, idProofFileName, idProofImageFile.mimetype);
+        const profileImageFileLocation = await uploadFileToS3(profileImageFile.buffer, profileImageFileName, profileImageFile.mimetype);
 
         // Assign S3 URLs to patientData instead of file names
         patientData.patientIdProofImage = idProofFileLocation;
@@ -1382,17 +1382,21 @@ exports.registerPatient = async (req, res) => {
   });
 
   async function uploadFileToS3(fileBuffer, fileName, mimeType) {
-    const uploadParams = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: `PatientImages/${fileName}`,
-      Body: fileBuffer.buffer,
-      ACL: "public-read",
-      ContentType: mimeType,
-    };
+    try {
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `PatientImages/${fileName}`,
+        Body: fileBuffer,
+        ACL: "public-read",
+        ContentType: mimeType,
+      };
 
-    const command = new PutObjectCommand(uploadParams);
-    await s3Client.send(command);
-    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+      const command = new PutObjectCommand(uploadParams);
+      await s3Client.send(command);
+      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    } catch (error) {
+      throw error;
+    }
   }
 
   function validatePatientRegistration(patientData, idProofImageFile, profileImageFile) {
@@ -1757,7 +1761,7 @@ exports.addMedicalRecord = async (req, res) => {
 
   // Check if patientId is missing
   if (!patientId) {
-    return res.status(400).json({
+    return res.status(401).json({
       status: "failed",
       message: "Patient ID is missing"
     });
@@ -1765,7 +1769,7 @@ exports.addMedicalRecord = async (req, res) => {
 
   // Check if hospitalStaffId is missing
   if (!hospitalStaffId) {
-    return res.status(400).json({
+    return res.status(401).json({
       status: "failed",
       message: "Hospital Staff ID is missing"
     });
@@ -1781,12 +1785,12 @@ exports.addMedicalRecord = async (req, res) => {
   jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
     if (err) {
       if (err.name === "JsonWebTokenError") {
-        return res.status(401).json({
+        return res.status(403).json({
           status: "error",
           message: "Invalid token"
         });
       } else if (err.name === "TokenExpiredError") {
-        return res.status(401).json({
+        return res.status(403).json({
           status: "error",
           message: "Token has expired"
         });
@@ -1833,7 +1837,7 @@ exports.addMedicalRecord = async (req, res) => {
       }
 
       try {
-        const reportImageFileLocation = await uploadFileToS3(req.file);
+        const reportImageFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
 
         const medicalRecordData = {
           staffReport,
@@ -1859,35 +1863,33 @@ exports.addMedicalRecord = async (req, res) => {
         // Handle errors from the model
         console.error("Error adding medical record:", error);
         if (error.message === "Patient not found or not admitted") {
-          return res.status(404).json({
+          return res.status(422).json({
             status: "failed",
-            message: "Patient not found or not admitted"
+            message: error.message
           });
         } else {
-          return res.status(500).json({
+          // Delete the uploaded file from S3 in case of model error
+          if (req.file && req.file.originalname) {
+            const s3Key = req.file.originalname.split('/').pop(); // Extracting file name from S3 key
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `medicalReports/${s3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(params));
+            } catch (s3Error) {
+              console.error("Error deleting report image from S3:", s3Error);
+            }
+          }
+          return res.status(422).json({
             status: "error",
-            message: "Internal server error",
+            message: "Model error during record addition",
             error: error.message,
           });
         }
       }
     });
   });
-
-  async function uploadFileToS3(file) {
-    const fileName = `medicalReport-${Date.now()}${path.extname(file.originalname)}`;
-    const uploadParams = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: `medicalReports/${fileName}`,
-      Body: file.buffer,
-      ACL: "public-read",
-      ContentType: file.mimetype,
-    };
-
-    const command = new PutObjectCommand(uploadParams);
-    await s3Client.send(command);
-    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-  }
 
   function validateMedicalRecordData(data) {
     const validationResults = {
@@ -1926,6 +1928,24 @@ exports.addMedicalRecord = async (req, res) => {
     }
 
     return validationResults;
+  }
+
+  async function uploadFileToS3(fileBuffer, fileName, mimeType) {
+    try {
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `medicalReports/${fileName}`,
+        Body: fileBuffer,
+        ACL: "public-read",
+        ContentType: mimeType,
+      };
+
+      const command = new PutObjectCommand(uploadParams);
+      const result = await s3Client.send(command);
+      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 //
