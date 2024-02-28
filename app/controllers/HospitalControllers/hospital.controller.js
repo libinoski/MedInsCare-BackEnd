@@ -2152,7 +2152,7 @@ exports.sendNotificationToStaff = async (req, res) => {
         return res.status(400).json({
           status: "error",
           message: "Validation failed",
-          errors: validationResults.errors
+          results: validationResults.errors
         });
       }
 
@@ -2362,7 +2362,7 @@ exports.addNews = async (req, res) => {
         titleValidation.message;
     }
 
-    const contentValidation = dataValidator.isValidContent(
+    const contentValidation = dataValidator.isValidText(
       newsData.hospitalNewsContent
     );
     if (!contentValidation.isValid) {
@@ -2616,6 +2616,11 @@ exports.updateNews = async (req, res) => {
                 newsImageFile.originalname,
                 newsImageFile.mimetype
               );
+            } else {
+              const existingNews = await Hospital.viewOneNews(hospitalNewsId, hospitalId);
+              if (existingNews) {
+                imageUrl = existingNews.hospitalNewsImage;
+              }
             }
 
             const updatedHospitalNews = {
@@ -2696,7 +2701,7 @@ exports.updateNews = async (req, res) => {
         titleValidation.message;
     }
 
-    const contentValidation = dataValidator.isValidContent(
+    const contentValidation = dataValidator.isValidText(
       newsData.hospitalNewsContent
     );
     if (!contentValidation.isValid) {
@@ -2732,6 +2737,7 @@ exports.updateNews = async (req, res) => {
     }
   }
 };
+
 //
 //
 //
