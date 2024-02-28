@@ -283,20 +283,17 @@ exports.changeIdProofImage = async (req, res) => {
       }).single("hospitalStaffIdProofImage");
 
       uploadIdProofImage(req, res, async (err) => {
-        if (err || !req.file) {
+        if (err) {
           return res.status(400).json({
             status: "error",
             message: "File upload failed",
-            results: err ? err.message : "File is required.",
+            results: err.message,
           });
         }
 
         const { hospitalStaffId } = req.body;
 
-        // Check if hospitalStaffId is missing
         if (!hospitalStaffId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(401).json({
             status: "failed",
             message: "Hospital Staff ID is missing",
@@ -304,33 +301,14 @@ exports.changeIdProofImage = async (req, res) => {
         }
 
         if (decoded.hospitalStaffId != hospitalStaffId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(403).json({
             status: "failed",
             message: "Unauthorized access"
           });
         }
 
-        function validateIdProofImage(file) {
-          const validationResults = {
-            isValid: true,
-            errors: {},
-          };
-
-          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-          if (!imageValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["hospitalStaffIdProofImage"] = [imageValidation.message];
-          }
-
-          return validationResults;
-        }
-
         const validationResults = validateIdProofImage(req.file);
         if (!validationResults.isValid) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(400).json({
             status: "error",
             message: "Invalid image file",
@@ -338,51 +316,43 @@ exports.changeIdProofImage = async (req, res) => {
           });
         }
 
-        async function uploadFileToS3(file) {
-          const fileName = `hospitalStaffIdProof-${Date.now()}${path.extname(file.originalname)}`;
-          const uploadParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `hospitalStaffImages/${fileName}`,
-            Body: file.buffer,
-            ACL: "public-read",
-            ContentType: file.mimetype,
-          };
-
-          const command = new PutObjectCommand(uploadParams);
-          const result = await s3Client.send(command);
-          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-        }
-
         try {
           const idProofFileLocation = await uploadFileToS3(req.file);
-
-          await HospitalStaff.changeIdProofImage(
-            hospitalStaffId,
-            idProofFileLocation
-          );
+          await HospitalStaff.changeIdProofImage(hospitalStaffId, idProofFileLocation);
           return res.status(200).json({
             status: "success",
             message: "ID proof image updated successfully",
           });
         } catch (error) {
-          // Delete the uploaded image from S3
-          const key = idProofFileLocation.split('/').pop(); // Extracting the filename from the URL
-          const params = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `hospitalStaffImages/${key}` // Constructing the full key
-          };
-          await s3Client.send(new DeleteObjectCommand(params));
+          console.error("Error updating ID proof image:", error);
+          
+          // Delete uploaded image from S3 if it exists
+          if (req.file) {
+            const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `hospitalStaffImages/${s3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(params));
+            } catch (s3Error) {
+              console.error("Error deleting image from S3:", s3Error);
+            }
+          }
 
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
+          // Delete uploaded image from local storage
+          if (req.file && req.file.path) {
+            fs.unlinkSync(req.file.path);
+          }
 
+          // Handle specific errors
           if (error.message === "Hospital staff not found") {
             return res.status(422).json({
-              status: "error",
+              status: "failed",
+              message: "Hospital staff not found",
               error: error.message
             });
           } else {
-            console.error("Error updating ID proof image:", error);
             return res.status(500).json({
               status: "error",
               message: "Failed to update ID proof image",
@@ -391,6 +361,41 @@ exports.changeIdProofImage = async (req, res) => {
           }
         }
       });
+
+      async function uploadFileToS3(file) {
+        const fileName = `hospitalStaffIdProof-${Date.now()}${path.extname(file.originalname)}`;
+        const uploadParams = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `hospitalStaffImages/${fileName}`,
+          Body: file.buffer,
+          ACL: "public-read",
+          ContentType: file.mimetype,
+        };
+
+        const command = new PutObjectCommand(uploadParams);
+        await s3Client.send(command);
+        return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+      }
+
+      function validateIdProofImage(file) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        if (!file) {
+          validationResults.isValid = false;
+          validationResults.errors["hospitalStaffIdProofImage"] = ["ID proof image is required"];
+        } else {
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+          if (!imageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffIdProofImage"] = [imageValidation.message];
+          }
+        }
+
+        return validationResults;
+      }
     }
   );
 };
@@ -436,20 +441,17 @@ exports.changeProfileImage = async (req, res) => {
       }).single("hospitalStaffProfileImage");
 
       uploadProfileImage(req, res, async (err) => {
-        if (err || !req.file) {
+        if (err) {
           return res.status(400).json({
             status: "error",
             message: "File upload failed",
-            results: err ? err.message : "File is required.",
+            results: err.message,
           });
         }
 
         const { hospitalStaffId } = req.body;
 
-        // Check if hospitalStaffId is missing
         if (!hospitalStaffId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(401).json({
             status: "failed",
             message: "Hospital Staff ID is missing",
@@ -457,33 +459,14 @@ exports.changeProfileImage = async (req, res) => {
         }
 
         if (decoded.hospitalStaffId != hospitalStaffId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(403).json({
             status: "failed",
             message: "Unauthorized access"
           });
         }
 
-        function validateProfileImage(file) {
-          const validationResults = {
-            isValid: true,
-            errors: {},
-          };
-
-          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-          if (!imageValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["hospitalStaffProfileImage"] = [imageValidation.message];
-          }
-
-          return validationResults;
-        }
-
         const validationResults = validateProfileImage(req.file);
         if (!validationResults.isValid) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(400).json({
             status: "error",
             message: "Invalid image file",
@@ -491,51 +474,43 @@ exports.changeProfileImage = async (req, res) => {
           });
         }
 
-        async function uploadFileToS3(file) {
-          const fileName = `hospitalStaffProfile-${Date.now()}${path.extname(file.originalname)}`;
-          const uploadParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `hospitalStaffImages/${fileName}`,
-            Body: file.buffer,
-            ACL: "public-read",
-            ContentType: file.mimetype,
-          };
-
-          const command = new PutObjectCommand(uploadParams);
-          const result = await s3Client.send(command);
-          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-        }
-
         try {
-          const profileImageFileLocation = await uploadFileToS3(req.file);
-
-          await HospitalStaff.changeProfileImage(
-            hospitalStaffId,
-            profileImageFileLocation
-          );
+          const profileFileLocation = await uploadFileToS3(req.file);
+          await HospitalStaff.changeProfileImage(hospitalStaffId, profileFileLocation);
           return res.status(200).json({
             status: "success",
             message: "Profile image updated successfully",
           });
         } catch (error) {
-          // Delete the uploaded image from S3
-          const key = profileImageFileLocation.split('/').pop(); // Extracting the filename from the URL
-          const params = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `hospitalStaffImages/${key}` // Constructing the full key
-          };
-          await s3Client.send(new DeleteObjectCommand(params));
+          console.error("Error updating profile image:", error);
+          
+          // Delete uploaded image from S3 if it exists
+          if (req.file) {
+            const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `hospitalStaffImages/${s3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(params));
+            } catch (s3Error) {
+              console.error("Error deleting image from S3:", s3Error);
+            }
+          }
 
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
+          // Delete uploaded image from local storage
+          if (req.file && req.file.path) {
+            fs.unlinkSync(req.file.path);
+          }
 
+          // Handle specific errors
           if (error.message === "Hospital staff not found") {
             return res.status(422).json({
-              status: "error",
+              status: "failed",
+              message: "Hospital staff not found",
               error: error.message
             });
           } else {
-            console.error("Error updating profile image:", error);
             return res.status(500).json({
               status: "error",
               message: "Failed to update profile image",
@@ -544,6 +519,41 @@ exports.changeProfileImage = async (req, res) => {
           }
         }
       });
+
+      async function uploadFileToS3(file) {
+        const fileName = `hospitalStaffProfile-${Date.now()}${path.extname(file.originalname)}`;
+        const uploadParams = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `hospitalStaffImages/${fileName}`,
+          Body: file.buffer,
+          ACL: "public-read",
+          ContentType: file.mimetype,
+        };
+
+        const command = new PutObjectCommand(uploadParams);
+        await s3Client.send(command);
+        return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+      }
+
+      function validateProfileImage(file) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        if (!file) {
+          validationResults.isValid = false;
+          validationResults.errors["hospitalStaffProfileImage"] = ["Profile image is required"];
+        } else {
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+          if (!imageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["hospitalStaffProfileImage"] = [imageValidation.message];
+          }
+        }
+
+        return validationResults;
+      }
     }
   );
 };
@@ -839,7 +849,7 @@ exports.viewAllNews = async (req, res) => {
     // Verifying the token
     jwt.verify(
       token,
-      process.env.JWT_SECRET_KEY_HOSPITAL,
+      process.env.JWT_SECRET_KEY_HOSPITAL_STAFF,
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
@@ -940,7 +950,7 @@ exports.viewOneNews = async (req, res) => {
     // Verifying the token
     jwt.verify(
       token,
-      process.env.JWT_SECRET_KEY_HOSPITAL,
+      process.env.JWT_SECRET_KEY_HOSPITAL_STAFF,
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
@@ -1037,7 +1047,7 @@ exports.viewAllNotifications = async (req, res) => {
     }
 
     // Verifying the token
-    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
       if (err) {
         if (err.name === "JsonWebTokenError") {
           return res.status(403).json({
@@ -1140,7 +1150,7 @@ exports.viewOneNotification = async (req, res) => {
     }
 
     // Verifying the token
-    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
       if (err) {
         if (err.name === "JsonWebTokenError") {
           return res.status(403).json({

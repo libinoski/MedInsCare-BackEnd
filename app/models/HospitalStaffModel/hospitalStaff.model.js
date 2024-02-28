@@ -353,7 +353,7 @@ HospitalStaff.viewAllNews = async (hospitalStaffId) => {
     const hospitalIdQuery = `
       SELECT hospitalId
       FROM Hospital_Staffs
-      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0
     `;
     const hospitalIdResult = await dbQuery(hospitalIdQuery, [hospitalStaffId]);
 
@@ -456,11 +456,14 @@ HospitalStaff.viewAllNotifications = async (hospitalStaffId) => {
 
     const hospitalId = hospitalIdResult[0].hospitalId;
 
-    // Fetch all notifications for the hospital staff
+    // Fetch all notifications for the hospital staff with hospitalImage and hospitalName
     const viewAllNotificationsQuery = `
-      SELECT *
-      FROM Notification_To_Hospital_Staffs
-      WHERE hospitalId = ? AND hospitalStaffId = ?
+    SELECT n.*, h.hospitalImage, h.hospitalName
+    FROM Notification_To_Hospital_Staffs n
+    JOIN Hospitals h ON n.hospitalId = h.hospitalId
+    WHERE n.hospitalId = ? AND n.hospitalStaffId = ?
+    ORDER BY n.sendDate DESC
+
     `;
     const allNotifications = await dbQuery(viewAllNotificationsQuery, [hospitalId, hospitalStaffId]);
 
@@ -469,7 +472,7 @@ HospitalStaff.viewAllNotifications = async (hospitalStaffId) => {
       throw new Error("No notifications found for this hospital staff");
     }
 
-    return allNotifications;
+    return allNotifications; // Return notifications including hospitalImage and hospitalName
   } catch (error) {
     console.error("Error viewing all notifications for hospital staff:", error);
     throw error;
@@ -497,11 +500,12 @@ HospitalStaff.viewOneNotification = async (notificationId, hospitalStaffId) => {
 
     const hospitalId = hospitalIdResult[0].hospitalId;
 
-    // Fetch the notification for the hospital staff
+    // Fetch the notification for the hospital staff with hospitalImage and hospitalName
     const viewOneNotificationQuery = `
-      SELECT *
-      FROM Notification_To_Hospital_Staffs
-      WHERE hospitalId = ? AND hospitalStaffId = ? AND notificationId = ?
+      SELECT n.*, h.hospitalImage, h.hospitalName
+      FROM Notification_To_Hospital_Staffs n
+      JOIN Hospitals h ON n.hospitalId = h.hospitalId
+      WHERE n.hospitalId = ? AND n.hospitalStaffId = ? AND n.notificationId = ?
     `;
     const notification = await dbQuery(viewOneNotificationQuery, [hospitalId, hospitalStaffId, notificationId]);
 
@@ -509,12 +513,13 @@ HospitalStaff.viewOneNotification = async (notificationId, hospitalStaffId) => {
       throw new Error("Notification not found");
     }
 
-    return notification[0];
+    return notification[0]; // Return the notification including hospitalImage and hospitalName
   } catch (error) {
     console.error("Error viewing one notification for hospital staff:", error);
     throw error;
   }
 };
+
 //
 //
 //
