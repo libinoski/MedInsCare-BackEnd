@@ -1226,8 +1226,6 @@ exports.registerPatient = async (req, res) => {
     });
   }
 
-
-
   jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
     if (err) {
       if (err.name === "JsonWebTokenError") {
@@ -1451,6 +1449,7 @@ exports.registerPatient = async (req, res) => {
       validationResults.isValid = false;
       validationResults.errors["patientGender"] = [genderValidation.message];
     }
+
     const ageValidation = dataValidator.isValidAge(patientData.patientAge);
     if (!ageValidation.isValid) {
       validationResults.isValid = false;
@@ -1478,6 +1477,7 @@ exports.registerPatient = async (req, res) => {
     return validationResults;
   }
 };
+
 //
 //
 //

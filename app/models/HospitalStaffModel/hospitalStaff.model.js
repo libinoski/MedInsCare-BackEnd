@@ -525,7 +525,7 @@ HospitalStaff.viewOneNotification = async (notificationId, hospitalStaffId) => {
 //
 //
 // HOSPITAL STAFF REGISTER PATIENT
-HospitalStaff.registerPatient = async (patientData) => {
+HospitalStaff.registerPatient = async (newPatientData) => {
   try {
     const staffHospitalQuery = `
       SELECT hs.hospitalStaffId, hs.hospitalId
@@ -534,43 +534,38 @@ HospitalStaff.registerPatient = async (patientData) => {
       WHERE hs.hospitalStaffId = ? AND hs.deleteStatus = 0 AND hs.isSuspended = 0
       AND h.isActive = 1 AND h.deleteStatus = 0
     `;
-    const staffHospitalResult = await dbQuery(staffHospitalQuery, [patientData.hospitalStaffId]);
-    if (staffHospitalResult.length === 0) {
-      const errors = { staff: "Hospital staff not found, or linked hospital is not active/not exists" };
-      throw { name: "ValidationError", errors: errors };
-    }
 
-    patientData.hospitalId = staffHospitalResult[0].hospitalId;
+    const staffHospitalResult = await dbQuery(staffHospitalQuery, [newPatientData.hospitalStaffId]);
+
+    if (staffHospitalResult.length === 0) {
+      throw new Error("Hospital staff not found or is inactive/suspended");
+    }
 
     const errors = {};
 
-    const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar=? AND dischargeStatus = 0";
-    const aadharRes = await dbQuery(checkAadharQuery, [patientData.patientAadhar]);
+    const checkAadharQuery = "SELECT * FROM Patients WHERE patientAadhar = ? AND dischargeStatus = 0";
+    const aadharRes = await dbQuery(checkAadharQuery, [newPatientData.patientAadhar]);
     if (aadharRes.length > 0) {
-      errors["aadhar"] = "Aadhar number already exists";
+      errors["Aadhar"] = ["Aadhar number already exists"];
     }
 
-    const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail=? AND dischargeStatus	= 0";
-    const emailRes = await dbQuery(checkEmailQuery, [patientData.patientEmail]);
+    const checkEmailQuery = "SELECT * FROM Patients WHERE patientEmail = ? AND dischargeStatus = 0";
+    const emailRes = await dbQuery(checkEmailQuery, [newPatientData.patientEmail]);
     if (emailRes.length > 0) {
-      errors["email"] = "Email already exists";
+      errors["Email"] = ["Email already exists"];
     }
 
-    // If there are validation errors, throw a ValidationError
     if (Object.keys(errors).length > 0) {
       throw { name: "ValidationError", errors: errors };
     }
 
-    // Hash the patient's password
-    const hashedPassword = await promisify(bcrypt.hash)(patientData.patientPassword, 10);
-    patientData.patientPassword = hashedPassword;
+    const hashedPassword = await promisify(bcrypt.hash)(newPatientData.patientPassword, 10);
+    newPatientData.patientPassword = hashedPassword;
 
-    // Insert patient data into the database
     const insertQuery = "INSERT INTO Patients SET ?";
-    const insertRes = await dbQuery(insertQuery, patientData);
+    const insertRes = await dbQuery(insertQuery, newPatientData);
 
-    // Return the newly registered patient data, including the generated patientId and hospitalId
-    return {patientId: insertRes.insertId, hospitalId: patientData.hospitalId, ...patientData };
+    return { patientId: insertRes.insertId, hospitalId: staffHospitalResult[0].hospitalId, ...newPatientData };
   } catch (error) {
     console.error("Error during patient registration in model:", error);
     throw error;
