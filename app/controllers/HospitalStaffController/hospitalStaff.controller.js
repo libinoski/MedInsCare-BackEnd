@@ -325,7 +325,7 @@ exports.changeIdProofImage = async (req, res) => {
           });
         } catch (error) {
           console.error("Error updating ID proof image:", error);
-          
+
           // Delete uploaded image from S3 if it exists
           if (req.file) {
             const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
@@ -483,7 +483,7 @@ exports.changeProfileImage = async (req, res) => {
           });
         } catch (error) {
           console.error("Error updating profile image:", error);
-          
+
           // Delete uploaded image from S3 if it exists
           if (req.file) {
             const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
@@ -994,7 +994,7 @@ exports.viewOneNews = async (req, res) => {
           if (
             error.message === "Hospital news not found" ||
             error.message === "Hospital not found" ||
-            error.message === "Hospital staff not found" 
+            error.message === "Hospital staff not found"
           ) {
             return res.status(422).json({
               status: "error",
@@ -1218,7 +1218,6 @@ exports.viewOneNotification = async (req, res) => {
 // HOSPITAL STAFF REGISTER PATIENT
 exports.registerPatient = async (req, res) => {
   const token = req.headers.token;
-  const hospitalStaffId = req.body.hospitalStaffId;
 
   if (!token) {
     return res.status(403).json({
@@ -1227,12 +1226,7 @@ exports.registerPatient = async (req, res) => {
     });
   }
 
-  if (!hospitalStaffId) {
-    return res.status(401).json({
-      status: "failed",
-      message: "Hospital Staff ID is missing"
-    });
-  }
+
 
   jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
     if (err) {
@@ -1269,6 +1263,13 @@ exports.registerPatient = async (req, res) => {
       }
 
       const patientData = req.body;
+
+      if (!patientData.hospitalStaffId) {
+        return res.status(401).json({
+          status: "failed",
+          message: "Hospital Staff ID is missing"
+        });
+      }
 
       if (decoded.hospitalStaffId != patientData.hospitalStaffId) {
         return res.status(403).json({
