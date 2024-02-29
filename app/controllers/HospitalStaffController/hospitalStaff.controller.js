@@ -83,7 +83,7 @@ exports.login = async (req, res) => {
       error.message === "Hospital staff not found" ||
       error.message === "The associated hospital is not active" ||
       error.message === "The associated hospital is deleted" ||
-      error.message === "Invalid password"
+      error.message === "Wrong password"
     ) {
       return res.status(422).json({
         status: "Failure",

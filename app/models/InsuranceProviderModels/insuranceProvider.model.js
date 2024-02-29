@@ -127,32 +127,37 @@ InsuranceProvider.register = async (newInsuranceProvider) => {
 //
 //INSURANCE PROVIDER LOGIN
 InsuranceProvider.login = async (email, password) => {
-    const query = "SELECT * FROM Insurance_Providers WHERE insuranceProviderEmail = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
+  const query = "SELECT * FROM Insurance_Providers WHERE insuranceProviderEmail = ? AND isActive = 1 AND deleteStatus = 0  AND isSuspended = 0";
 
-    try {
-        const result = await dbQuery(query, [email]);
+  try {
+      const result = await dbQuery(query, [email]);
 
-        if (result.length === 0) {
-            throw new Error("Insurance provider not found");
-        }
+      if (result.length === 0) {
+          throw new Error("Insurance provider not found");
+      }
 
-        const insuranceProvider = result[0];
+      const insuranceProvider = result[0];
 
-        const isMatch = await promisify(bcrypt.compare)(
-            password,
-            insuranceProvider.insuranceProviderPassword
-        );
+      if (insuranceProvider.isApproved !== 1) {
+          throw new Error("Please wait for approval");
+      }
 
-        if (!isMatch) {
-            throw new Error("Wrong password");
-        }
+      const isMatch = await promisify(bcrypt.compare)(
+          password,
+          insuranceProvider.insuranceProviderPassword
+      );
 
-        return insuranceProvider;
-    } catch (error) {
-        console.error("Error during insurance provider login:", error);
-        throw error;
-    }
+      if (!isMatch) {
+          throw new Error("Wrong password");
+      }
+
+      return insuranceProvider;
+  } catch (error) {
+      console.error("Error during insurance provider login:", error);
+      throw error;
+  }
 };
+
 //
 //
 //

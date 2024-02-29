@@ -115,7 +115,7 @@ HospitalStaff.login = async (email, password) => {
     );
 
     if (!isMatch) {
-      throw new Error("Invalid password");
+      throw new Error("Wrong password ");
     }
 
     return hospitalStaff;

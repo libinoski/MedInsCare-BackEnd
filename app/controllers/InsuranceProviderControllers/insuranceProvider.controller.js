@@ -255,73 +255,79 @@ exports.register = async (req, res) => {
 //
 //INSURANCE PROVIDER LOGIN 
 exports.login = async (req, res) => {
-    const { insuranceProviderEmail, insuranceProviderPassword } = req.body;
+  const { insuranceProviderEmail, insuranceProviderPassword } = req.body;
 
-    function validateInsuranceProviderLogin() {
-        const validationResults = {
-            isValid: true,
-            errors: {},
-        };
+  function validateInsuranceProviderLogin() {
+      const validationResults = {
+          isValid: true,
+          errors: {},
+      };
 
-        const emailValidation = dataValidator.isValidEmail(insuranceProviderEmail);
-        if (!emailValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["insuranceProviderEmail"] = [emailValidation.message];
-        }
+      const emailValidation = dataValidator.isValidEmail(insuranceProviderEmail);
+      if (!emailValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["insuranceProviderEmail"] = [emailValidation.message];
+      }
 
-        const passwordValidation = dataValidator.isValidPassword(insuranceProviderPassword);
-        if (!passwordValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["insuranceProviderPassword"] = [passwordValidation.message];
-        }
+      const passwordValidation = dataValidator.isValidPassword(insuranceProviderPassword);
+      if (!passwordValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["insuranceProviderPassword"] = [passwordValidation.message];
+      }
 
-        return validationResults;
-    }
+      return validationResults;
+  }
 
-    const validationResults = validateInsuranceProviderLogin();
-    if (!validationResults.isValid) {
-        return res.status(400).json({
-            status: "failed",
-            message: "Validation failed",
-            results: validationResults.errors
-        });
-    }
+  const validationResults = validateInsuranceProviderLogin();
+  if (!validationResults.isValid) {
+      return res.status(400).json({
+          status: "failed",
+          message: "Validation failed",
+          results: validationResults.errors
+      });
+  }
 
-    try {
-        const insuranceProvider = await InsuranceProvider.login(insuranceProviderEmail, insuranceProviderPassword);
+  try {
+      const insuranceProvider = await InsuranceProvider.login(insuranceProviderEmail, insuranceProviderPassword);
 
-        const token = jwt.sign(
-            {
-                insuranceProviderId: insuranceProvider.insuranceProviderId,
-                insuranceProviderEmail: insuranceProvider.insuranceProviderEmail,
-            },
-            process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
-            { expiresIn: "1h" }
-        );
+      const token = jwt.sign(
+          {
+              insuranceProviderId: insuranceProvider.insuranceProviderId,
+              insuranceProviderEmail: insuranceProvider.insuranceProviderEmail,
+          },
+          process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
+          { expiresIn: "1h" }
+      );
 
-        return res.status(200).json({
-            status: "success",
-            message: "Login successful",
-            data: { token, insuranceProvider },
-        });
-    } catch (error) {
-        console.error("Error during insurance provider login:", error);
+      return res.status(200).json({
+          status: "success",
+          message: "Login successful",
+          data: { token, insuranceProvider },
+      });
+  } catch (error) {
+      console.error("Error during insurance provider login:", error);
 
-        if (error.message === "Insurance provider not found" || error.message === "Wrong password") {
-            return res.status(422).json({
-                status: "failed",
-                message: "Login failed",
-                error: error.message
-            });
-        }
+      if (error.message === "Insurance provider not found" || error.message === "Wrong password") {
+          return res.status(422).json({
+              status: "failed",
+              message: "Login failed",
+              error: error.message
+          });
+      } else if (error.message === "Please wait for approval") {
+          return res.status(422).json({
+              status: "failed",
+              message: "Login failed",
+              error: error.message
+          });
+      }
 
-        return res.status(500).json({
-            status: "failed",
-            message: "Internal server error",
-            error: error.message,
-        });
-    }
-};  
+      return res.status(500).json({
+          status: "failed",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};
 //
 //
 //
