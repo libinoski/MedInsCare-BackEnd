@@ -60,6 +60,9 @@ router.post("/hospitalStaffViewOnePatient", HospitalStaffController.viewOnePatie
 // Search patients route for hospital staff
 router.post("/hospitalStaffSearchPatient", HospitalStaffController.searchPatients);
 
+// Search patients route for hospital staff
+router.post("/hospitalStaffSendNotificationPatient", HospitalStaffController.sendNotificationToPatient);
+
 // -------------------
 // Medical Records and Discharge Management
 // -------------------

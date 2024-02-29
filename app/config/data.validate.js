@@ -101,7 +101,7 @@ function isValidId(id, idName) {
     };
 }
 
-// Validate the validity of the content.
+// Validate content
 function isValidContent(content) {
     if (isNullOrUndefined(content) || content.trim() === "") {
         return {
@@ -123,6 +123,7 @@ function isValidContent(content) {
         message: "Content contains invalid characters."
     };
 }
+
 
 
 

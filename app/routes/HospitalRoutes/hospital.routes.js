@@ -130,6 +130,10 @@ router.post("/viewAllPatients", HospitalController.viewAllPatients);
 // Route to view one patient
 router.post("/viewOnePatient", HospitalController.viewOnePatient);
 
+// Route to delete one patient
+router.post("/deleteOnePatient", HospitalController.deleteOnePatient);
+
+
 // Route to search patients
 router.post("/searchPatients", HospitalController.searchPatients);
 

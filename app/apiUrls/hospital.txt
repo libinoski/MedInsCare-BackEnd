@@ -45,6 +45,7 @@ Sure, here are the API URLs with `http://localhost:1313/api` prepended:
 5. [Patient Management]
    - View all patients: `POST http://localhost:1313/api/mic/hospital/viewAllPatients`
    - View one patient: `POST http://localhost:1313/api/mic/hospital/viewOnePatient`
+   - Delete one patient: `POST http://localhost:1313/api/mic/hospital/deleteOnePatient`
    - Search patients: `POST http://localhost:1313/api/mic/hospital/searchPatients`
    - Send notification to patient: `POST http://localhost:1313/api/mic/hospital/sendNotificationToPatient`
 

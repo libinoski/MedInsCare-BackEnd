@@ -52,6 +52,29 @@ const InsuranceProvider = function (insuranceProvider) {
 //
 //
 //
+// VIEW ALL HOSPITALS
+InsuranceProvider.viewAllHospitals = async () => {
+  try {
+    const viewAllHospitalsQuery = `
+      SELECT *
+      FROM Hospitals
+      WHERE isActive = 1 AND deleteStatus = 0
+    `;
+    const allHospitals = await dbQuery(viewAllHospitalsQuery);
+
+    if (allHospitals.length === 0) {
+      throw new Error("No hospitals found");
+    }
+
+    return allHospitals;
+  } catch (error) {
+    throw error;
+  }
+};
+//
+//
+//
+//
 //
 // INSURANCE PROVIDER REGISTER
 InsuranceProvider.register = async (newInsuranceProvider) => {

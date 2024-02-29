@@ -730,6 +730,49 @@ HospitalStaff.searchPatients = async (hospitalStaffId, searchQuery) => {
 //
 //
 //
+// HOSPITAL STAFF SEND NOTIFICATION TO PATIENT
+HospitalStaff.sendNotificationToPatient = async (hospitalStaffId, patientId, notificationMessage) => {
+  try {
+    // Check if hospital staff exists and is active
+    const checkStaffQuery = "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0";
+    const checkStaffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
+    if (checkStaffResult.length === 0) {
+      throw new Error("Hospital Staff not found or not active");
+    }
+    
+    // Get the hospitalId associated with the hospital staff
+    const hospitalId = checkStaffResult[0].hospitalId;
+
+    // Check if patient exists, is active, and belongs to the same hospital as the hospital staff
+    const checkPatientQuery = "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0 AND hospitalId = ?";
+    const checkPatientResult = await dbQuery(checkPatientQuery, [patientId, hospitalId]);
+    if (checkPatientResult.length === 0) {
+      throw new Error("Patient not found or not active");
+    }
+
+    // Insert the notification
+    const insertNotificationQuery = "INSERT INTO Notification_To_Patients_From_Staff (hospitalStaffId, patientId, message) VALUES (?, ?, ?)";
+    const result = await dbQuery(insertNotificationQuery, [hospitalStaffId, patientId, notificationMessage]);
+
+    const notificationId = result.insertId;
+
+    const notificationDetails = {
+      notificationId: notificationId,
+      hospitalStaffId: hospitalStaffId,
+      patientId: patientId,
+      message: notificationMessage,
+    };
+
+    return notificationDetails;
+  } catch (error) {
+    console.error("Error sending notification to patient:", error);
+    throw error;
+  }
+};
+
+
+
+
 // HOSPITAL STAFF  ADD MEDICAL RECORD
 HospitalStaff.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
   try {

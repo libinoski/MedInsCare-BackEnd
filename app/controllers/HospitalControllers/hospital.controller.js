@@ -2701,7 +2701,7 @@ exports.updateNews = async (req, res) => {
         titleValidation.message;
     }
 
-    const contentValidation = dataValidator.isValidText(
+    const contentValidation = dataValidator.isValidContent(
       newsData.hospitalNewsContent
     );
     if (!contentValidation.isValid) {
@@ -4324,6 +4324,90 @@ exports.viewOnePatient = async (req, res) => {
       error: error.message,
     });
   }
+};
+//
+//
+//
+//
+//
+// HOSPITAL DELETE ONE PATIENT
+exports.deleteOnePatient = async (req, res) => {
+  const token = req.headers.token;
+  const { hospitalId, patientId } = req.body;
+
+  if (!hospitalId) {
+    return res.status(401).json({
+      status: "failed",
+      message: "Hospital ID is missing"
+    });
+  }
+
+  if (!patientId) {
+    return res.status(401).json({
+      status: "failed",
+      message: "Patient ID is missing"
+    });
+  }
+
+  if (!token) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+    if (err) {
+      if (err.name === "JsonWebTokenError") {
+        return res.status(403).json({
+          status: "error",
+          message: "Invalid token"
+        });
+      } else if (err.name === "TokenExpiredError") {
+        return res.status(403).json({
+          status: "error",
+          message: "Token has expired"
+        });
+      } else {
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
+      }
+    }
+
+    try {
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({
+          status: "error",
+          message: "Unauthorized access"
+        });
+      }
+
+      await Hospital.deleteOnePatient(hospitalId, patientId);
+
+      return res.status(200).json({
+        status: "success",
+        message: "Patient deleted successfully",
+        data: { patientId: patientId }
+      });
+    } catch (error) {
+      console.error("Error deleting patient:", error);
+
+      if (error.message === "Patient not found or already deleted" || error.message === "Hospital not found") {
+        return res.status(422).json({
+          status: "error",
+          error: error.message
+        });
+      }
+
+      return res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  });
 };
 //
 //

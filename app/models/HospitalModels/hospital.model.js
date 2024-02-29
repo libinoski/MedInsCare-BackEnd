@@ -1368,22 +1368,25 @@ Hospital.viewAllPatients = async (hospitalId) => {
   try {
       const query = `
           SELECT 
-              patientId, 
-              hospitalId, 
-              hospitalStaffId, 
-              patientName, 
-              patientEmail, 
-              patientAadhar, 
-              patientMobile, 
-              patientProfileImage, 
-              patientIdProofImage, 
-              patientAddress, 
-              patientGender, 
-              patientAge, 
-              patientRegisteredDate, 
-          FROM Patients
-          WHERE hospitalId = ? AND isActive = 1
-          ORDER BY patientRegisteredDate DESC;
+              p.patientId, 
+              p.hospitalId, 
+              p.hospitalStaffId, 
+              p.patientName, 
+              p.patientEmail, 
+              p.patientAadhar, 
+              p.patientMobile, 
+              p.patientProfileImage, 
+              p.patientIdProofImage, 
+              p.patientAddress, 
+              p.patientGender, 
+              p.patientAge, 
+              p.patientRegisteredDate,
+              hs.hospitalStaffName,
+              hs.hospitalStaffProfileImage
+          FROM Patients p
+          JOIN Hospital_Staffs hs ON p.hospitalStaffId = hs.hospitalStaffId
+          WHERE p.hospitalId = ? AND p.isActive = 1
+          ORDER BY p.patientRegisteredDate DESC;
       `;
 
       // Execute the query with the provided hospitalId
@@ -1439,6 +1442,34 @@ Hospital.viewOnePatient = async (patientId, hospitalId) => {
     return result[0]; // Assuming patientId is unique, so only one result expected
   } catch (error) {
     console.error("Error viewing patient for hospital:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL DELETE ONE PATIENT
+Hospital.deleteOnePatient = async (hospitalId, patientId) => {
+  try {
+    const hospitalCheckQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckRes = await dbQuery(hospitalCheckQuery, [hospitalId]);
+    if (hospitalCheckRes.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const patientCheckQuery = "SELECT * FROM Patients WHERE patientId = ? AND hospitalId = ? AND deleteStatus = 0";
+    const patientCheckRes = await dbQuery(patientCheckQuery, [patientId, hospitalId]);
+    if (patientCheckRes.length === 0) {
+      throw new Error("Patient not found or already deleted");
+    }
+
+    const deleteQuery = "UPDATE Patients SET deleteStatus = 1 WHERE patientId = ? AND hospitalId = ?";
+    await dbQuery(deleteQuery, [patientId, hospitalId]);
+
+    return patientId;
+  } catch (error) {
+    console.error("Error deleting patient:", error);
     throw error;
   }
 };

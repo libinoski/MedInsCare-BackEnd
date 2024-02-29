@@ -6,6 +6,10 @@ const InsuranceProviderController = require('../../controllers/InsuranceProvider
 // Insurance Provider Authentication and Profile Management
 // -------------------
 
+
+router.post("/insuranceProviderViewAllHospitals", InsuranceProviderController.viewAllHospitals);
+
+
 // Insurance provider registration route
 router.post("/insuranceProviderRegister", InsuranceProviderController.register);
 

@@ -1,5 +1,6 @@
 1. [Insurance Provider Authentication and Profile Management]
 
+-Insurance provider view all hospitals route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderViewAllHospitals
 -Insurance provider registration route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderRegister
 -Insurance provider login route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderLogin
 -Insurance provider change password route: POST http://localhost:1313/api/mic/insuranceProvider/insuranceProviderChangePassword

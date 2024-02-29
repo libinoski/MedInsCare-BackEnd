@@ -25,6 +25,35 @@ const s3Client = new S3Client({
 //
 //
 //
+exports.viewAllHospitals = async (req, res) => {
+  try {
+    const allHospitalsData = await InsuranceProvider.viewAllHospitals();
+    
+    return res.status(200).json({
+      status: "success",
+      message: "All hospitals are retrieved successfully",
+      data: allHospitalsData,
+    });
+  } catch (error) {
+    console.error("Error viewing all hospitals:", error);
+    if (error.message === "No hospitals found") {
+      return res.status(422).json({
+        status: "failed",
+        message: "No hospitals found"
+      });
+    } else {
+      return res.status(500).json({
+        status: "error",
+        message: "Internal server error"
+      });
+    }
+  }
+};
+//
+//
+//
+//
+//
 //INSURANCE PROVIDER REGISTER
 exports.register = async (req, res) => {
     const uploadInsuraceProviderImages = multer({
