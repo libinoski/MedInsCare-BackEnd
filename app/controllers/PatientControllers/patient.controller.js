@@ -27,39 +27,40 @@ const s3Client = new S3Client({
 exports.login = async (req, res) => {
     const { patientEmail, patientPassword } = req.body;
 
-    const emailValidation = dataValidator.isValidEmail(patientEmail);
-    const passwordValidation = dataValidator.isValidPassword(patientPassword);
+    function validatePatientLogin() {
+        const validationResults = {
+            isValid: true,
+            errors: {},
+        };
 
-    const validationResults = {
-        isValid: true,
-        errors: {},
-    };
+        // Validate email
+        const emailValidation = dataValidator.isValidEmail(patientEmail);
+        if (!emailValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["patientEmail"] = [emailValidation.message];
+        }
 
-    if (!passwordValidation.isValid) {
-        validationResults.isValid = false;
-        validationResults.errors["patientPassword"] = [
-            passwordValidation.message,
-        ];
+        // Validate password
+        const passwordValidation = dataValidator.isValidPassword(patientPassword);
+        if (!passwordValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["patientPassword"] = [passwordValidation.message];
+        }
+
+        return validationResults;
     }
 
-    if (!emailValidation.isValid) {
-        validationResults.isValid = false;
-        validationResults.errors["patientEmail"] = [emailValidation.message];
-    }
-
+    const validationResults = validatePatientLogin();
     if (!validationResults.isValid) {
         return res.status(400).json({
-            status: "Validation failed",
-            message: "Invalid input data",
-            results: validationResults.errors,
+            status: "failed",
+            message: "Validation failed",
+            results: validationResults.errors
         });
     }
 
     try {
-        const patient = await Patient.login(
-            patientEmail,
-            patientPassword
-        );
+        const patient = await Patient.login(patientEmail, patientPassword);
 
         const token = jwt.sign(
             {
@@ -71,36 +72,33 @@ exports.login = async (req, res) => {
         );
 
         return res.status(200).json({
-            status: "Success",
+            status: "success",
             message: "Login successful",
             data: { token, patient },
         });
     } catch (error) {
-        if (
-            error.message === "Patient not found" ||
-            error.message === "The associated hospital is not active" ||
-            error.message === "The associated hospital is deleted" ||
-            error.message === "Invalid password"
-        ) {
+        console.error("Error during patient login:", error);
+
+        if (error.message === "Patient not found" || error.message === "Wrong password") {
             return res.status(422).json({
-                status: "Failure",
-                message: "Authentication failed",
-                error: error.message,
-            });
-        } else {
-            console.error("Error during patient login:", error);
-            return res.status(500).json({
-                status: "Error",
-                message: "Internal server error",
-                details: "An internal server error occurred during login",
+                status: "failed",
+                message: "Login failed",
+                error: error.message
             });
         }
+
+        return res.status(500).json({
+            status: "failed",
+            message: "Internal server error",
+            error: error.message,
+        });
     }
 };
 //
 //
 //
 //
+// PATIENT CHANGE PASSWORD
 // PATIENT CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
     const token = req.headers.token;
@@ -124,7 +122,7 @@ exports.changePassword = async (req, res) => {
 
     jwt.verify(
         token,
-        process.env.JWT_SECRET_KEY_HOSPITAL,
+        process.env.JWT_SECRET_KEY_PATIENT,
         async (err, decoded) => {
             if (err) {
                 if (err.name === "JsonWebTokenError") {
@@ -211,6 +209,8 @@ exports.changePassword = async (req, res) => {
         }
     );
 };
+
+
 //
 //
 //
@@ -1758,138 +1758,138 @@ exports.searchInsuranceProviders = async (req, res) => {
 //
 // PATIENT REVIEW ONE INSURANCE PROVIDER
 exports.reviewOneInsuranceProvider = async (req, res) => {
-  try {
-    const token = req.headers.token;
-    const { hospitalId, patientId, insuranceProviderId, reviewContent } = req.body;
+    try {
+        const token = req.headers.token;
+        const { hospitalId, patientId, insuranceProviderId, reviewContent } = req.body;
 
-    // Check if token is provided
-    if (!token) {
-      return res.status(403).json({
-        status: "error",
-        message: "Token is missing"
-      });
-    }
-
-    // Check if hospitalId is provided
-    if (!hospitalId) {
-      return res.status(401).json({
-        status: "error",
-        message: "Hospital ID is missing"
-      });
-    }
-
-    // Check if patientId is provided
-    if (!patientId) {
-      return res.status(401).json({
-        status: "error",
-        message: "Patient ID is missing"
-      });
-    }
-
-    // Check if insuranceProviderId is provided
-    if (!insuranceProviderId) {
-      return res.status(401).json({
-        status: "error",
-        message: "Insurance Provider ID is missing"
-      });
-    }
-
-    // Token verification
-    jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
-      if (err) {
-        if (err.name === "JsonWebTokenError") {
-          return res.status(403).json({
-            status: "error",
-            message: "Invalid or missing token"
-          });
-        } else if (err.name === "TokenExpiredError") {
-          return res.status(403).json({
-            status: "error",
-            message: "Token has expired"
-          });
-        } else {
-          return res.status(403).json({
-            status: "error",
-            message: "Unauthorized access"
-          });
-        }
-      }
-
-      // Check if the decoded hospitalId matches the provided hospitalId
-      if (decoded.hospitalId != hospitalId) {
-        return res.status(403).json({
-          status: "error",
-          message: "Unauthorized access"
-        });
-      }
-
-      // Function to validate review content
-      function validateReviewContent(reviewContent) {
-        const validationResults = {
-          isValid: true,
-          errors: {},
-        };
-
-        // Your validation logic here
-        const reviewValidation = dataValidator.isValidText(reviewContent);
-        if (!reviewValidation.isValid) {
-          validationResults.isValid = false;
-          validationResults.errors["reviewContent"] = [reviewValidation.message];
+        // Check if token is provided
+        if (!token) {
+            return res.status(403).json({
+                status: "error",
+                message: "Token is missing"
+            });
         }
 
-        return validationResults;
-      }
-
-      // Validate review content
-      const validationResults = validateReviewContent(reviewContent);
-
-      // If validation fails, return error response
-      if (!validationResults.isValid) {
-        return res.status(400).json({
-          status: "error",
-          message: "Validation failed",
-          errors: validationResults.errors
-        });
-      }
-
-      try {
-        // Call the reviewOneInsuranceProvider method from the Patient model
-        const reviewDetails = await Patient.reviewOneInsuranceProvider(hospitalId, insuranceProviderId, patientId, reviewContent);
-
-        // Return success response
-        return res.status(200).json({
-          status: "success",
-          message: "Review submitted successfully",
-          data: reviewDetails
-        });
-      } catch (error) {
-        // Handle errors
-        console.error("Error submitting review by patient:", error);
-
-        // Return appropriate error response
-        if (error.message === "Hospital not found" || error.message === "Insurance Provider not found or not active in this hospital" || error.message === "Patient not found or not active in this hospital") {
-          return res.status(422).json({
-            status: "error",
-            error: error.message
-          });
+        // Check if hospitalId is provided
+        if (!hospitalId) {
+            return res.status(401).json({
+                status: "error",
+                message: "Hospital ID is missing"
+            });
         }
 
+        // Check if patientId is provided
+        if (!patientId) {
+            return res.status(401).json({
+                status: "error",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Check if insuranceProviderId is provided
+        if (!insuranceProviderId) {
+            return res.status(401).json({
+                status: "error",
+                message: "Insurance Provider ID is missing"
+            });
+        }
+
+        // Token verification
+        jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
+            if (err) {
+                if (err.name === "JsonWebTokenError") {
+                    return res.status(403).json({
+                        status: "error",
+                        message: "Invalid or missing token"
+                    });
+                } else if (err.name === "TokenExpiredError") {
+                    return res.status(403).json({
+                        status: "error",
+                        message: "Token has expired"
+                    });
+                } else {
+                    return res.status(403).json({
+                        status: "error",
+                        message: "Unauthorized access"
+                    });
+                }
+            }
+
+            // Check if the decoded hospitalId matches the provided hospitalId
+            if (decoded.hospitalId != hospitalId) {
+                return res.status(403).json({
+                    status: "error",
+                    message: "Unauthorized access"
+                });
+            }
+
+            // Function to validate review content
+            function validateReviewContent(reviewContent) {
+                const validationResults = {
+                    isValid: true,
+                    errors: {},
+                };
+
+                // Your validation logic here
+                const reviewValidation = dataValidator.isValidText(reviewContent);
+                if (!reviewValidation.isValid) {
+                    validationResults.isValid = false;
+                    validationResults.errors["reviewContent"] = [reviewValidation.message];
+                }
+
+                return validationResults;
+            }
+
+            // Validate review content
+            const validationResults = validateReviewContent(reviewContent);
+
+            // If validation fails, return error response
+            if (!validationResults.isValid) {
+                return res.status(400).json({
+                    status: "error",
+                    message: "Validation failed",
+                    errors: validationResults.errors
+                });
+            }
+
+            try {
+                // Call the reviewOneInsuranceProvider method from the Patient model
+                const reviewDetails = await Patient.reviewOneInsuranceProvider(hospitalId, insuranceProviderId, patientId, reviewContent);
+
+                // Return success response
+                return res.status(200).json({
+                    status: "success",
+                    message: "Review submitted successfully",
+                    data: reviewDetails
+                });
+            } catch (error) {
+                // Handle errors
+                console.error("Error submitting review by patient:", error);
+
+                // Return appropriate error response
+                if (error.message === "Hospital not found" || error.message === "Insurance Provider not found or not active in this hospital" || error.message === "Patient not found or not active in this hospital") {
+                    return res.status(422).json({
+                        status: "error",
+                        error: error.message
+                    });
+                }
+
+                return res.status(500).json({
+                    status: "error",
+                    message: "Internal server error",
+                    error: error.message
+                });
+            }
+        });
+    } catch (error) {
+        // Handle unexpected errors
+        console.error("Error in reviewOneInsuranceProvider controller:", error);
         return res.status(500).json({
-          status: "error",
-          message: "Internal server error",
-          error: error.message
+            status: "error",
+            message: "Internal server error",
+            error: error.message
         });
-      }
-    });
-  } catch (error) {
-    // Handle unexpected errors
-    console.error("Error in reviewOneInsuranceProvider controller:", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Internal server error",
-      error: error.message
-    });
-  }
+    }
 };
 //
 //

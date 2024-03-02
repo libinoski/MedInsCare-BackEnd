@@ -399,10 +399,10 @@ function isValidDate(dateString) {
 
 // Validate a message with a maximum length of 500 characters.
 function isValidMessage(message) {
-    if (isNullOrUndefined(message)) {
+    if (isNullOrUndefined(message) || message.trim() === "") {
         return {
             isValid: false,
-            message: "Message cannot be null or undefined."
+            message: "Message cannot be null, undefined, or empty."
         };
     }
 
@@ -418,6 +418,8 @@ function isValidMessage(message) {
         message: "Message is valid."
     };
 }
+
+
 
 
 

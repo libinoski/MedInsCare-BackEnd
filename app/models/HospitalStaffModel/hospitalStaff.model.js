@@ -86,12 +86,9 @@ const MedicalRecord = function (record) {
 //
 // HOSPITAL STAFF LOGIN
 HospitalStaff.login = async (email, password) => {
-  const query = `
-        SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
-        FROM Hospital_Staffs HS
-        JOIN Hospitals H ON HS.hospitalId = H.hospitalId
-        WHERE HS.hospitalStaffEmail = ? AND HS.deleteStatus = 0 AND HS.isSuspended = 0 AND H.deleteStatus = 0
-    `;
+  const query =
+    "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail = ? AND isActive = 1 AND deleteStatus = 0 AND IsSuspended = 0";
+
   try {
     const result = await dbQuery(query, [email]);
 
@@ -101,92 +98,70 @@ HospitalStaff.login = async (email, password) => {
 
     const hospitalStaff = result[0];
 
-    if (!hospitalStaff.hospitalIsActive) {
-      throw new Error("The associated hospital is not active");
-    }
-
-    if (hospitalStaff.hospitalDeleteStatus !== 0) {
-      throw new Error("The associated hospital is deleted");
-    }
-
     const isMatch = await promisify(bcrypt.compare)(
       password,
       hospitalStaff.hospitalStaffPassword
     );
 
     if (!isMatch) {
-      throw new Error("Wrong password ");
+      throw new Error("Wrong password");
     }
 
     return hospitalStaff;
   } catch (error) {
+    console.error("Error during hospital login:", error);
     throw error;
   }
 };
+
+
 //
 //
 //
 //
 // HOSPITAL STAFF CHANGE PASSWORD
-HospitalStaff.changePassword = async (hospitalStaffId,oldPassword,newPassword) => {
-  const checkStaffQuery = `
-        SELECT HS.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
-        FROM Hospital_Staffs HS
-        JOIN Hospitals H ON HS.hospitalId = H.hospitalId
-        WHERE HS.hospitalStaffId = ? AND HS.deleteStatus = 0 AND HS.isSuspended = 0 AND H.deleteStatus = 0
-    `;
+HospitalStaff.changePassword = async (hospitalStaffId, oldPassword, newPassword) => {
+  const checkHospitalStaffQuery =
+    "SELECT * FROM Hospital_Staffs WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isActive = 1 AND isSuspended = 0";
 
   try {
-    const selectRes = await dbQuery(checkStaffQuery, [hospitalStaffId]);
-
+    const selectRes = await dbQuery(checkHospitalStaffQuery, [hospitalStaffId]);
     if (selectRes.length === 0) {
-      throw new Error("Staff not found");
+      throw new Error("Hospital staff not found");
     }
 
     const hospitalStaff = selectRes[0];
-
-    if (!hospitalStaff.hospitalIsActive) {
-      throw new Error("The associated hospital is not active");
-    }
-
-    if (hospitalStaff.hospitalDeleteStatus !== 0) {
-      throw new Error("The associated hospital is deleted");
-    }
-
     const isMatch = await promisify(bcrypt.compare)(
       oldPassword,
       hospitalStaff.hospitalStaffPassword
     );
 
     if (!isMatch) {
-      throw new Error("Invalid old password");
+      throw new Error("Incorrect old password");
     }
 
     const hashedNewPassword = await promisify(bcrypt.hash)(newPassword, 10);
-
     const updatePasswordQuery = `
             UPDATE Hospital_Staffs
             SET
                 updateStatus = 1,
                 updatedDate = CURRENT_DATE(),
                 deleteStatus = 0,
-                isSuspended = 0,
+                isActive = 1,
                 hospitalStaffPassword = ?,
                 passwordUpdateStatus = 1
-            WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
+            WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isActive = 1
         `;
 
     const updatePasswordValues = [hashedNewPassword, hospitalStaffId];
-    const updatePasswordRes = await dbQuery(
-      updatePasswordQuery,
-      updatePasswordValues
-    );
-    console.log("Password update query result:", updatePasswordRes);
+
+    await dbQuery(updatePasswordQuery, updatePasswordValues);
+
     console.log(
-      "Staff password updated successfully for hospitalStaffId:",
-      hospitalStaffId
+      "Hospital staff password updated successfully for hospitalStaffId:",
+      hospitalId
     );
-    return true; // Just returning true to indicate success
+    return { message: "Password updated successfully" };
   } catch (error) {
     throw error;
   }
@@ -196,7 +171,7 @@ HospitalStaff.changePassword = async (hospitalStaffId,oldPassword,newPassword) =
 //
 //
 // HOSPITAL STAFF CHANGE ID PROOF IMAGE
-HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilename) => {
+HospitalStaff.changeIdProofImage = async (hospitalStaffId, newIdProofImageFilename) => {
   const verifyQuery = `
         SELECT hospitalStaffId
         FROM Hospital_Staffs
@@ -231,7 +206,7 @@ HospitalStaff.changeIdProofImage = async (hospitalStaffId,newIdProofImageFilenam
 //
 //
 // HOSPITAL STAFF CHANGE PROFILE IMAGE
-HospitalStaff.changeProfileImage = async (hospitalStaffId,newProfileImageFilename) => {
+HospitalStaff.changeProfileImage = async (hospitalStaffId, newProfileImageFilename) => {
   const verifyQuery = `
         SELECT hospitalStaffId
         FROM Hospital_Staffs
@@ -739,7 +714,7 @@ HospitalStaff.sendNotificationToPatient = async (hospitalStaffId, patientId, not
     if (checkStaffResult.length === 0) {
       throw new Error("Hospital Staff not found or not active");
     }
-    
+
     // Get the hospitalId associated with the hospital staff
     const hospitalId = checkStaffResult[0].hospitalId;
 
@@ -869,7 +844,7 @@ HospitalStaff.viewAllApprovedDischargeRequests = async (hospitalStaffId) => {
       WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0
     `;
     const hospitalResult = await dbQuery(staffHospitalQuery, [hospitalStaffId]);
-    
+
     if (hospitalResult.length === 0) {
       throw new Error("Hospital staff not found or not active");
     }

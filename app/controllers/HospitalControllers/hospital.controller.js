@@ -44,12 +44,12 @@ exports.register = async (req, res) => {
 
     // Check and manipulate hospitalAadhar if present
     if (hospitalData.hospitalAadhar) {
-        hospitalData.hospitalAadhar = hospitalData.hospitalAadhar.replace(/\s/g, '');
+      hospitalData.hospitalAadhar = hospitalData.hospitalAadhar.replace(/\s/g, '');
     }
 
     // Check and manipulate hospitalMobile if present
     if (hospitalData.hospitalMobile) {
-        hospitalData.hospitalMobile = hospitalData.hospitalMobile.replace(/\s/g, '');
+      hospitalData.hospitalMobile = hospitalData.hospitalMobile.replace(/\s/g, '');
     }
 
     const validationResults = validateHospitalRegistration(hospitalData, hospitalImageFile);
@@ -2304,7 +2304,7 @@ exports.addNews = async (req, res) => {
           try {
             const imageUrl = await uploadFileToS3(
               newsImageFile.buffer,
-              newsImageFile.originalname, 
+              newsImageFile.originalname,
               newsImageFile.mimetype
             );
 

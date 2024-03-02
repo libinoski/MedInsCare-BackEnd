@@ -130,31 +130,31 @@ InsuranceProvider.login = async (email, password) => {
   const query = "SELECT * FROM Insurance_Providers WHERE insuranceProviderEmail = ? AND isActive = 1 AND deleteStatus = 0  AND isSuspended = 0";
 
   try {
-      const result = await dbQuery(query, [email]);
+    const result = await dbQuery(query, [email]);
 
-      if (result.length === 0) {
-          throw new Error("Insurance provider not found");
-      }
+    if (result.length === 0) {
+      throw new Error("Insurance provider not found");
+    }
 
-      const insuranceProvider = result[0];
+    const insuranceProvider = result[0];
 
-      if (insuranceProvider.isApproved !== 1) {
-          throw new Error("Please wait for approval");
-      }
+    if (insuranceProvider.isApproved !== 1) {
+      throw new Error("Please wait for approval");
+    }
 
-      const isMatch = await promisify(bcrypt.compare)(
-          password,
-          insuranceProvider.insuranceProviderPassword
-      );
+    const isMatch = await promisify(bcrypt.compare)(
+      password,
+      insuranceProvider.insuranceProviderPassword
+    );
 
-      if (!isMatch) {
-          throw new Error("Wrong password");
-      }
+    if (!isMatch) {
+      throw new Error("Wrong password");
+    }
 
-      return insuranceProvider;
+    return insuranceProvider;
   } catch (error) {
-      console.error("Error during insurance provider login:", error);
-      throw error;
+    console.error("Error during insurance provider login:", error);
+    throw error;
   }
 };
 
@@ -165,19 +165,19 @@ InsuranceProvider.login = async (email, password) => {
 //
 // INSURANCE PROVIDER CHANGE PASSWORD
 InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newPassword) => {
-  const checkInsuranceProviderQuery =
-    "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
+  const checkProviderQuery =
+    "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isActive = 1 AND isSuspended = 0";
 
   try {
-    const selectRes = await dbQuery(checkInsuranceProviderQuery, [insuranceProviderId]);
+    const selectRes = await dbQuery(checkProviderQuery, [insuranceProviderId]);
     if (selectRes.length === 0) {
       throw new Error("Insurance provider not found");
     }
 
-    const insuranceProvider = selectRes[0];
+    const provider = selectRes[0];
     const isMatch = await promisify(bcrypt.compare)(
       oldPassword,
-      insuranceProvider.insuranceProviderPassword
+      provider.insuranceProviderPassword
     );
 
     if (!isMatch) {
@@ -192,9 +192,9 @@ InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newP
                 updatedDate = CURRENT_DATE(),
                 deleteStatus = 0,
                 isActive = 1,
-                isnuranceProviderPassword = ?,
+                insuranceProviderPassword = ?,
                 passwordUpdateStatus = 1
-            WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0
+            WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isActive = 1
         `;
 
     const updatePasswordValues = [hashedNewPassword, insuranceProviderId];
@@ -202,7 +202,7 @@ InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newP
     await dbQuery(updatePasswordQuery, updatePasswordValues);
 
     console.log(
-      "Insurance provider password updated successfully for hospitalId:",
+      "Insurance provider password updated successfully for insuranceProviderId:",
       insuranceProviderId
     );
     return { message: "Password updated successfully" };
@@ -217,7 +217,7 @@ InsuranceProvider.changePassword = async (insuranceProviderId, oldPassword, newP
 //
 //
 // INSURANCE PROVIDER CHANGE ID PROOF IMAGE
-InsuranceProvider.changeIdProofImage = async (insuranceProviderId,newIdProofImageFilename) => {
+InsuranceProvider.changeIdProofImage = async (insuranceProviderId, newIdProofImageFilename) => {
   const verifyQuery = `
         SELECT insuranceProviderId
         FROM Insurance_Providers
@@ -544,7 +544,7 @@ InsuranceProvider.viewAllClients = async (insuranceProviderId) => {
 
   try {
     const clients = await dbQuery(query, [insuranceProviderId]);
-    
+
     if (clients.length === 0) {
       throw new Error("No clients found for this insurance provider.");
     }
@@ -566,7 +566,7 @@ InsuranceProvider.viewAllClients = async (insuranceProviderId) => {
         title: client.packageTitle,
         details: client.packageDetails,
         amount: client.packageAmount,
-        duration: client.packageDuration 
+        duration: client.packageDuration
       },
       hospitalDetails: {
         name: client.hospitalName,
@@ -622,7 +622,7 @@ InsuranceProvider.viewOneClient = async (clientId, insuranceProviderId) => {
 
   try {
     const client = await dbQuery(query, [clientId, insuranceProviderId]);
-    
+
     if (client.length === 0) {
       throw new Error("Client not found for this insurance provider.");
     }

@@ -142,7 +142,7 @@ const Client = function (client) {
 //
 //
 //
-const Review = function(review) {
+const Review = function (review) {
     this.reviewId = review.reviewId;
     this.hospitalId = review.hospitalId;
     this.insuranceProviderId = review.insuranceProviderId;
@@ -152,31 +152,23 @@ const Review = function(review) {
     this.isActive = review.isActive;
     this.deleteStatus = review.deleteStatus;
 };
-
+//
+//
+//
+//
 // PATIENT LOGIN
 Patient.login = async (email, password) => {
-    const query = `
-          SELECT P.*, H.isActive AS hospitalIsActive, H.deleteStatus AS hospitalDeleteStatus
-          FROM Patients P
-          JOIN Hospitals H ON P.hospitalId = H.hospitalId
-          WHERE P.patientEmail = ? AND P.isActive = 1 AND H.deleteStatus = 0
-      `;
+    const query = "SELECT * FROM Patients WHERE patientEmail = ? AND isActive = 1 AND deleteStatus = 0 ";
+
     try {
         const result = await dbQuery(query, [email]);
 
         if (result.length === 0) {
-            throw new Error("Patient not found");
+            throw new Error("Insurance provider not found");
         }
 
         const patient = result[0];
 
-        if (!patient.hospitalIsActive) {
-            throw new Error("The associated hospital is not active");
-        }
-
-        if (patient.hospitalDeleteStatus !== 0) {
-            throw new Error("The associated hospital is deleted");
-        }
 
         const isMatch = await promisify(bcrypt.compare)(
             password,
@@ -184,11 +176,12 @@ Patient.login = async (email, password) => {
         );
 
         if (!isMatch) {
-            throw new Error("Invalid password");
+            throw new Error("Wrong password");
         }
 
         return patient;
     } catch (error) {
+        console.error("Error during patient login:", error);
         throw error;
     }
 };
@@ -199,7 +192,7 @@ Patient.login = async (email, password) => {
 // PATIENT CHANGE PASSWORD
 Patient.changePassword = async (patientId, oldPassword, newPassword) => {
     const checkPatientQuery =
-        "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1";
+        "SELECT * FROM Patients WHERE patientId = ? AND deleteStatus = 0 AND isActive = 1";
 
     try {
         const selectRes = await dbQuery(checkPatientQuery, [patientId]);
@@ -227,7 +220,7 @@ Patient.changePassword = async (patientId, oldPassword, newPassword) => {
                   isActive = 1,
                   patientPassword = ?,
                   passwordUpdateStatus = 1
-              WHERE patientId = ? AND isActive = 1
+              WHERE patientId = ? AND deleteStatus = 0 AND isActive = 1
           `;
 
         const updatePasswordValues = [hashedNewPassword, patientId];
@@ -243,6 +236,7 @@ Patient.changePassword = async (patientId, oldPassword, newPassword) => {
         throw error;
     }
 };
+
 //
 //
 //
@@ -820,7 +814,7 @@ Patient.searchInsuranceProviders = async (patientId, searchQuery) => {
 //
 //
 // PATIENT REVIEW ONE INSURANCE PROVIDER
-Patient.reviewOneInsuranceProvider = async function(hospitalId, insuranceProviderId, patientId, reviewContent) {
+Patient.reviewOneInsuranceProvider = async function (hospitalId, insuranceProviderId, patientId, reviewContent) {
     try {
         // Validate hospital
         const hospitalExistsQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";

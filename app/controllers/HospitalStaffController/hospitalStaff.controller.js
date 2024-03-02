@@ -28,41 +28,40 @@ const s3Client = new S3Client({
 exports.login = async (req, res) => {
   const { hospitalStaffEmail, hospitalStaffPassword } = req.body;
 
-  const emailValidation = dataValidator.isValidEmail(hospitalStaffEmail);
-  const passwordValidation = dataValidator.isValidPassword(
-    hospitalStaffPassword
-  );
+  function validateHospitalStaffLogin() {
+    const validationResults = {
+      isValid: true,
+      errors: {},
+    };
 
-  const validationResults = {
-    isValid: true,
-    errors: {},
-  };
+    // Validate email
+    const emailValidation = dataValidator.isValidEmail(hospitalStaffEmail);
+    if (!emailValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalStaffEmail"] = [emailValidation.message];
+    }
 
-  if (!passwordValidation.isValid) {
-    validationResults.isValid = false;
-    validationResults.errors["hospitalStaffPassword"] = [
-      passwordValidation.message,
-    ];
+    // Validate password
+    const passwordValidation = dataValidator.isValidPassword(hospitalStaffPassword);
+    if (!passwordValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["hospitalStaffPassword"] = [passwordValidation.message];
+    }
+
+    return validationResults;
   }
 
-  if (!emailValidation.isValid) {
-    validationResults.isValid = false;
-    validationResults.errors["hospitalStaffEmail"] = [emailValidation.message];
-  }
-
+  const validationResults = validateHospitalStaffLogin();
   if (!validationResults.isValid) {
     return res.status(400).json({
-      status: "Validation failed",
-      message: "Invalid input data",
-      results: validationResults.errors,
+      status: "failed",
+      message: "Validation failed",
+      results: validationResults.errors
     });
   }
 
   try {
-    const hospitalStaff = await HospitalStaff.login(
-      hospitalStaffEmail,
-      hospitalStaffPassword
-    );
+    const hospitalStaff = await HospitalStaff.login(hospitalStaffEmail, hospitalStaffPassword);
 
     const token = jwt.sign(
       {
@@ -74,30 +73,26 @@ exports.login = async (req, res) => {
     );
 
     return res.status(200).json({
-      status: "Success",
+      status: "success",
       message: "Login successful",
       data: { token, hospitalStaff },
     });
   } catch (error) {
-    if (
-      error.message === "Hospital staff not found" ||
-      error.message === "The associated hospital is not active" ||
-      error.message === "The associated hospital is deleted" ||
-      error.message === "Wrong password"
-    ) {
+    console.error("Error during hospital staff login:", error);
+
+    if (error.message === "Hospital staff not found" || error.message === "Wrong password") {
       return res.status(422).json({
-        status: "Failure",
-        message: "Authentication failed",
-        error: error.message,
-      });
-    } else {
-      console.error("Error during hospital staff login:", error);
-      return res.status(500).json({
-        status: "Error",
-        message: "Internal server error",
-        details: "An internal server error occurred during login",
+        status: "failed",
+        message: "Login failed",
+        error: error.message
       });
     }
+
+    return res.status(500).json({
+      status: "failed",
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 //
@@ -106,140 +101,113 @@ exports.login = async (req, res) => {
 //
 // HOSPITAL STAFF CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
-  try {
-    const token = req.headers.token;
-    const { hospitalStaffId, oldPassword, newPassword } = req.body;
+  const token = req.headers.token;
+  const { hospitalStaffId, oldPassword, newPassword } = req.body;
 
-    // Check if token is missing
-    if (!token) {
-      return res.status(401).json({
-        status: "failed",
-        message: "Token is missing"
-      });
-    }
+  // Check if token is missing
+  if (!token) {
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
+  }
 
-    // Check if hospitalStaffId is missing
-    if (!hospitalStaffId) {
-      return res.status(400).json({
-        status: "failed",
-        results: "Hospital Staff ID is missing"
-      });
-    }
+  // Check if hospitalId is missing
+  if (!hospitalStaffId) {
+    return res.status(401).json({
+      status: "failed",
+      message: "Hospital staff ID is missing"
+    });
+  }
 
-    // Verify the token
-    jwt.verify(
-      token,
-      process.env.JWT_SECRET_KEY_HOSPITAL_STAFF,
-      async (err, decoded) => {
-        if (err) {
-          if (err.name === "JsonWebTokenError") {
-            return res.status(401).json({
-              status: "failed",
-              message: "Invalid token",
-              error: "Token verification failed",
-            });
-          } else if (err.name === "TokenExpiredError") {
-            return res.status(401).json({
-              status: "failed",
-              message: "Token has expired"
-            });
-          } else {
-            console.error("Error changing staff password:", err);
-            return res.status(403).json({
-              status: "failed",
-              message: "Unauthorized access"
-            });
-          }
-        }
-
-        // Check if decoded token matches hospitalStaffId from request body
-        if (decoded.hospitalStaffId != hospitalStaffId) {
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET_KEY_HOSPITAL_STAFF,
+    async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
           return res.status(403).json({
             status: "failed",
-            message: "Unauthorized access"
+            message: "Invalid token"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "failed",
+            message: "Token has expired"
           });
         }
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
+      }
 
-        // Validate the password data
-        function validateHospitalStaffChangePassword(passwordData) {
+      if (decoded.hospitalStaffId != hospitalStaffId) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Unauthorized access"
+        });
+      }
+
+      try {
+        function validateHospitalStaffChangePassword() {
           const validationResults = {
             isValid: true,
             errors: {},
           };
 
-          const passwordValidation = dataValidator.isValidPassword(
-            passwordData.oldPassword
-          );
+          // Validate old password
+          const passwordValidation = dataValidator.isValidPassword(oldPassword);
           if (!passwordValidation.isValid) {
             validationResults.isValid = false;
-            validationResults.errors["oldPassword"] =
-              [passwordValidation.message];
+            validationResults.errors["oldPassword"] = [passwordValidation.message];
           }
 
-          const newPasswordValidation = dataValidator.isValidPassword(
-            passwordData.newPassword
-          );
+          // Validate new password
+          const newPasswordValidation = dataValidator.isValidPassword(newPassword);
           if (!newPasswordValidation.isValid) {
             validationResults.isValid = false;
-            validationResults.errors["newPassword"] =
-              [newPasswordValidation.message];
+            validationResults.errors["newPassword"] = [newPasswordValidation.message];
           }
 
           return validationResults;
         }
 
-        const validationResults = validateHospitalStaffChangePassword({
-          oldPassword,
-          newPassword,
-        });
-
+        const validationResults = validateHospitalStaffChangePassword();
         if (!validationResults.isValid) {
           return res.status(400).json({
             status: "failed",
             message: "Validation failed",
-            results: validationResults.errors,
+            results: validationResults.errors
           });
         }
 
-        // Change password
-        try {
-          await HospitalStaff.changePassword(
-            hospitalStaffId,
-            oldPassword,
-            newPassword
-          );
-          return res.status(200).json({
-            status: "success",
-            message: "Password changed successfully",
+        await HospitalStaff.changePassword(hospitalId, oldPassword, newPassword);
+        return res.status(200).json({
+          status: "success",
+          message: "Password changed successfully"
+        });
+      } catch (error) {
+        if (
+          error.message === "Hospital staff not found" ||
+          error.message === "Incorrect old password"
+        ) {
+          return res.status(422).json({
+            status: "failed",
+            message: "Password change failed",
+            error: error.message
           });
-        } catch (error) {
-          if (
-            error.message === "Staff not found" ||
-            error.message === "Invalid old password"
-          ) {
-            return res.status(422).json({
-              status: "failed",
-              error: error.message
-            });
-          } else {
-            console.error("Error changing staff password:", error);
-            return res.status(500).json({
-              status: "error",
-              message: "Failed to change password",
-              error: error.message,
-            });
-          }
+        } else {
+          console.error("Error changing hospital staff password:", error);
+          return res.status(500).json({
+            status: "failed",
+            message: "Internal server error",
+            error: error.message
+          });
         }
       }
-    );
-  } catch (error) {
-    console.error("Error changing staff password:", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Failed to change password",
-      error: error.message,
-    });
-  }
+    }
+  );
 };
 //
 //

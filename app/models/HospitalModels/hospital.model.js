@@ -332,7 +332,7 @@ Hospital.registerStaff = async (newHospitalStaff) => {
       "SELECT * FROM Hospital_Staffs WHERE hospitalStaffAadhar=? AND deleteStatus=0 AND isSuspended = 0";
     const checkEmailQuery =
       "SELECT * FROM Hospital_Staffs WHERE hospitalStaffEmail=? AND deleteStatus=0 AND isSuspended = 0";
-    
+
     // Check if hospitalId exists and is active
     const hospitalResult = await dbQuery(checkHospitalQuery, [newHospitalStaff.hospitalId]);
     if (hospitalResult.length === 0) {
@@ -367,7 +367,7 @@ Hospital.registerStaff = async (newHospitalStaff) => {
     const insertQuery = "INSERT INTO Hospital_Staffs SET ?";
     const insertRes = await dbQuery(insertQuery, newHospitalStaff);
 
-    const insertedStaff = {hospitalStaffId: insertRes.insertId, ...newHospitalStaff };
+    const insertedStaff = { hospitalStaffId: insertRes.insertId, ...newHospitalStaff };
     return insertedStaff;
   } catch (error) {
     throw error;
@@ -671,7 +671,7 @@ Hospital.viewOneStaff = async (hospitalStaffId, hospitalId) => {
       throw new Error("Hospital Staff not found");
     }
 
-    return staffDetails[0]; 
+    return staffDetails[0];
   } catch (error) {
     console.error("Error viewing hospital staff:", error);
     throw error;
@@ -842,7 +842,7 @@ Hospital.deleteNews = async (hospitalNewsId, hospitalId) => {
 //
 //
 // HOSPITAL UPDATE NEWS
-Hospital.updateNews = async (hospitalNewsId,hospitalId,updatedHospitalNews) => {
+Hospital.updateNews = async (hospitalNewsId, hospitalId, updatedHospitalNews) => {
   try {
     const checkHospitalQuery =
       "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
@@ -1135,7 +1135,7 @@ Hospital.searchInsuranceProviders = async (hospitalId, searchQuery) => {
         AND isActive = 1 
         AND deleteStatus = 0
     `;
-    
+
     const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
 
     if (hospitalCheckResult.length === 0) {
@@ -1366,7 +1366,7 @@ Hospital.sendNotificationToInsuranceProvider = async (hospitalId, insuranceProvi
 // HOSPITAL VIEW ALL PATIENTS
 Hospital.viewAllPatients = async (hospitalId) => {
   try {
-      const query = `
+    const query = `
           SELECT 
               p.patientId, 
               p.hospitalId, 
@@ -1389,19 +1389,19 @@ Hospital.viewAllPatients = async (hospitalId) => {
           ORDER BY p.patientRegisteredDate DESC;
       `;
 
-      // Execute the query with the provided hospitalId
-      const result = await dbQuery(query, [hospitalId]);
+    // Execute the query with the provided hospitalId
+    const result = await dbQuery(query, [hospitalId]);
 
-      // Check if any patients were found
-      if (result.length === 0) {
-          throw new Error("No patients found for this hospital.");
-      }
+    // Check if any patients were found
+    if (result.length === 0) {
+      throw new Error("No patients found for this hospital.");
+    }
 
-      // Return the list of patients
-      return result;
+    // Return the list of patients
+    return result;
   } catch (error) {
-      console.error("Error viewing all patients for hospital:", error);
-      throw error;
+    console.error("Error viewing all patients for hospital:", error);
+    throw error;
   }
 };
 //
@@ -1483,7 +1483,7 @@ Hospital.searchPatients = async (hospitalId, searchQuery) => {
   try {
     const checkHospitalQuery =
       "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
-    
+
     const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
 
     if (hospitalCheckResult.length === 0) {
