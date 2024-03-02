@@ -41,8 +41,16 @@ exports.register = async (req, res) => {
 
     const hospitalData = req.body;
     const hospitalImageFile = req.file;
-    hospitalData.hospitalAadhar = hospitalData.hospitalAadhar.replace(/\s/g, '');
-    hospitalData.hospitalMobile = hospitalData.hospitalMobile.replace(/\s/g, '');
+
+    // Check and manipulate hospitalAadhar if present
+    if (hospitalData.hospitalAadhar) {
+        hospitalData.hospitalAadhar = hospitalData.hospitalAadhar.replace(/\s/g, '');
+    }
+
+    // Check and manipulate hospitalMobile if present
+    if (hospitalData.hospitalMobile) {
+        hospitalData.hospitalMobile = hospitalData.hospitalMobile.replace(/\s/g, '');
+    }
 
     const validationResults = validateHospitalRegistration(hospitalData, hospitalImageFile);
 
@@ -203,6 +211,7 @@ exports.register = async (req, res) => {
     return validationResults;
   }
 };
+
 //
 //
 //
@@ -862,9 +871,14 @@ exports.registerStaff = async (req, res) => {
         });
       }
 
+
       // Perform data cleanup
-      hospitalStaffData.hospitalStaffAadhar = hospitalStaffData.hospitalStaffAadhar ? hospitalStaffData.hospitalStaffAadhar.replace(/\s/g, '') : '';
-      hospitalStaffData.hospitalStaffMobile = hospitalStaffData.hospitalStaffMobile ? hospitalStaffData.hospitalStaffMobile.replace(/\s/g, '') : '';
+      if (hospitalStaffData && hospitalStaffData.hospitalStaffAadhar) {
+        hospitalStaffData.hospitalStaffAadhar = hospitalStaffData.hospitalStaffAadhar.replace(/\s/g, '');
+      }
+      if (hospitalStaffData && hospitalStaffData.hospitalStaffMobile) {
+        hospitalStaffData.hospitalStaffMobile = hospitalStaffData.hospitalStaffMobile.replace(/\s/g, '');
+      }
 
       const idProofImageFile = req.files["hospitalStaffIdProofImage"] ? req.files["hospitalStaffIdProofImage"][0] : null;
       const profileImageFile = req.files["hospitalStaffProfileImage"] ? req.files["hospitalStaffProfileImage"][0] : null;

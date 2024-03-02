@@ -196,21 +196,23 @@ function isValidImageWith1MBConstraint(file) {
 
 // Verify the validity of a mobile number.
 function isValidMobileNumber(mobileNumber) {
-    // Remove spaces from the mobile number
-    const sanitizedMobileNumber = mobileNumber.replace(/\s/g, '');
-
-    if (isNullOrUndefined(sanitizedMobileNumber) || sanitizedMobileNumber === "") {
+    // Ensure mobileNumber is not null or undefined
+    if (isNullOrUndefined(mobileNumber) || mobileNumber.trim() === "") {
         return {
             isValid: false,
             message: "Mobile number cannot be empty."
         };
     }
 
+    // Remove spaces from the mobile number
+    const sanitizedMobileNumber = mobileNumber.replace(/\s/g, '');
+
     return {
         isValid: /^\+91[6-9]\d{9}$|^[6-9]\d{9}$/.test(sanitizedMobileNumber),
         message: "Invalid Mobile Number"
     };
 }
+
 
 
 
@@ -304,21 +306,23 @@ function isValidName(name) {
 
 // Verify the legitimacy of an Aadhar number.
 function isValidAadharNumber(aadharNumber) {
-    // Remove spaces from the Aadhar number
-    const sanitizedAadharNumber = aadharNumber.replace(/\s/g, '');
-
-    if (isNullOrUndefined(sanitizedAadharNumber) || sanitizedAadharNumber === "") {
+    // Ensure aadharNumber is not null or undefined
+    if (isNullOrUndefined(aadharNumber) || aadharNumber.trim() === "") {
         return {
             isValid: false,
             message: "Aadhar number cannot be empty."
         };
     }
 
+    // Remove spaces from the Aadhar number
+    const sanitizedAadharNumber = aadharNumber.replace(/\s/g, '');
+
     return {
         isValid: /^\d{12}$/.test(sanitizedAadharNumber),
         message: "Aadhar Number must be of 12 digits"
     };
 }
+
 
 
 

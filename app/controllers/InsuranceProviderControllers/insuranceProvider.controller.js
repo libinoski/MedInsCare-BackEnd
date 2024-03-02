@@ -74,8 +74,13 @@ exports.register = async (req, res) => {
       const insuranceProviderData = req.body;
   
       // Perform data cleanup
-      insuranceProviderData.insuranceProviderAadhar = insuranceProviderData.insuranceProviderAadhar ? insuranceProviderData.insuranceProviderAadhar.replace(/\s/g, '') : '';
-      insuranceProviderData.insuranceProviderMobile = insuranceProviderData.insuranceProviderMobile ? insuranceProviderData.insuranceProviderMobile.replace(/\s/g, '') : '';
+      if (insuranceProviderData || insuranceProviderData.insuranceProviderAadhar) {
+        insuranceProviderData.insuranceProviderAadhar = insuranceProviderData.insuranceProviderAadhar.replace(/\s/g, '');
+      }
+      if (insuranceProviderData || insuranceProviderData.insuranceProviderMobile) {
+        insuranceProviderData.insuranceProviderMobile = insuranceProviderData.insuranceProviderMobile.replace(/\s/g, '');
+      }
+
   
       const idProofImageFile = req.files["insuranceProviderIdProofImage"] ? req.files["insuranceProviderIdProofImage"][0] : null;
       const profileImageFile = req.files["insuranceProviderProfileImage"] ? req.files["insuranceProviderProfileImage"][0] : null;

@@ -1276,8 +1276,13 @@ exports.registerPatient = async (req, res) => {
         });
       }
 
-      patientData.patientAadhar = patientData.patientAadhar ? patientData.patientAadhar.replace(/\s/g, '') : '';
-      patientData.patientMobile = patientData.patientMobile ? patientData.patientMobile.replace(/\s/g, '') : '';
+      // Clean up patient data
+      if (patientData.patientAadhar) {
+        patientData.patientAadhar = patientData.patientAadhar.replace(/\s/g, '');
+      }
+      if (patientData.patientMobile) {
+        patientData.patientMobile = patientData.patientMobile.replace(/\s/g, '');
+      }
 
       const idProofImageFile = req.files["patientIdProofImage"] ? req.files["patientIdProofImage"][0] : null;
       const profileImageFile = req.files["patientProfileImage"] ? req.files["patientProfileImage"][0] : null;
