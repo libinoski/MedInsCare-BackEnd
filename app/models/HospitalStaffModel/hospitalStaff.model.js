@@ -503,11 +503,9 @@ HospitalStaff.viewOneNotification = async (notificationId, hospitalStaffId) => {
 HospitalStaff.registerPatient = async (newPatientData) => {
   try {
     const staffHospitalQuery = `
-      SELECT hs.hospitalStaffId, hs.hospitalId
-      FROM Hospital_Staffs hs
-      JOIN Hospitals h ON hs.hospitalId = h.hospitalId
-      WHERE hs.hospitalStaffId = ? AND hs.deleteStatus = 0 AND hs.isSuspended = 0
-      AND h.isActive = 1 AND h.deleteStatus = 0
+      SELECT hospitalId
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND deleteStatus = 0 AND isSuspended = 0
     `;
 
     const staffHospitalResult = await dbQuery(staffHospitalQuery, [newPatientData.hospitalStaffId]);
@@ -537,6 +535,9 @@ HospitalStaff.registerPatient = async (newPatientData) => {
     const hashedPassword = await promisify(bcrypt.hash)(newPatientData.patientPassword, 10);
     newPatientData.patientPassword = hashedPassword;
 
+    // Assign hospitalId from staffHospitalResult to newPatientData
+    newPatientData.hospitalId = staffHospitalResult[0].hospitalId;
+
     const insertQuery = "INSERT INTO Patients SET ?";
     const insertRes = await dbQuery(insertQuery, newPatientData);
 
@@ -546,6 +547,7 @@ HospitalStaff.registerPatient = async (newPatientData) => {
     throw error;
   }
 };
+
 //
 //
 //

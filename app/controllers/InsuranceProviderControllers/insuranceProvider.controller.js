@@ -448,7 +448,7 @@ exports.changePassword = async (req, res) => {
 //
 //
 //
-// INSURANCE PROVIDER UPDATE ID PROOF IMAGE
+// INSURANCE PROVIDER CHANGE ID PROOF IMAGE
 exports.changeIdProofImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -483,56 +483,35 @@ exports.changeIdProofImage = async (req, res) => {
 
       const uploadIdProofImage = multer({
         storage: multer.memoryStorage(),
-      }).single("InsuranceProviderIdProofImage");
+      }).single("insuranceProviderIdProofImage");
 
       uploadIdProofImage(req, res, async (err) => {
-        if (err || !req.file) {
+        if (err) {
           return res.status(400).json({
             status: "error",
             message: "File upload failed",
-            results: err ? err.message : "File is required.",
+            results: err.message,
           });
         }
 
         const { insuranceProviderId } = req.body;
 
         if (!insuranceProviderId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(401).json({
             status: "failed",
-            message: "Insurance provider id is missing",
+            message: "Insurance Provider ID is missing",
           });
         }
 
         if (decoded.insuranceProviderId != insuranceProviderId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(403).json({
             status: "failed",
             message: "Unauthorized access"
           });
         }
 
-        function validateIdProofImage(file) {
-          const validationResults = {
-            isValid: true,
-            errors: {},
-          };
-
-          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-          if (!imageValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["insuranceProviderProofImage"] = [imageValidation.message];
-          }
-
-          return validationResults;
-        }
-
         const validationResults = validateIdProofImage(req.file);
         if (!validationResults.isValid) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(400).json({
             status: "error",
             message: "Invalid image file",
@@ -540,54 +519,43 @@ exports.changeIdProofImage = async (req, res) => {
           });
         }
 
-        async function uploadFileToS3(fileBuffer, fileName, mimeType) {
-          try {
-            const uploadParams = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `insuranceProviderImages/${fileName}`,
-              Body: fileBuffer,
-              ACL: "public-read",
-              ContentType: mimeType,
-            };
-
-            const command = new PutObjectCommand(uploadParams);
-            const result = await s3Client.send(command);
-            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-          } catch (error) {
-            throw error;
-          }
-        }
-
         try {
-          const idProofFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
-
-          await InsuranceProvider.changeIdProofImage(
-            insuranceProviderId,
-            idProofFileLocation
-          );
+          const idProofFileLocation = await uploadFileToS3(req.file);
+          await InsuranceProvider.changeIdProofImage(insuranceProviderId, idProofFileLocation);
           return res.status(200).json({
             status: "success",
             message: "ID proof image updated successfully",
           });
         } catch (error) {
-          // Delete the uploaded image from S3
-          const key = req.file.originalname.split('/').pop(); // Extracting the filename from the URL
-          const params = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `insuranceProviderImages/${key}` // Constructing the full key
-          };
-          await s3Client.send(new DeleteObjectCommand(params));
+          console.error("Error updating ID proof image:", error);
 
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
+          // Delete uploaded image from S3 if it exists
+          if (req.file) {
+            const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `insuranceProviderImages/${s3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(params));
+            } catch (s3Error) {
+              console.error("Error deleting image from S3:", s3Error);
+            }
+          }
 
+          // Delete uploaded image from local storage
+          if (req.file && req.file.path) {
+            fs.unlinkSync(req.file.path);
+          }
+
+          // Handle specific errors
           if (error.message === "Insurance provider not found") {
             return res.status(422).json({
-              status: "error",
+              status: "failed",
+              message: "Insurance provider not found",
               error: error.message
             });
           } else {
-            console.error("Error updating ID proof image:", error);
             return res.status(500).json({
               status: "error",
               message: "Failed to update ID proof image",
@@ -596,14 +564,50 @@ exports.changeIdProofImage = async (req, res) => {
           }
         }
       });
+
+      async function uploadFileToS3(file) {
+        const fileName = `insuranceProviderIdProof-${Date.now()}${path.extname(file.originalname)}`;
+        const uploadParams = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `insuranceProviderImages/${fileName}`,
+          Body: file.buffer,
+          ACL: "public-read",
+          ContentType: file.mimetype,
+        };
+
+        const command = new PutObjectCommand(uploadParams);
+        await s3Client.send(command);
+        return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+      }
+
+      function validateIdProofImage(file) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        if (!file) {
+          validationResults.isValid = false;
+          validationResults.errors["insuranceProviderIdProofImage"] = ["ID proof image is required"];
+        } else {
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+          if (!imageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["insuranceProviderIdProofImage"] = [imageValidation.message];
+          }
+        }
+
+        return validationResults;
+      }
     }
   );
 };
+
 //
 //
 //
 //
-// INSURANCE PROVIDER UPDATE PROFILE IMAGE
+// INSURANCE PROVIDER CHANGE PROFILE IMAGE
 exports.changeProfileImage = async (req, res) => {
   const token = req.headers.token;
 
@@ -638,22 +642,20 @@ exports.changeProfileImage = async (req, res) => {
 
       const uploadProfileImage = multer({
         storage: multer.memoryStorage(),
-      }).single("insuranceProviderProfileImage");
+      }).single("profileImage");
 
       uploadProfileImage(req, res, async (err) => {
-        if (err || !req.file) {
+        if (err) {
           return res.status(400).json({
             status: "error",
             message: "File upload failed",
-            results: err ? err.message : "File is required.",
+            results: err.message,
           });
         }
 
         const { insuranceProviderId } = req.body;
 
         if (!insuranceProviderId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(401).json({
             status: "failed",
             message: "Insurance Provider ID is missing",
@@ -661,33 +663,14 @@ exports.changeProfileImage = async (req, res) => {
         }
 
         if (decoded.insuranceProviderId != insuranceProviderId) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(403).json({
             status: "failed",
             message: "Unauthorized access"
           });
         }
 
-        function validateProfileImage(file) {
-          const validationResults = {
-            isValid: true,
-            errors: {},
-          };
-
-          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-          if (!imageValidation.isValid) {
-            validationResults.isValid = false;
-            validationResults.errors["insuranceProviderProfileImage"] = [imageValidation.message];
-          }
-
-          return validationResults;
-        }
-
         const validationResults = validateProfileImage(req.file);
         if (!validationResults.isValid) {
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
           return res.status(400).json({
             status: "error",
             message: "Invalid image file",
@@ -695,54 +678,43 @@ exports.changeProfileImage = async (req, res) => {
           });
         }
 
-        async function uploadFileToS3(fileBuffer, fileName, mimeType) {
-          try {
-            const uploadParams = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `insuranceProviderImages/${fileName}`,
-              Body: fileBuffer,
-              ACL: "public-read",
-              ContentType: mimeType,
-            };
-
-            const command = new PutObjectCommand(uploadParams);
-            const result = await s3Client.send(command);
-            return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-          } catch (error) {
-            throw error;
-          }
-        }
-
         try {
-          const profileImageFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
-
-          await InsuranceProvider.changeProfileImage(
-            insuranceProviderId,
-            profileImageFileLocation
-          );
+          const profileImageLocation = await uploadFileToS3(req.file);
+          await InsuranceProvider.changeProfileImage(insuranceProviderId, profileImageLocation);
           return res.status(200).json({
             status: "success",
             message: "Profile image updated successfully",
           });
         } catch (error) {
-          // Delete the uploaded image from S3
-          const key = profileImageFileLocation.split('/').pop(); // Extracting the filename from the URL
-          const params = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `insuranceProviderImages/${key}` // Constructing the full key
-          };
-          await s3Client.send(new DeleteObjectCommand(params));
+          console.error("Error updating profile image:", error);
 
-          // Delete the uploaded file
-          fs.unlinkSync(req.file.path);
+          // Delete uploaded image from S3 if it exists
+          if (req.file) {
+            const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+            const params = {
+              Bucket: process.env.S3_BUCKET_NAME,
+              Key: `insuranceProviderImages/${s3Key}`
+            };
+            try {
+              await s3Client.send(new DeleteObjectCommand(params));
+            } catch (s3Error) {
+              console.error("Error deleting image from S3:", s3Error);
+            }
+          }
 
+          // Delete uploaded image from local storage
+          if (req.file && req.file.path) {
+            fs.unlinkSync(req.file.path);
+          }
+
+          // Handle specific errors
           if (error.message === "Insurance provider not found") {
             return res.status(422).json({
-              status: "error",
+              status: "failed",
+              message: "Insurance provider not found",
               error: error.message
             });
           } else {
-            console.error("Error updating profile image:", error);
             return res.status(500).json({
               status: "error",
               message: "Failed to update profile image",
@@ -751,9 +723,45 @@ exports.changeProfileImage = async (req, res) => {
           }
         }
       });
+
+      async function uploadFileToS3(file) {
+        const fileName = `insuranceProviderProfile-${Date.now()}${path.extname(file.originalname)}`;
+        const uploadParams = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: `insuranceProviderImages/${fileName}`,
+          Body: file.buffer,
+          ACL: "public-read",
+          ContentType: file.mimetype,
+        };
+
+        const command = new PutObjectCommand(uploadParams);
+        await s3Client.send(command);
+        return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+      }
+
+      function validateProfileImage(file) {
+        const validationResults = {
+          isValid: true,
+          errors: {},
+        };
+
+        if (!file) {
+          validationResults.isValid = false;
+          validationResults.errors["profileImage"] = ["Profile image is required"];
+        } else {
+          const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+          if (!imageValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["profileImage"] = [imageValidation.message];
+          }
+        }
+
+        return validationResults;
+      }
     }
   );
 };
+
 //
 //
 //

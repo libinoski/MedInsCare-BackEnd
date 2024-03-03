@@ -221,7 +221,7 @@ InsuranceProvider.changeIdProofImage = async (insuranceProviderId, newIdProofIma
   const verifyQuery = `
         SELECT insuranceProviderId
         FROM Insurance_Providers
-        WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0
+        WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isSuspended = 0
     `;
 
   try {
@@ -247,6 +247,7 @@ InsuranceProvider.changeIdProofImage = async (insuranceProviderId, newIdProofIma
     throw error;
   }
 };
+
 //
 //
 //
@@ -258,7 +259,7 @@ InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileIma
   const verifyQuery = `
         SELECT insuranceProviderId
         FROM Insurance_Providers
-        WHERE insuranceProviderId = ? AND AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0
+        WHERE insuranceProviderId = ? AND deleteStatus = 0 AND isSuspended = 0
     `;
 
   try {
@@ -292,7 +293,7 @@ InsuranceProvider.changeProfileImage = async (insuranceProviderId, newProfileIma
 // INSURANCE PROVIDER VIEW PROFILE
 InsuranceProvider.viewProfile = async (insuranceProviderId) => {
   const query =
-    "SELECT * FROM Hospital_Staffs WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
+    "SELECT * FROM Insurance_Providers WHERE insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0 AND isApproved = 1 AND isSuspended = 0";
   try {
     const result = await dbQuery(query, [insuranceProviderId]);
 

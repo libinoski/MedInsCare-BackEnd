@@ -182,7 +182,7 @@ exports.changePassword = async (req, res) => {
           });
         }
 
-        await HospitalStaff.changePassword(hospitalId, oldPassword, newPassword);
+        await HospitalStaff.changePassword(hospitalStaffId, oldPassword, newPassword);
         return res.status(200).json({
           status: "success",
           message: "Password changed successfully"
