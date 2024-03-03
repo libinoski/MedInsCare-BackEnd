@@ -211,7 +211,6 @@ exports.register = async (req, res) => {
     return validationResults;
   }
 };
-
 //
 //
 //
