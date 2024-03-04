@@ -746,55 +746,94 @@ HospitalStaff.sendNotificationToPatient = async (hospitalStaffId, patientId, not
     throw error;
   }
 };
-
-
-
-
+//
+//
+//
+//
+//
 // HOSPITAL STAFF  ADD MEDICAL RECORD
-HospitalStaff.addMedicalRecord = async (patientId, hospitalStaffId, medicalRecordData) => {
+HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetails) => {
   try {
-    // Fetch patient details
-    const patientQuery = `
-      SELECT P.hospitalId, P.patientName, P.patientEmail, P.admissionDate,
-             H.hospitalName, H.hospitalEmail,
-             HS.hospitalStaffName, HS.hospitalStaffEmail
-      FROM Patients P
-      JOIN Hospitals H ON P.hospitalId = H.hospitalId
-      JOIN Hospital_Staffs HS ON P.hospitalStaffId = HS.hospitalStaffId
-      WHERE P.patientId = ? AND P.dischargeStatus = 0
+    // Validate hospitalStaffId presence and its status
+    const staffValidationQuery = `
+      SELECT hospitalId, hospitalStaffName, hospitalStaffEmail
+      FROM Hospital_Staffs
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0
     `;
-    const patientDetails = await dbQuery(patientQuery, [patientId]);
+    const staffResults = await dbQuery(staffValidationQuery, [hospitalStaffId]);
+    if (staffResults.length === 0) {
+      throw new Error("Invalid or inactive hospital staff ID provided.");
+    }
+    const { hospitalId, hospitalStaffName, hospitalStaffEmail } = staffResults[0];
 
-    if (patientDetails.length === 0) {
-      throw new Error("Patient not found or not admitted");
+    // Validate patientId presence and its status
+    const patientValidationQuery = `
+      SELECT patientName, patientEmail, patientRegisteredDate
+      FROM Patients
+      WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+    const patientResults = await dbQuery(patientValidationQuery, [patientId, hospitalId]);
+    if (patientResults.length === 0) {
+      throw new Error("Invalid patient ID provided or patient does not belong to the same hospital.");
+    }
+    const { patientName, patientEmail, patientRegisteredDate } = patientResults[0];
+
+    // Retrieve hospital details
+    const hospitalQuery = `
+      SELECT hospitalName, hospitalEmail 
+      FROM Hospitals 
+      WHERE hospitalId = ? 
+        AND isActive = 1 
+        AND deleteStatus = 0
+    `;
+    const hospitalResult = await dbQuery(hospitalQuery, [hospitalId]);
+    if (hospitalResult.length === 0) {
+      throw new Error("Hospital not found or not active.");
+    }
+    const { hospitalName, hospitalEmail } = hospitalResult[0];
+
+    // Construct the record with provided details and fetched data
+    const { staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber } = recordDetails;
+
+    // Insert new medical record without dateGenerated since it's set by the database
+    const insertQuery = `
+      INSERT INTO Medical_Records (
+        patientId, hospitalId, hospitalStaffId, patientName, patientEmail,
+        staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber,
+        hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail,
+        patientRegisteredDate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const insertValues = [
+      patientId, hospitalId, hospitalStaffId, patientName, patientEmail,
+      staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber,
+      hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail,
+      patientRegisteredDate
+    ];
+    const insertResult = await dbQuery(insertQuery, insertValues);
+
+    // Retrieve the inserted record from the database
+    const insertedRecordQuery = `
+      SELECT *
+      FROM Medical_Records
+      WHERE recordId = ?
+    `;
+    const insertedRecord = await dbQuery(insertedRecordQuery, [insertResult.insertId]);
+
+    if (insertedRecord.length === 0) {
+      throw new Error("Failed to retrieve the inserted record.");
     }
 
-    const { hospitalId, patientName, patientEmail, admissionDate, hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail } = patientDetails[0];
-
-    // Include fetched values in medicalRecordData
-    const medicalRecord = {
-      patientId: patientId,
-      hospitalId: hospitalId,
-      hospitalStaffId: hospitalStaffId,
-      patientName: patientName,
-      patientEmail: patientEmail,
-      admissionDate: admissionDate,
-      hospitalName: hospitalName,
-      hospitalEmail: hospitalEmail,
-      hospitalStaffName: hospitalStaffName,
-      hospitalStaffEmail: hospitalStaffEmail,
-      ...medicalRecordData
-    };
-
-    // Insert medical record into the database
-    const insertQuery = "INSERT INTO Medical_Records SET ?";
-    const insertRes = await dbQuery(insertQuery, medicalRecord);
-
-    return { recordId: insertRes.insertId, ...medicalRecord };
+    return insertedRecord[0]; // Return the inserted record
   } catch (error) {
+    console.error("Error adding medical record:", error);
     throw error;
   }
 };
+
+
+
+
 //
 //
 //

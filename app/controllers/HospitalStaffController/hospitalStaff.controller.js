@@ -1790,6 +1790,12 @@ exports.sendNotificationToPatient = async (req, res) => {
           });
         }
       }
+      if (decoded.hospitalStaffId != hospitalStaffId) {
+        return res.status(403).json({
+          status: "error",
+          message: "Unauthorized access"
+        });
+      }
 
 
       // Function to validate notification message
@@ -1852,157 +1858,111 @@ exports.sendNotificationToPatient = async (req, res) => {
     });
   }
 };
-
-
-
+//
+//
+//
+//
+//
 // HOSPITAL STAFF ADD MEDICAL RECORD
 exports.addMedicalRecord = async (req, res) => {
-  const token = req.headers.token;
-  const { patientId, hospitalStaffId, staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber } = req.body;
+  try {
+    const token = req.headers.token;
+    const { hospitalStaffId, patientId, staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber } = req.body;
 
-  // Check if patientId is missing
-  if (!patientId) {
-    return res.status(401).json({
-      status: "failed",
-      message: "Patient ID is missing"
-    });
-  }
-
-  // Check if hospitalStaffId is missing
-  if (!hospitalStaffId) {
-    return res.status(401).json({
-      status: "failed",
-      message: "Hospital Staff ID is missing"
-    });
-  }
-
-  if (!token) {
-    return res.status(403).json({
-      status: "failed",
-      message: "Token is missing"
-    });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
-    if (err) {
-      if (err.name === "JsonWebTokenError") {
-        return res.status(403).json({
-          status: "error",
-          message: "Invalid token"
-        });
-      } else if (err.name === "TokenExpiredError") {
-        return res.status(403).json({
-          status: "error",
-          message: "Token has expired"
-        });
-      } else {
-        return res.status(403).json({
-          status: "failed",
-          message: "Unauthorized access"
-        });
-      }
-    }
-
-    if (decoded.hospitalStaffId != hospitalStaffId) {
+    if (!token) {
       return res.status(403).json({
         status: "error",
-        message: "Unauthorized access"
+        message: "Token is missing"
       });
     }
 
-    const uploadReportImage = multer({
-      storage: multer.memoryStorage(),
-    }).single("reportImage");
+    if (!hospitalStaffId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Hospital Staff ID is missing"
+      });
+    }
+    
+    if (!patientId) {
+      return res.status(401).json({
+        status: "error",
+        message: "Patient ID is missing"
+      });
+    }
 
-    uploadReportImage(req, res, async (err) => {
-      if (err || !req.file) {
-        return res.status(400).json({
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL_STAFF, async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Invalid or missing token"
+          });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            status: "error",
+            message: "Token has expired"
+          });
+        } else {
+          return res.status(403).json({
+            status: "error",
+            message: "Unauthorized access"
+          });
+        }
+      }
+      if (decoded.hospitalStaffId != hospitalStaffId) {
+        return res.status(403).json({
           status: "error",
-          message: "File upload failed",
-          results: err ? err.message : "Report image is required.",
+          message: "Unauthorized access"
         });
       }
 
-      // Validation
-      const validationResults = validateMedicalRecordData({ staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, reportImage: req.file });
+      const recordDetails = {
+        staffReport,
+        medicineAndLabCosts,
+        byStanderName,
+        byStanderMobileNumber
+      };
+
+      const validationResults = validateMedicalRecordData(recordDetails);
 
       if (!validationResults.isValid) {
-        if (req.file && req.file.path) {
-          fs.unlinkSync(req.file.path);
-        }
         return res.status(400).json({
-          status: "failed",
+          status: "error",
           message: "Validation failed",
-          results: validationResults.errors,
+          results: validationResults.errors
         });
       }
 
       try {
-        const reportImageFileLocation = await uploadFileToS3(req.file.buffer, req.file.originalname, req.file.mimetype);
-
-        const medicalRecordData = {
-          staffReport,
-          reportImage: reportImageFileLocation,
-          medicineAndLabCosts,
-          byStanderName,
-          byStanderMobileNumber
-        };
-
-        const record = await HospitalStaff.addMedicalRecord(patientId, hospitalStaffId, medicalRecordData);
-
-        // If record addition is successful, delete the temporary file
-        if (req.file && req.file.path) {
-          fs.unlinkSync(req.file.path);
-        }
-
+        const medicalRecordDetails = await HospitalStaff.addMedicalRecord(hospitalStaffId, patientId, recordDetails);
         return res.status(200).json({
           status: "success",
           message: "Medical record added successfully",
-          data: record,
+          data: medicalRecordDetails
         });
       } catch (error) {
-        // Handle errors from the model
         console.error("Error adding medical record:", error);
-        if (error.message === "Patient not found or not admitted") {
-          return res.status(422).json({
-            status: "failed",
-            message: error.message
-          });
-        } else {
-          // Delete the uploaded file from S3 in case of model error
-          if (req.file && req.file.originalname) {
-            const s3Key = req.file.originalname.split('/').pop(); // Extracting file name from S3 key
-            const params = {
-              Bucket: process.env.S3_BUCKET_NAME,
-              Key: `medicalReports/${s3Key}`
-            };
-            try {
-              await s3Client.send(new DeleteObjectCommand(params));
-            } catch (s3Error) {
-              console.error("Error deleting report image from S3:", s3Error);
-            }
-          }
-          return res.status(422).json({
-            status: "error",
-            message: "Model error during record addition",
-            error: error.message,
-          });
-        }
+        return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message
+        });
       }
     });
-  });
+  } catch (error) {
+    console.error("Error in addMedicalRecord controller:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message
+    });
+  }
 
   function validateMedicalRecordData(data) {
     const validationResults = {
       isValid: true,
-      errors: {},
+      errors: {}
     };
-
-    const reportImageValidation = dataValidator.isValidImageWith1MBConstraint(data.reportImage);
-    if (!reportImageValidation.isValid) {
-      validationResults.isValid = false;
-      validationResults.errors["reportImage"] = [reportImageValidation.message];
-    }
 
     const staffReportValidation = dataValidator.isValidText(data.staffReport);
     if (!staffReportValidation.isValid) {
@@ -2030,25 +1990,12 @@ exports.addMedicalRecord = async (req, res) => {
 
     return validationResults;
   }
-
-  async function uploadFileToS3(fileBuffer, fileName, mimeType) {
-    try {
-      const uploadParams = {
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: `medicalReports/${fileName}`,
-        Body: fileBuffer,
-        ACL: "public-read",
-        ContentType: mimeType,
-      };
-
-      const command = new PutObjectCommand(uploadParams);
-      const result = await s3Client.send(command);
-      return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-    } catch (error) {
-      throw error;
-    }
-  }
 };
+
+
+
+
+
 //
 //
 //
