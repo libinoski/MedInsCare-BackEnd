@@ -1468,7 +1468,7 @@ exports.viewAllInsurancePackagesOfOneProvider = async (req, res) => {
 // PATIENT VIEW ONE INSURANCE PACKAGE OF ONE PROVIDER
 exports.viewOneInsurancePackage = async (req, res) => {
     const token = req.headers.token;
-    const { patientId, insurancePackageId } = req.body;
+    const { patientId, packageId } = req.body;
 
     // Check if token is missing
     if (!token) {
@@ -1487,7 +1487,7 @@ exports.viewOneInsurancePackage = async (req, res) => {
     }
 
     // Check if insurancePackageId is missing
-    if (!insurancePackageId) {
+    if (!packageId) {
         return res.status(401).json({
             status: "failed",
             message: "Insurance Package ID is missing"
@@ -1529,7 +1529,7 @@ exports.viewOneInsurancePackage = async (req, res) => {
 
                 // Token is valid, proceed to fetch the insurance package
                 try {
-                    const insurancePackage = await Patient.viewOneInsurancePackage(patientId, insurancePackageId);
+                    const insurancePackage = await Patient.viewOneInsurancePackage(patientId, packageId);
                     return res.status(200).json({
                         status: "success",
                         message: "Insurance Package retrieved successfully",

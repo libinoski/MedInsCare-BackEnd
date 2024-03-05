@@ -1368,7 +1368,7 @@ exports.viewAllClients = async (req, res) => {
     // Verifying the token
     jwt.verify(
       token,
-      process.env.JWT_SECRET_KEY_INSURANCE,
+      process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {
@@ -1540,23 +1540,6 @@ exports.viewOneClient = async (req, res) => {
 exports.addInsurancePackage = async (req, res) => {
   try {
     const token = req.headers.token;
-    const {
-      insuranceProviderId,
-      packageTitle,
-      packageDetails,
-      packageDuration,
-      packageAmount,
-      packageTAndC
-    } = req.body;
-
-    // Check if insuranceProviderId is missing
-    if (!insuranceProviderId) {
-      return res.status(401).json({
-        status: "failed",
-        message: "Insurance Provider ID is missing"
-      });
-    }
-
     // Check if token is missing
     if (!token) {
       return res.status(403).json({
@@ -1564,6 +1547,8 @@ exports.addInsurancePackage = async (req, res) => {
         message: "Token is missing"
       });
     }
+
+
 
     // Verify the token
     jwt.verify(token, process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER, async (err, decoded) => {
@@ -1588,13 +1573,7 @@ exports.addInsurancePackage = async (req, res) => {
         }
       }
 
-      // Check if decoded token matches insuranceProviderId from request body
-      if (decoded.insuranceProviderId != insuranceProviderId) {
-        return res.status(403).json({
-          status: "failed",
-          message: "Unauthorized access"
-        });
-      }
+
 
       const uploadPackageImage = multer({ storage: multer.memoryStorage() }).single("packageImage");
 
@@ -1613,7 +1592,32 @@ exports.addInsurancePackage = async (req, res) => {
             message: "Package image is required."
           });
         }
+        const {
+          insuranceProviderId,
+          packageTitle,
+          packageDetails,
+          packageDuration,
+          packageAmount,
+          packageTAndC
+        } = req.body;
 
+        // Check if insuranceProviderId is missing
+        if (!insuranceProviderId) {
+          return res.status(401).json({
+            status: "failed",
+            message: "Insurance Provider ID is missing"
+          });
+        }
+
+
+
+        // Check if decoded token matches insuranceProviderId from request body
+        if (decoded.insuranceProviderId != insuranceProviderId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
         // Validate package data
         const validationResults = validateMedicalPackageData({
           packageTitle,

@@ -658,7 +658,7 @@ Patient.viewAllInsurancePackagesOfOneProvider = async (patientId, insuranceProvi
 //
 //
 // PATIENT VIEW ONE INSURANCE PACKAGE OF ONE PROVIDER
-Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
+Patient.viewOneInsurancePackage = async (patientId, packageId) => {
     try {
         // Fetch hospitalId associated with the patientId
         const hospitalIdQuery = "SELECT hospitalId FROM Patients WHERE patientId = ? AND isActive = 1";
@@ -671,8 +671,8 @@ Patient.viewOneInsurancePackage = async (patientId, insurancePackageId) => {
         const hospitalId = hospitalIdResult[0].hospitalId;
 
         const viewInsurancePackageQuery =
-            "SELECT * FROM Insurance_Packages WHERE hospitalId = ? AND insurancePackageId = ? AND isActive = 1";
-        const insurancePackage = await dbQuery(viewInsurancePackageQuery, [hospitalId, insurancePackageId]);
+            "SELECT * FROM Insurance_Packages WHERE hospitalId = ? AND packageId = ? AND isActive = 1";
+        const insurancePackage = await dbQuery(viewInsurancePackageQuery, [hospitalId, packageId]);
 
         if (insurancePackage.length === 0) {
             throw new Error("Insurance package not found");

@@ -15,7 +15,7 @@
 3. [Insurance Providers and Packages]
    - View all insurance providers available to the patient route: `POST http://localhost:1313/api/patient/patientViewAllInsuranceProviders`
    - View details of a specific insurance provider route: `POST http://localhost:1313/api/patient/patientViewOneInsuranceProvider`
-   - View all insurance packages available to the patient route: `POST http://localhost:1313/api/patient/patientViewAllInsurancePackages`
+   - View all insurance packages available to the patient route: `POST http://localhost:1313/api/mic/patient/patientViewAllInsurancePackages`
    - View details of a specific insurance package route: `POST http://localhost:1313/api/patient/patientViewOneInsurancePackage`
    - Choose an insurance package route: `POST http://localhost:1313/api/patient/patientChooseInsurancePackage`
    - Patient search insurance providers route: `POST http://localhost:1313/api/patient/patientSearchInsuranceProviders`
