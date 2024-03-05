@@ -34,7 +34,7 @@ Sure, here are the API URLs with `http://localhost:1313/api` prepended:
    - Approve one insurance provider: `POST http://localhost:1313/api/mic/hospital/approveOneInsuranceProvider`
    - Delete one insurance provider: `POST http://localhost:1313/api/mic/hospital/deleteOneInsuranceProvider`
    - View all insurance providers: `POST http://localhost:1313/api/mic/hospital/viewAllInsuranceProviders`
-   - View one insurance provider: `POST http://localhost:1313/api/mic/hospital/viewOneInsuranceProvider`
+   - View one insurance provider: `POST http://localhost:1313/api/mic/hospital/ViewOneInsuranceProvider`
    - Hospital search insurance providers: `POST http://localhost:1313/api/mic/hospital/searchInsuranceProviders`
    - Hospital suspend insurance provider: `POST http://localhost:1313/api/mic/hospital/suspendInsuranceProvider`
    - Hospital unsuspend insurance provider: `POST http://localhost:1313/api/mic/hospital/unsuspendInsuranceProvider`

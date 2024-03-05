@@ -123,6 +123,8 @@ router.post("/sendNotificationToInsuranceProvider", HospitalController.sendNotif
 // -------------------
 // Patient Management
 // -------------------
+// Route to update one patient
+router.post("/hospitalUpdatePatient", HospitalController.updatePatient);
 
 // Route to view all patients
 router.post("/viewAllPatients", HospitalController.viewAllPatients);

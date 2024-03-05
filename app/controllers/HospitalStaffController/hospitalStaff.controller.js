@@ -1970,7 +1970,7 @@ exports.addMedicalRecord = async (req, res) => {
       validationResults.errors["staffReport"] = [staffReportValidation.message];
     }
 
-    const medicineAndLabCostsValidation = dataValidator.isValidCost(data.medicineAndLabCosts);
+    const medicineAndLabCostsValidation = dataValidator.isValidContent(data.medicineAndLabCosts);
     if (!medicineAndLabCostsValidation.isValid) {
       validationResults.isValid = false;
       validationResults.errors["medicineAndLabCosts"] = [medicineAndLabCostsValidation.message];
@@ -1991,11 +1991,6 @@ exports.addMedicalRecord = async (req, res) => {
     return validationResults;
   }
 };
-
-
-
-
-
 //
 //
 //

@@ -44,7 +44,7 @@ const Patient = function (patient) {
   this.patientGender = patient.patientGender;
   this.patientAge = patient.patientAge;
   this.patientPassword = patient.patientPassword;
-  this.patientRegisteredDate = patient.patientRegisteredDate;
+  this.registeredDate = patient.registeredDate;
   this.updatedDate = patient.updatedDate;
   this.patientDischargedDate = patient.patientDischargedDate;
   this.passwordUpdateStatus = patient.passwordUpdateStatus;
@@ -72,7 +72,7 @@ const MedicalRecord = function (record) {
   this.hospitalEmail = record.hospitalEmail;
   this.hospitalStaffName = record.hospitalStaffName;
   this.hospitalStaffEmail = record.hospitalStaffEmail;
-  this.admissionDate = record.admissionDate;
+  this.registeredDate = record.registeredDate;
   this.dateGenerated = record.dateGenerated;
   this.updateStatus = record.updateStatus;
   this.updatedDate = record.updatedDate;
@@ -768,7 +768,7 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
 
     // Validate patientId presence and its status
     const patientValidationQuery = `
-      SELECT patientName, patientEmail, patientRegisteredDate
+      SELECT patientName, patientEmail, registeredDate
       FROM Patients
       WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0
     `;
@@ -776,7 +776,7 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
     if (patientResults.length === 0) {
       throw new Error("Invalid patient ID provided or patient does not belong to the same hospital.");
     }
-    const { patientName, patientEmail, patientRegisteredDate } = patientResults[0];
+    const { patientName, patientEmail, registeredDate } = patientResults[0]; // Retrieve registeredDate
 
     // Retrieve hospital details
     const hospitalQuery = `
@@ -801,14 +801,13 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
         patientId, hospitalId, hospitalStaffId, patientName, patientEmail,
         staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber,
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail,
-        patientRegisteredDate
+        registeredDate
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const insertValues = [
       patientId, hospitalId, hospitalStaffId, patientName, patientEmail,
       staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber,
-      hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail,
-      patientRegisteredDate
+      hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, registeredDate
     ];
     const insertResult = await dbQuery(insertQuery, insertValues);
 
@@ -834,6 +833,7 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
 
 
 
+
 //
 //
 //
@@ -843,8 +843,7 @@ HospitalStaff.requestDischarge = async (hospitalStaffId, patientId, message) => 
   try {
     const checkStaffQuery = `
       SELECT hospitalId FROM Hospital_Staffs
-      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspened = 0
-    `;
+      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0`;
     const staffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
     if (staffResult.length === 0) {
       throw new Error("Hospital staff not found or not active");
@@ -872,6 +871,7 @@ HospitalStaff.requestDischarge = async (hospitalStaffId, patientId, message) => 
     throw error;
   }
 };
+
 //
 //
 //

@@ -1363,6 +1363,86 @@ Hospital.sendNotificationToInsuranceProvider = async (hospitalId, insuranceProvi
 //
 //
 //
+// HOSPITAL UPDATE PATIENT
+Hospital.updatePatient = async (updatedPatient) => {
+  try {
+    const checkHospitalQuery =
+      "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const checkHospitalRes = await dbQuery(checkHospitalQuery, [
+      updatedPatient.hospitalId,
+    ]);
+
+    if (checkHospitalRes.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    const checkPatientQuery =
+      "SELECT * FROM Patients WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const checkPatientRes = await dbQuery(checkPatientQuery, [
+      updatedPatient.patientId,
+      updatedPatient.hospitalId,
+    ]);
+
+    if (checkPatientRes.length === 0) {
+      throw new Error("Patient not found");
+    }
+
+    const checkAadharQuery =
+      "SELECT * FROM Patients WHERE patientAadhar = ? AND hospitalId = ? AND patientId != ? AND isActive = 1 AND deleteStatus = 0";
+    const aadharRes = await dbQuery(checkAadharQuery, [
+      updatedPatient.patientAadhar,
+      updatedPatient.hospitalId,
+      updatedPatient.patientId,
+    ]);
+
+    if (aadharRes.length > 0) {
+      throw new Error("Aadhar number already exists");
+    }
+
+    const updateQuery = `
+            UPDATE Patients 
+            SET 
+                patientName = ?,
+                patientMobile = ?,
+                patientAddress = ?,
+                patientAadhar = ?,
+                updateStatus = 1,
+                updatedDate = CURRENT_DATE()
+            WHERE patientId = ? AND hospitalId = ? AND deleteStatus = 0
+        `;
+
+    const updateValues = [
+      updatedPatient.patientName,
+      updatedPatient.patientMobile,
+      updatedPatient.patientAddress,
+      updatedPatient.patientAadhar,
+      updatedPatient.patientId,
+      updatedPatient.hospitalId,
+    ];
+
+    await dbQuery(updateQuery, updateValues);
+
+    const fetchUpdatedDataQuery =
+      "SELECT * FROM Patients WHERE patientId = ? AND hospitalId = ?";
+    const fetchRes = await dbQuery(fetchUpdatedDataQuery, [
+      updatedPatient.patientId,
+      updatedPatient.hospitalId,
+    ]);
+
+    return {
+      message: "Patient updated successfully",
+      updatedData: fetchRes[0],
+    };
+  } catch (error) {
+    console.error("Error updating patient:", error);
+    throw error;
+  }
+};
+
+//
+//
+//
+//
 // HOSPITAL VIEW ALL PATIENTS
 Hospital.viewAllPatients = async (hospitalId) => {
   try {
@@ -1380,13 +1460,13 @@ Hospital.viewAllPatients = async (hospitalId) => {
               p.patientAddress, 
               p.patientGender, 
               p.patientAge, 
-              p.patientRegisteredDate,
+              p.registeredDate,
               hs.hospitalStaffName,
               hs.hospitalStaffProfileImage
           FROM Patients p
           JOIN Hospital_Staffs hs ON p.hospitalStaffId = hs.hospitalStaffId
           WHERE p.hospitalId = ? AND p.isActive = 1
-          ORDER BY p.patientRegisteredDate DESC;
+          ORDER BY p.registeredDate DESC;
       `;
 
     // Execute the query with the provided hospitalId
@@ -1425,7 +1505,7 @@ Hospital.viewOnePatient = async (patientId, hospitalId) => {
           patientAddress, 
           patientGender, 
           patientAge, 
-          patientRegisteredDate
+          registeredDate
       FROM Patients
       WHERE patientId = ? AND hospitalId = ? AND isActive = 1;
     `;
@@ -1445,6 +1525,7 @@ Hospital.viewOnePatient = async (patientId, hospitalId) => {
     throw error;
   }
 };
+
 //
 //
 //
@@ -1752,9 +1833,9 @@ Hospital.viewAllMedicalRecords = async (hospitalId) => {
     const viewAllMedicalRecordsQuery = `
       SELECT 
         recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
-        staffReport, reportImage, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
+        staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
-        admissionDate, dateGenerated
+        registeredDate, dateGenerated
       FROM Medical_Records
       WHERE hospitalId = ? AND deleteStatus = 0
       ORDER BY dateGenerated DESC;`;
@@ -1792,9 +1873,9 @@ Hospital.viewOneMedicalRecord = async (hospitalId, recordId) => {
     const viewOneMedicalRecordQuery = `
       SELECT 
         recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
-        staffReport, reportImage, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
+        staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
-        admissionDate, dateGenerated
+        registeredDate, dateGenerated
       FROM Medical_Records
       WHERE recordId = ? AND hospitalId = ? AND deleteStatus = 0;`;
 
@@ -1838,9 +1919,9 @@ Hospital.viewAllMedicalRecordsOfOnePatient = async (hospitalId, patientId) => {
     const viewAllMedicalRecordsOfOnePatientQuery = `
       SELECT 
         recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
-        staffReport, reportImage, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
+        staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
-        admissionDate, dateGenerated
+        registeredDate, dateGenerated
       FROM Medical_Records
       WHERE patientId = ? AND hospitalId = ? AND deleteStatus = 0
       ORDER BY dateGenerated DESC;`;

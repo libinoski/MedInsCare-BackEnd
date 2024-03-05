@@ -7,6 +7,15 @@ const dataValidator = require("../../config/data.validate");
 const fs = require("fs");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); // Add this line
 require("dotenv").config();
+const nodemailer = require('nodemailer');
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
 //
 //
 //
@@ -90,6 +99,21 @@ exports.register = async (req, res) => {
 
     try {
       const registrationResponse = await Hospital.register(hospitalData, hospitalImageFile);
+
+      // Send email to registered staff
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: hospitalData.hospitalEmail,
+        subject: 'Welcome to Our Hospital',
+        text: `Dear ${hospitalData.hospitalName},\n\nThank you for registering with us. Your login credentials are:\nEmail: ${hospitalData.hospitalEmail}\nPassword: ${hospitalData.hospitalPassword}\n\nBest regards,\nYour Hospital Team`
+      };
+      
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (error) {
+        console.error("Error sending email:", error);
+      }
+      
       return res.status(200).json({
         status: "success",
         message: "Hospital registered successfully",
@@ -4022,6 +4046,190 @@ exports.viewOneSuspendedInsuranceProvider = async (req, res) => {
 //
 //
 //
+//HOSPITAL UPDATE PATIENT
+exports.updatePatient = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const {
+      patientId,
+      hospitalId,
+      patientName,
+      patientMobile,
+      patientAddress,
+      patientAadhar,
+    } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Check if patientId is missing
+    if (!patientId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Patient ID is missing"
+      });
+    }
+
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          }
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        if (decoded.hospitalId != hospitalId) {
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        const updatedPatient = {
+          patientId,
+          hospitalId,
+          patientName,
+          patientMobile,
+          patientAddress,
+          patientAadhar,
+        };
+
+        function validatePatientUpdate() {
+          const validationResults = {
+            isValid: true,
+            errors: {},
+          };
+
+          // Validate patient name
+          const nameValidation = dataValidator.isValidName(
+            updatedPatient.patientName
+          );
+          if (!nameValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["patientName"] = [
+              nameValidation.message,
+            ];
+          }
+
+          // Validate patient mobile number
+          const mobileValidation = dataValidator.isValidMobileNumber(
+            updatedPatient.patientMobile
+          );
+          if (!mobileValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["patientMobile"] = [
+              mobileValidation.message,
+            ];
+          }
+
+          // Validate patient address
+          const addressValidation = dataValidator.isValidAddress(
+            updatedPatient.patientAddress
+          );
+          if (!addressValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["patientAddress"] = [
+              addressValidation.message,
+            ];
+          }
+
+          // Validate patient aadhar number
+          const aadharValidation = dataValidator.isValidAadharNumber(
+            updatedPatient.patientAadhar
+          );
+          if (!aadharValidation.isValid) {
+            validationResults.isValid = false;
+            validationResults.errors["patientAadhar"] = [
+              aadharValidation.message,
+            ];
+          }
+
+          return validationResults;
+        }
+
+        const validationResults = validatePatientUpdate();
+
+        if (!validationResults.isValid) {
+          return res.status(400).json({
+            status: "error",
+            message: "Validation failed",
+            results: validationResults.errors,
+          });
+        }
+
+        try {
+          const updateResponse = await Hospital.updatePatient(
+            updatedPatient
+          );
+          return res.status(200).json({
+            status: "success",
+            message: "Patient updated successfully",
+            data: updateResponse.updatedData,
+          });
+        } catch (error) {
+          if (
+            error.message === "Hospital not found" ||
+            error.message === "Patient not found" ||
+            error.message === "Aadhar number already exists"
+          ) {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          } else {
+            return res.status(500).json({
+              status: "error",
+              message: "Internal server error",
+              error: error.message,
+            });
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error during update patient:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+//
+//
+//
+//
+//
+
+
+
 // HOSPITAL SEND NOTIFICATION TO INSURANCE PROVIDER
 exports.sendNotificationToInsuranceProvider = async (req, res) => {
   try {
