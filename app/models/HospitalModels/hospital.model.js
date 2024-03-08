@@ -1633,7 +1633,9 @@ Hospital.searchPatients = async (hospitalId, searchQuery) => {
         patientMobile, 
         patientAddress, 
         patientProfileImage, 
-        patientIdProofImage
+        patientIdProofImage,
+        admittedWard,
+        diagnosisOrDiseaseType
       FROM Patients 
       WHERE hospitalId = ? 
         AND deleteStatus = 0 

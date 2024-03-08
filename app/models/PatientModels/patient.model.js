@@ -691,51 +691,54 @@ Patient.viewOneInsurancePackage = async (patientId, packageId) => {
 // PATIENT CHOOSE ONE INSURANCE PACKAGE
 Patient.chooseOneInsurancePackage = async (patientId, packageId) => {
     try {
-        // Fetch hospitalId associated with the patientId
-        const hospitalIdQuery = `
-            SELECT hospitalId
-            FROM Patients
-            WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0 
+        // Fetch hospitalId, patientName, and patientEmail associated with the patientId
+        const patientInfoQuery = `
+            SELECT P.hospitalId, P.patientName, P.patientEmail, P.patientProfileImage, H.hospitalName, H.hospitalEmail
+            FROM Patients AS P
+            JOIN Hospitals AS H ON P.hospitalId = H.hospitalId
+            WHERE P.patientId = ? AND P.isActive = 1 AND P.deleteStatus = 0 
         `;
-        const hospitalIdResult = await dbQuery(hospitalIdQuery, [patientId]);
+        const patientInfoResult = await dbQuery(patientInfoQuery, [patientId]);
 
-        if (hospitalIdResult.length === 0) {
+        if (patientInfoResult.length === 0) {
             throw new Error("Patient not found");
         }
 
-        const hospitalId = hospitalIdResult[0].hospitalId;
+        const { hospitalId, patientName, patientEmail, patientProfileImage, hospitalName, hospitalEmail } = patientInfoResult[0];
 
-        // Fetch insuranceProviderId associated with the packageId
-        const insuranceProviderIdQuery = `
-            SELECT insuranceProviderId
-            FROM Insurance_Packages
-            WHERE packageId = ? AND hospitalId = ? AND isActive = 1
+        // Fetch insurance package details
+        const insurancePackageQuery = `
+            SELECT IP.insuranceProviderId, IP.packageTitle, IP.packageDetails, IP.packageImage, IP.packageDuration, IP.packageAmount
+            FROM Insurance_Packages AS IP
+            WHERE IP.packageId = ? AND IP.hospitalId = ? AND IP.isActive = 1
         `;
-        const insuranceProviderIdResult = await dbQuery(insuranceProviderIdQuery, [packageId, hospitalId]);
+        const insurancePackageResult = await dbQuery(insurancePackageQuery, [packageId, hospitalId]);
 
-        if (insuranceProviderIdResult.length === 0) {
+        if (insurancePackageResult.length === 0) {
             throw new Error("Insurance package not found for this hospital");
         }
 
-        const insuranceProviderId = insuranceProviderIdResult[0].insuranceProviderId;
+        const { insuranceProviderId, packageTitle, packageDetails, packageImage, packageDuration, packageAmount } = insurancePackageResult[0];
 
         // Insert into Clients table
         const insertClientQuery = `
-            INSERT INTO Clients (patientId, packageId, insuranceProviderId, hospitalId)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO Clients (patientId, clientName, clientEmail, clientProfileImage, packageId, insuranceProviderId, hospitalId, hospitalName, hospitalEmail, packageTitle, packageDetails, packageImage, packageDuration, packageAmount, isActive)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         `;
-        const insertResult = await dbQuery(insertClientQuery, [patientId, packageId, insuranceProviderId, hospitalId]);
+        const insertResult = await dbQuery(insertClientQuery, [patientId, patientName, patientEmail, patientProfileImage, packageId, insuranceProviderId, hospitalId, hospitalName, hospitalEmail, packageTitle, packageDetails, packageImage, packageDuration, packageAmount]);
 
         // Retrieve the generated clientId
         const clientId = insertResult.insertId;
 
-        // Return the clientId
-        return { clientId, patientId, packageId, insuranceProviderId, hospitalId };
+        // Return the clientId along with other details
+        return { clientId, patientId, patientName, patientEmail, patientProfileImage, packageId, insuranceProviderId, hospitalId, hospitalName, hospitalEmail, packageTitle, packageDetails, packageImage, packageDuration, packageAmount };
     } catch (error) {
         console.error("Error choosing insurance package:", error);
         throw error;
     }
 };
+
+
 //
 //
 //
@@ -822,18 +825,17 @@ Patient.reviewOneInsuranceProvider = async function (insuranceProviderId, patien
         if (providerResult.length === 0) throw new Error("Insurance Provider not found");
         const insuranceProviderName = providerResult[0].insuranceProviderName;
 
-
         // Fetch hospitalId associated with the patientId
-        const patientExistsQuery = "SELECT hospitalId, patientName FROM Patients WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0";
+        const patientExistsQuery = "SELECT hospitalId, patientName, patientProfileImage FROM Patients WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0";
         const patientResult = await dbQuery(patientExistsQuery, [patientId]);
         if (patientResult.length === 0) throw new Error("Patient not found");
         const hospitalId = patientResult[0].hospitalId;
         const patientName = patientResult[0].patientName;
-
+        const patientProfileImage = patientResult[0].patientProfileImage;
 
         // Insert review
-        const insertReviewQuery = "INSERT INTO Reviews (insuranceProviderId, patientId, reviewContent, hospitalId, sendDate, isActive, deleteStatus, patientName, insuranceProviderName) VALUES (?, ?, ?, ?, NOW(), 1, 0, ?, ?)";
-        const insertResult = await dbQuery(insertReviewQuery, [insuranceProviderId, patientId, reviewContent, hospitalId, patientName, insuranceProviderName]);
+        const insertReviewQuery = "INSERT INTO Reviews (insuranceProviderId, patientId, reviewContent, hospitalId, sendDate, isActive, deleteStatus, patientName, patientProfileImage, insuranceProviderName) VALUES (?, ?, ?, ?, NOW(), 1, 0, ?, ?, ?)";
+        const insertResult = await dbQuery(insertReviewQuery, [insuranceProviderId, patientId, reviewContent, hospitalId, patientName, patientProfileImage, insuranceProviderName]);
         const reviewId = insertResult.insertId;
 
         // Return the relevant review details
@@ -844,6 +846,7 @@ Patient.reviewOneInsuranceProvider = async function (insuranceProviderId, patien
             reviewContent: reviewContent,
             hospitalId: hospitalId,
             patientName: patientName,
+            patientProfileImage: patientProfileImage,
             insuranceProviderName: insuranceProviderName,
             sendDate: new Date().toISOString(),
         };
@@ -852,6 +855,7 @@ Patient.reviewOneInsuranceProvider = async function (insuranceProviderId, patien
         throw error;
     }
 };
+
 
 
 //

@@ -7,6 +7,17 @@ const fs = require("fs");
 const { HospitalStaff, MedicalRecord } = require("../../models/HospitalStaffModel/hospitalStaff.model");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
+const nodemailer = require('nodemailer');
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com', // Correct SMTP server host for Gmail
+  port: 587, // Common port for secure email submission
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 //
 //
 //
@@ -1308,6 +1319,43 @@ exports.registerPatient = async (req, res) => {
         patientData.patientProfileImage = profileImageFileLocation;
 
         const registrationResponse = await HospitalStaff.registerPatient(patientData);
+        // Setup email content
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: registrationResponse.patientEmail, // Assuming email is part of the response
+          subject: "Welcome to MedInsCare - Your Registration Details",
+          text: `Dear ${registrationResponse.patientName},
+
+Welcome to MedInsCare, your trusted partner in healthcare management.
+
+We are delighted to inform you that your registration process has been successfully completed. Below are your login details:
+Email: ${registrationResponse.patientEmail}
+Password: Pass@12345
+
+For security purposes, please ensure to change your password upon your initial login.
+
+MedInsCare is committed to providing you with easy access to your medical records, appointment scheduling, and personalized healthcare services.
+
+Should you have any inquiries or require assistance, please do not hesitate to contact us. Our dedicated support team is here to assist you every step of the way.
+
+Thank you for choosing MedInsCare. We are excited to embark on this journey together towards better health and wellness.
+
+Best regards,
+Libin Jacob
+Admin
+MedInsCare Team
+`,
+        };
+
+        // Send email
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending email: ", error);
+            // Optionally handle email sending error, e.g., log or notify admin
+          } else {
+            console.log("Email sent: " + info.response);
+          }
+        });
         return res.status(200).json({
           status: "success",
           message: "Patient registered successfully",
@@ -1398,7 +1446,7 @@ exports.registerPatient = async (req, res) => {
       validationResults.isValid = false;
       validationResults.errors["admittedWard"] = [wardValidation.message];
     }
-    const diseaseValidation  = dataValidator.isValidText(patientData.diagnosisOrDiseaseType	);
+    const diseaseValidation = dataValidator.isValidText(patientData.diagnosisOrDiseaseType);
     if (!diseaseValidation.isValid) {
       validationResults.isValid = false;
       validationResults.errors["diagnosisOrDiseaseType"] = [wardValidation.message];
@@ -1893,7 +1941,7 @@ exports.addMedicalRecord = async (req, res) => {
         message: "Hospital Staff ID is missing"
       });
     }
-    
+
     if (!patientId) {
       return res.status(401).json({
         status: "error",

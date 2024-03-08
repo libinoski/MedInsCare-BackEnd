@@ -509,38 +509,11 @@ InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientI
 // INSURANCE PROVIDER VIEW ALL CLIENTS
 InsuranceProvider.viewAllClients = async (insuranceProviderId) => {
   const query = `
-    SELECT 
-      c.clientId, 
-      c.patientId, 
-      c.packageId, 
-      c.insuranceProviderId, 
-      c.hospitalId,
-      p.patientName, 
-      p.patientEmail, 
-      p.patientAadhar, 
-      p.patientMobile, 
-      p.patientProfileImage,
-      ip.packageTitle, 
-      ip.packageDetails, 
-      ip.packageAmount,
-      ip.packageDuration,
-      h.hospitalName, 
-      h.hospitalEmail
-    FROM 
-      Clients c
-    INNER JOIN 
-      Patients p ON c.patientId = p.patientId
-    INNER JOIN 
-      Insurance_Packages ip ON c.packageId = ip.packageId
-    INNER JOIN 
-      Hospitals h ON c.hospitalId = h.hospitalId
-    WHERE 
-      c.insuranceProviderId = ?
-      AND p.isActive = 1 
-      AND ip.isActive = 1 
-      AND h.isActive = 1
-    ORDER BY 
-      c.clientId ASC;
+    SELECT *
+    FROM Clients
+    WHERE insuranceProviderId = ?
+      AND isActive = 1
+    ORDER BY clientId ASC;
   `;
 
   try {
@@ -550,35 +523,13 @@ InsuranceProvider.viewAllClients = async (insuranceProviderId) => {
       throw new Error("No clients found for this insurance provider.");
     }
 
-    return clients.map(client => ({
-      clientId: client.clientId,
-      patientId: client.patientId,
-      packageId: client.packageId,
-      insuranceProviderId: client.insuranceProviderId,
-      hospitalId: client.hospitalId,
-      patientDetails: {
-        name: client.patientName,
-        email: client.patientEmail,
-        aadhar: client.patientAadhar,
-        mobile: client.patientMobile,
-        profileImage: client.patientProfileImage,
-      },
-      packageDetails: {
-        title: client.packageTitle,
-        details: client.packageDetails,
-        amount: client.packageAmount,
-        duration: client.packageDuration
-      },
-      hospitalDetails: {
-        name: client.hospitalName,
-        email: client.hospitalEmail
-      }
-    }));
+    return clients;
   } catch (error) {
     console.error("Error viewing all clients for insurance provider:", error);
     throw error;
   }
 };
+
 //
 //
 //
@@ -586,39 +537,11 @@ InsuranceProvider.viewAllClients = async (insuranceProviderId) => {
 // INSURANCE PROVIDER VIEW ONE CLIENT
 InsuranceProvider.viewOneClient = async (clientId, insuranceProviderId) => {
   const query = `
-    SELECT 
-      c.clientId, 
-      c.patientId, 
-      c.packageId, 
-      c.insuranceProviderId, 
-      c.hospitalId,
-      p.patientName, 
-      p.patientEmail, 
-      p.patientAadhar, 
-      p.patientMobile, 
-      p.patientProfileImage,
-      ip.packageTitle, 
-      ip.packageDetails, 
-      ip.packageAmount,
-      ip.packageDuration,
-      h.hospitalName, 
-      h.hospitalEmail
-    FROM 
-      Clients c
-    INNER JOIN 
-      Patients p ON c.patientId = p.patientId
-    INNER JOIN 
-      Insurance_Packages ip ON c.packageId = ip.packageId
-    INNER JOIN 
-      Hospitals h ON c.hospitalId = h.hospitalId
-    WHERE 
-      c.clientId = ?
-      AND c.insuranceProviderId = ?
-      AND p.isActive = 1 
-      AND ip.isActive = 1 
-      AND h.isActive = 1
-    ORDER BY 
-      c.clientId ASC;
+    SELECT *
+    FROM Clients
+    WHERE clientId = ?
+      AND insuranceProviderId = ?
+      AND isActive = 1
   `;
 
   try {
@@ -628,36 +551,13 @@ InsuranceProvider.viewOneClient = async (clientId, insuranceProviderId) => {
       throw new Error("Client not found for this insurance provider.");
     }
 
-    // Map the result to a more structured format
-    return {
-      clientId: client[0].clientId,
-      patientId: client[0].patientId,
-      packageId: client[0].packageId,
-      insuranceProviderId: client[0].insuranceProviderId,
-      hospitalId: client[0].hospitalId,
-      patientDetails: {
-        name: client[0].patientName,
-        email: client[0].patientEmail,
-        aadhar: client[0].patientAadhar,
-        mobile: client[0].patientMobile,
-        profileImage: client[0].patientProfileImage,
-      },
-      packageDetails: {
-        title: client[0].packageTitle,
-        details: client[0].packageDetails,
-        amount: client[0].packageAmount,
-        duration: client[0].packageDuration
-      },
-      hospitalDetails: {
-        name: client[0].hospitalName,
-        email: client[0].hospitalEmail
-      }
-    };
+    return client[0];
   } catch (error) {
     console.error("Error viewing one client for insurance provider:", error);
     throw error;
   }
 };
+
 //
 //
 //

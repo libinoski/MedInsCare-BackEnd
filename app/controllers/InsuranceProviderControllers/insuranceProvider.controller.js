@@ -7,6 +7,17 @@ const fs = require("fs");
 const { InsuranceProvider } = require("../../models/InsuranceProviderModels/insuranceProvider.model");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
+const nodemailer = require('nodemailer');
+// Email transporter configuration
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com', // Correct SMTP server host for Gmail
+  port: 587, // Common port for secure email submission
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 //
 //
 //
@@ -1414,11 +1425,6 @@ exports.viewAllClients = async (req, res) => {
             });
           }
 
-          return res.status(500).json({
-            status: "error",
-            message: "Internal server error",
-            error: error.message,
-          });
         }
       }
     );
@@ -1468,7 +1474,7 @@ exports.viewOneClient = async (req, res) => {
     // Verifying the token
     jwt.verify(
       token,
-      process.env.JWT_SECRET_KEY_INSURANCE,
+      process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {

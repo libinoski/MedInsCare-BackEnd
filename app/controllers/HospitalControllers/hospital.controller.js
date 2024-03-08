@@ -8,12 +8,15 @@ const fs = require("fs");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3"); // Add this line
 require("dotenv").config();
 const nodemailer = require('nodemailer');
+// Email transporter configuration
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com', // Correct SMTP server host for Gmail
+  port: 587, // Common port for secure email submission
+  secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
 //
@@ -186,21 +189,39 @@ exports.register = async (req, res) => {
 
     try {
       const registrationResponse = await Hospital.register(hospitalData, hospitalImageFile);
-
-      // Send email to registered staff
+      // Setup email content
       const mailOptions = {
         from: process.env.EMAIL_USER,
-        to: hospitalData.hospitalEmail,
-        subject: 'Welcome to Our Hospital',
-        text: `Dear ${hospitalData.hospitalName},\n\nThank you for registering with us. Your login credentials are:\nEmail: ${hospitalData.hospitalEmail}\nPassword: ${hospitalData.hospitalPassword}\n\nBest regards,\nYour Hospital Team`
+        to: registrationResponse.hospitalEmail, // Assuming email is part of the response
+        subject: "Your Registration Details",
+        text: `Dear ${registrationResponse.hospitalName},
+      
+      Welcome to MedInsCare!
+      
+      Congratulations on successfully registering your hospital. With MedInsCare, you can efficiently manage staff, patients, and insurance providers all in one place.
+      
+      We're here to support you every step of the way. If you have any questions or need assistance, don't hesitate to reach out to our team.
+      
+      Thank you for choosing MedInsCare. Let's work together to provide exceptional healthcare services.
+      
+      Best regards,
+      Libin Jacob
+      Admin 
+      MedInsCare
+      `,
       };
       
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (error) {
-        console.error("Error sending email:", error);
-      }
-      
+
+      // Send email
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email: ", error);
+          // Optionally handle email sending error, e.g., log or notify admin
+        } else {
+          console.log("Email sent: " + info.response);
+        }
+      });
+
       return res.status(200).json({
         status: "success",
         message: "Hospital registered successfully",
@@ -1050,6 +1071,44 @@ exports.registerStaff = async (req, res) => {
 
         // Register staff in the hospital
         const registrationResponse = await Hospital.registerStaff(hospitalStaffData);
+        // Setup email content
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: registrationResponse.hospitalStaffEmail, // Assuming email is part of the response
+          subject: "Welcome to MedInsCare - Your Registration Details",
+          text: `Dear ${registrationResponse.hospitalStaffName},
+        
+        Congratulations! You have been successfully registered with MedInsCare, your all-in-one solution for hospital management.
+        
+        We're thrilled to have you on board. Here are your login details:
+        Email: ${registrationResponse.hospitalStaffEmail}
+        Password: Pass@12345
+        
+        Please note that this password is temporary. We highly recommend changing it upon your first login to ensure the security of your account.
+        
+        At MedInsCare, we strive to provide you with seamless and efficient management tools so you can focus on delivering exceptional healthcare services to your patients.
+        
+        Should you have any questions or require assistance, our dedicated support team is here to help you every step of the way. Feel free to reach out to us at any time.
+        
+        Thank you for choosing MedInsCare. We look forward to working together to enhance your hospital's operations and patient care.
+        
+        Best regards,
+        Libin Jacob
+        Admin
+        MedInsCare Team
+        `,
+        };
+        
+        // Send email
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending email: ", error);
+            // Optionally handle email sending error, e.g., log or notify admin
+          } else {
+            console.log("Email sent: " + info.response);
+          }
+        });
+
         return res.status(200).json({
           status: "success",
           message: "Hospital staff registered successfully",
@@ -1254,6 +1313,7 @@ exports.deleteStaff = async (req, res) => {
             hospitalStaffId,
             hospitalId
           );
+
 
           if (deletionStatus) {
             return res.status(200).json({
@@ -5590,88 +5650,88 @@ exports.viewAllMedicalRecordsOfOnePatient = async (req, res) => {
 // HOSPITAL VIEW ALL REVIEWS
 exports.viewAllReviews = async (req, res) => {
   const token = req.headers.token;
-  const hospitalId = req.body.hospitalId; 
+  const hospitalId = req.body.hospitalId;
 
   // Check if token is missing
   if (!token) {
-      return res.status(403).json({
-          status: "failed",
-          message: "Token is missing"
-      });
+    return res.status(403).json({
+      status: "failed",
+      message: "Token is missing"
+    });
   }
 
   // Check if hospitalId is missing
   if (!hospitalId) { // Corrected variable name
-      return res.status(401).json({
-          status: "failed",
-          message: "Hospital ID is missing"
-      });
+    return res.status(401).json({
+      status: "failed",
+      message: "Hospital ID is missing"
+    });
   }
 
   try {
-      // Verifying the token
-      jwt.verify(
-          token,
-          process.env.JWT_SECRET_KEY_HOSPITAL,
-          async (err, decoded) => {
-              if (err) {
-                  if (err.name === "JsonWebTokenError") {
-                      return res.status(403).json({
-                          status: "failed",
-                          message: "Invalid token"
-                      });
-                  } else if (err.name === "TokenExpiredError") {
-                      return res.status(403).json({
-                          status: "failed",
-                          message: "Token has expired"
-                      });
-                  } else {
-                      return res.status(403).json({
-                          status: "failed",
-                          message: "Unauthorized access"
-                      });
-                  }
-              }
-
-              // Check if decoded token matches hospitalId from request body
-              if (decoded.hospitalId != hospitalId) { // Corrected variable name
-                  return res.status(403).json({
-                      status: "failed",
-                      message: "Unauthorized access"
-                  });
-              }
-
-              // Token is valid, proceed to fetch all reviews
-              try {
-                  const allReviews = await Hospital.viewAllReviews(hospitalId);
-                  return res.status(200).json({
-                      status: "success",
-                      message: "All reviews retrieved successfully",
-                      data: allReviews,
-                  });
-              } catch (error) {
-                  console.error("Error viewing all reviews :", error);
-                  if (error.message === "No reviews found.") {
-                      return res.status(422).json({
-                          status: "error",
-                          error: error.message
-                      });
-                  }
-                  return res.status(500).json({
-                      status: "error",
-                      message: "Internal server error",
-                      error: error.message,
-                  });
-              }
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
           }
-      );
+        }
+
+        // Check if decoded token matches hospitalId from request body
+        if (decoded.hospitalId != hospitalId) { // Corrected variable name
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
+        }
+
+        // Token is valid, proceed to fetch all reviews
+        try {
+          const allReviews = await Hospital.viewAllReviews(hospitalId);
+          return res.status(200).json({
+            status: "success",
+            message: "All reviews retrieved successfully",
+            data: allReviews,
+          });
+        } catch (error) {
+          console.error("Error viewing all reviews :", error);
+          if (error.message === "No reviews found.") {
+            return res.status(422).json({
+              status: "error",
+              error: error.message
+            });
+          }
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
   } catch (error) {
-      console.error("Error verifying token:", error);
-      return res.status(500).json({
-          status: "error",
-          message: "Internal server error",
-          error: error.message,
-      });
+    console.error("Error verifying token:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 

@@ -7,6 +7,8 @@ const fs = require("fs");
 const { Patient } = require("../../models/PatientModels/patient.model");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
+
+  
 //
 //
 //
@@ -98,7 +100,6 @@ exports.login = async (req, res) => {
 //
 //
 //
-// PATIENT CHANGE PASSWORD
 // PATIENT CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
     const token = req.headers.token;
