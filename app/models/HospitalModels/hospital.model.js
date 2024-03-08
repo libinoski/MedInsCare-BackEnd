@@ -81,6 +81,53 @@ const NotificationToHospitalStaffs = function (notification) {
 //
 //
 //
+// DASHBOARD 
+Hospital.getDashboardCounts = async (hospitalId) => {
+  try {
+    // Count of Hospital Staffs
+    const staffCountQuery = "SELECT COUNT(*) AS staffCount FROM Hospital_Staffs WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    const staffCountResult = await dbQuery(staffCountQuery, [hospitalId]);
+
+    // Count of Patients
+    const patientCountQuery = "SELECT COUNT(*) AS patientCount FROM Patients WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    const patientCountResult = await dbQuery(patientCountQuery, [hospitalId]);
+
+    // Count of Insurance Providers
+    const insuranceProviderCountQuery = "SELECT COUNT(*) AS insuranceProviderCount FROM Insurance_Providers WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    const insuranceProviderCountResult = await dbQuery(insuranceProviderCountQuery, [hospitalId]);
+
+    // Count of Medical Records
+    const medicalRecordCountQuery = "SELECT COUNT(*) AS medicalRecordCount FROM Medical_Records WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    const medicalRecordCountResult = await dbQuery(medicalRecordCountQuery, [hospitalId]);
+
+    // Count of Reviews
+    const reviewCountQuery = "SELECT COUNT(*) AS reviewCount FROM Reviews WHERE hospitalId = ? AND deleteStatus = 0 AND isActive = 1";
+    const reviewCountResult = await dbQuery(reviewCountQuery, [hospitalId]);
+
+    // Count of Pending Discharge Requests
+    const pendingDischargeRequestCountQuery = "SELECT COUNT(*) AS pendingDischargeRequestCount FROM Discharge_Requests WHERE hospitalId = ? AND isApproved = 0 AND deleteStatus = 0";
+    const pendingDischargeRequestCountResult = await dbQuery(pendingDischargeRequestCountQuery, [hospitalId]);
+
+    return {
+      staffCount: staffCountResult[0].staffCount,
+      patientCount: patientCountResult[0].patientCount,
+      insuranceProviderCount: insuranceProviderCountResult[0].insuranceProviderCount,
+      medicalRecordCount: medicalRecordCountResult[0].medicalRecordCount,
+      reviewCount: reviewCountResult[0].reviewCount,
+      pendingDischargeRequestCount: pendingDischargeRequestCountResult[0].pendingDischargeRequestCount,
+    };
+  } catch (error) {
+    console.error("Error getting admin dashboard counts:", error);
+    throw error;
+  }
+};
+//
+//
+//
+//
+//
+//
+//
 // HOSPITAL REGISTER
 Hospital.register = async (newHospital) => {
   try {
@@ -1452,6 +1499,8 @@ Hospital.viewAllPatients = async (hospitalId) => {
               p.hospitalId, 
               p.hospitalStaffId, 
               p.patientName, 
+              p.admittedWard,
+              p.diagnosisOrDiseaseType,
               p.patientEmail, 
               p.patientAadhar, 
               p.patientMobile, 
@@ -1498,6 +1547,8 @@ Hospital.viewOnePatient = async (patientId, hospitalId) => {
           hospitalStaffId, 
           patientName, 
           patientEmail, 
+          diagnosisOrDiseaseType,
+          admittedWard,
           patientAadhar, 
           patientMobile, 
           patientProfileImage, 
@@ -1594,12 +1645,16 @@ Hospital.searchPatients = async (hospitalId, searchQuery) => {
           patientAadhar LIKE ? OR
           patientMobile LIKE ? OR
           patientEmail LIKE ? OR
-          patientAddress LIKE ? 
+          patientAddress LIKE ? OR
+          admittedWard LIKE ? OR
+          diagnosisOrDiseaseType LIKE ? 
         )
     `;
 
     const searchParams = [
       hospitalId,
+      `%${searchQuery}%`,
+      `%${searchQuery}%`,
       `%${searchQuery}%`,
       `%${searchQuery}%`,
       `%${searchQuery}%`,
@@ -1941,6 +1996,38 @@ Hospital.viewAllMedicalRecordsOfOnePatient = async (hospitalId, patientId) => {
 //
 //
 //
+
+Hospital.viewAllReviews = async (hospitalId) => {
+  try {
+    // Check if the hospital exists and is active
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
+
+    // Query to select all reviews for the specified hospital
+    const viewAllReviewsQuery = `
+      SELECT * FROM Reviews WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0 ORDER BY sendDate DESC`;
+
+    // Execute the query with the provided hospitalId
+    const allReviews = await dbQuery(viewAllReviewsQuery, [hospitalId]);
+
+    // Check if reviews were found
+    if (allReviews.length === 0) {
+      throw new Error("No reviews found.");
+    }
+
+    // Return the list of reviews
+    return allReviews;
+  } catch (error) {
+    console.error("Error viewing all reviews:", error);
+    throw error;
+  }
+};
+
+
 
 
 

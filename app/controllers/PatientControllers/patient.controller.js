@@ -1760,21 +1760,13 @@ exports.searchInsuranceProviders = async (req, res) => {
 exports.reviewOneInsuranceProvider = async (req, res) => {
     try {
         const token = req.headers.token;
-        const { hospitalId, patientId, insuranceProviderId, reviewContent } = req.body;
+        const {patientId, insuranceProviderId, reviewContent } = req.body;
 
         // Check if token is provided
         if (!token) {
             return res.status(403).json({
                 status: "error",
                 message: "Token is missing"
-            });
-        }
-
-        // Check if hospitalId is provided
-        if (!hospitalId) {
-            return res.status(401).json({
-                status: "error",
-                message: "Hospital ID is missing"
             });
         }
 
@@ -1816,7 +1808,7 @@ exports.reviewOneInsuranceProvider = async (req, res) => {
             }
 
             // Check if the decoded hospitalId matches the provided hospitalId
-            if (decoded.hospitalId != hospitalId) {
+            if (decoded.patientId != patientId) {
                 return res.status(403).json({
                     status: "error",
                     message: "Unauthorized access"
@@ -1854,7 +1846,7 @@ exports.reviewOneInsuranceProvider = async (req, res) => {
 
             try {
                 // Call the reviewOneInsuranceProvider method from the Patient model
-                const reviewDetails = await Patient.reviewOneInsuranceProvider(hospitalId, insuranceProviderId, patientId, reviewContent);
+                const reviewDetails = await Patient.reviewOneInsuranceProvider(insuranceProviderId, patientId, reviewContent);
 
                 // Return success response
                 return res.status(200).json({

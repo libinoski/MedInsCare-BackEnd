@@ -1393,6 +1393,17 @@ exports.registerPatient = async (req, res) => {
       validationResults.errors["patientName"] = [nameValidation.message];
     }
 
+    const wardValidation = dataValidator.isValidText(patientData.admittedWard);
+    if (!wardValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["admittedWard"] = [wardValidation.message];
+    }
+    const diseaseValidation  = dataValidator.isValidText(patientData.diagnosisOrDiseaseType	);
+    if (!diseaseValidation.isValid) {
+      validationResults.isValid = false;
+      validationResults.errors["diagnosisOrDiseaseType"] = [wardValidation.message];
+    }
+
     const emailValidation = dataValidator.isValidEmail(patientData.patientEmail);
     if (!emailValidation.isValid) {
       validationResults.isValid = false;

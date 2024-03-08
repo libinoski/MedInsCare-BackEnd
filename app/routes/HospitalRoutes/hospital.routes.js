@@ -6,6 +6,9 @@ const HospitalController = require('../../controllers/HospitalControllers/hospit
 // Hospital Authentication and Profile Management
 // -------------------
 
+//DASHBOARD
+router.post("/dashboard", HospitalController.dashboardDetails);
+
 // Hospital registration route
 router.post("/hospitalRegistration", HospitalController.register);
 
@@ -119,6 +122,9 @@ router.post("/viewOneSuspendedInsuranceProvider", HospitalController.viewOneSusp
 
 // Send notification to insurance provider route
 router.post("/sendNotificationToInsuranceProvider", HospitalController.sendNotificationToInsuranceProvider);
+
+// View review abou all insurance providers route
+router.post("/viewAllReviews", HospitalController.viewAllReviews);
 
 // -------------------
 // Patient Management

@@ -33,6 +33,93 @@ const s3Client = new S3Client({
 //
 //
 //
+
+
+
+
+
+// DASHBOARD 
+exports.dashboardDetails = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({
+        status: "failed",
+        message: "Hospital ID is missing"
+      });
+    }
+
+    // Verifying the token
+    jwt.verify(
+      token,
+      process.env.JWT_SECRET_KEY_HOSPITAL,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+
+        try {
+          // Check if decoded token matches hospitalId from request body
+          if (decoded.hospitalId != hospitalId) {
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
+
+          const dashboardData = await Hospital.getDashboardCounts(hospitalId);
+          return res.status(200).json({
+            status: "success",
+            message: "All dashboard data retrieved successfully",
+            data: dashboardData,
+          });
+        } catch (error) {
+          console.error("Error viewing all dashboard data:", error);
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error during viewAllHospitalNews:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
 // REGISTER HOSPITAL
 exports.register = async (req, res) => {
   const uploadHospitalImage = multer({
@@ -5500,7 +5587,93 @@ exports.viewAllMedicalRecordsOfOnePatient = async (req, res) => {
 //
 //
 //
+// HOSPITAL VIEW ALL REVIEWS
+exports.viewAllReviews = async (req, res) => {
+  const token = req.headers.token;
+  const hospitalId = req.body.hospitalId; 
 
+  // Check if token is missing
+  if (!token) {
+      return res.status(403).json({
+          status: "failed",
+          message: "Token is missing"
+      });
+  }
+
+  // Check if hospitalId is missing
+  if (!hospitalId) { // Corrected variable name
+      return res.status(401).json({
+          status: "failed",
+          message: "Hospital ID is missing"
+      });
+  }
+
+  try {
+      // Verifying the token
+      jwt.verify(
+          token,
+          process.env.JWT_SECRET_KEY_HOSPITAL,
+          async (err, decoded) => {
+              if (err) {
+                  if (err.name === "JsonWebTokenError") {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Invalid token"
+                      });
+                  } else if (err.name === "TokenExpiredError") {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Token has expired"
+                      });
+                  } else {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Unauthorized access"
+                      });
+                  }
+              }
+
+              // Check if decoded token matches hospitalId from request body
+              if (decoded.hospitalId != hospitalId) { // Corrected variable name
+                  return res.status(403).json({
+                      status: "failed",
+                      message: "Unauthorized access"
+                  });
+              }
+
+              // Token is valid, proceed to fetch all reviews
+              try {
+                  const allReviews = await Hospital.viewAllReviews(hospitalId);
+                  return res.status(200).json({
+                      status: "success",
+                      message: "All reviews retrieved successfully",
+                      data: allReviews,
+                  });
+              } catch (error) {
+                  console.error("Error viewing all reviews :", error);
+                  if (error.message === "No reviews found.") {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message
+                      });
+                  }
+                  return res.status(500).json({
+                      status: "error",
+                      message: "Internal server error",
+                      error: error.message,
+                  });
+              }
+          }
+      );
+  } catch (error) {
+      console.error("Error verifying token:", error);
+      return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};
 
 
 

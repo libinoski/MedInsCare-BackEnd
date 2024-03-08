@@ -19,5 +19,5 @@
    - View details of a specific insurance package route: `POST http://localhost:1313/api/patient/patientViewOneInsurancePackage`
    - Choose an insurance package route: `POST http://localhost:1313/api/patient/patientChooseInsurancePackage`
    - Patient search insurance providers route: `POST http://localhost:1313/api/patient/patientSearchInsuranceProviders`
-   - Patient review one insurance provider route: `POST http://localhost:1313/api/patient/patientReviewOneInsuranceProvider`
+   - Patient review one insurance provider route: `POST http://localhost:1313/api/mic/patient/patientReviewOneInsuranceProvider`
 
