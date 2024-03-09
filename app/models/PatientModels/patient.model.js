@@ -855,14 +855,44 @@ Patient.reviewOneInsuranceProvider = async function (insuranceProviderId, patien
         throw error;
     }
 };
+//
+//
+//
+//
+//
+Patient.viewAllNotifications = async (patientId) => {
+    try {
+        // Fetch patient details
+        const patientQuery = `
+            SELECT *
+            FROM Patients
+            WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0
+        `;
+        const patientQueryResult = await dbQuery(patientQuery, [patientId]);
 
+        if (patientQueryResult.length === 0) {
+            throw new Error("Patient not found");
+        }
 
+        // Fetch all notifications for the patient
+        const viewAllNotificationsQuery = `
+            SELECT *
+            FROM Notification_To_Clients
+            WHERE patientId = ? AND isSuccess = 1
+        `;
+        const allNotifications = await dbQuery(viewAllNotificationsQuery, [patientId]);
 
-//
-//
-//
-//
-//
+        // Check if there are no notifications found
+        if (allNotifications.length === 0) {
+            throw new Error("No successful notifications found for this client");
+        }
+
+        return allNotifications; // Return notifications
+    } catch (error) {
+        console.error("Error viewing all notifications for patient:", error);
+        throw error;
+    }
+};
 
 
 

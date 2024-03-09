@@ -1263,7 +1263,7 @@ exports.sendNotificationToClient = async (req, res) => {
     }
 
     // Token verification
-    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER, async (err, decoded) => {
       if (err) {
         if (err.name === "JsonWebTokenError") {
           return res.status(403).json({

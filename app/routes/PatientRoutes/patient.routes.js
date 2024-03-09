@@ -50,6 +50,9 @@ router.post("/patientSearchInsuranceProviders", PatientController.searchInsuranc
 // Patient review one insurance provider route
 router.post("/patientReviewOneInsuranceProvider", PatientController.reviewOneInsuranceProvider);
 
+// Patient view all notifications from insurance provider route
+router.post("/viewAllNotifications", PatientController.viewAllNotifications);
+
 
 
 

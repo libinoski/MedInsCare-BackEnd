@@ -210,8 +210,6 @@ exports.changePassword = async (req, res) => {
         }
     );
 };
-
-
 //
 //
 //
@@ -1891,3 +1889,94 @@ exports.reviewOneInsuranceProvider = async (req, res) => {
 //
 
 
+exports.viewAllNotifications = async (req, res) => {
+    try {
+      const token = req.headers.token;
+      const {patientId} = req.body;
+  
+      // Check if token is missing
+      if (!token) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Token is missing"
+        });
+      }
+  
+      // Check if hospitalStaffId is missing
+      if (!patientId) {
+        return res.status(401).json({
+          status: "failed",
+          message: "Patient ID is missing"
+        });
+      }
+  
+      // Verifying the token
+      jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Invalid token"
+            });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "error",
+              message: "Token has expired"
+            });
+          } else {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+        }
+  
+        try {
+          // Check if decoded token matches hospitalStaffId from request body
+          if (decoded.patientId != patientId) {
+            return res.status(403).json({
+              status: "error",
+              message: "Unauthorized access"
+            });
+          }
+  
+          const notifications = await Patient.viewAllNotifications(patientId);
+  
+          return res.status(200).json({
+            status: "success",
+            message: "All notifications retrieved successfully",
+            data: notifications
+          });
+        } catch (error) {
+          // Handle specific errors returned by the model
+          if (error.message === "Patient not found") {
+            return res.status(422).json({
+              status: "error",
+              message: "Patient not found",
+              error : error.message
+            });
+          } else if (error.message === "No successful notifications found for this client") {
+            return res.status(422).json({
+              status: "error",
+              message: "No successful notifications found for this client",
+              error : error.message
+            });
+          }
+  
+          console.error("Error viewing all notifications for clients:", error);
+          return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Error during viewAllNotifications:", error);
+      return res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+        error: error.message
+      });
+    }
+  };

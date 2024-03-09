@@ -477,14 +477,17 @@ InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientI
       throw new Error("Insurance Provider not found");
     }
 
-    const checkClientQuery = "SELECT * FROM Clients WHERE clientId = ? AND insuranceProviderId = ? AND isActive = 1 AND deleteStatus = 0";
+    const checkClientQuery = "SELECT clientId, patientId FROM Clients WHERE clientId = ? AND insuranceProviderId = ? AND isActive = 1 ";
     const checkClientResult = await dbQuery(checkClientQuery, [clientId, insuranceProviderId]);
     if (checkClientResult.length === 0) {
       throw new Error("Client not found or not active");
     }
+    
+    const clientData = checkClientResult[0];
+    const patientId = clientData.patientId;
 
-    const insertNotificationQuery = "INSERT INTO Notification_To_Clients (insuranceProviderId, clientId, message) VALUES (?, ?, ?)";
-    const result = await dbQuery(insertNotificationQuery, [insuranceProviderId, clientId, notificationMessage]);
+    const insertNotificationQuery = "INSERT INTO Notification_To_Clients (insuranceProviderId, clientId, patientId, message) VALUES (?, ?, ?, ?)";
+    const result = await dbQuery(insertNotificationQuery, [insuranceProviderId, clientId, patientId, notificationMessage]);
 
     const notificationId = result.insertId;
 
@@ -492,7 +495,8 @@ InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientI
       notificationId: notificationId,
       insuranceProviderId: insuranceProviderId,
       clientId: clientId,
-      message: notificationMessage, // Update field name here
+      patientId: patientId,
+      message: notificationMessage,
     };
 
     return notificationDetails;
@@ -501,6 +505,7 @@ InsuranceProvider.sendNotificationToClient = async (insuranceProviderId, clientI
     throw error;
   }
 };
+
 //
 //
 //
