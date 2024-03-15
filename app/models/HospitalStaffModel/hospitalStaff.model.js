@@ -751,10 +751,10 @@ HospitalStaff.sendNotificationToPatient = async (hospitalStaffId, patientId, not
 //
 //
 //
-// HOSPITAL STAFF  ADD MEDICAL RECORD
+// HOSPITAL STAFF ADD MEDICAL RECORD
 HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetails) => {
   try {
-    // Validate hospitalStaffId presence and its status
+    // Validate hospital staff ID presence and its status
     const staffValidationQuery = `
       SELECT hospitalId, hospitalStaffName, hospitalStaffEmail
       FROM Hospital_Staffs
@@ -766,9 +766,9 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
     }
     const { hospitalId, hospitalStaffName, hospitalStaffEmail } = staffResults[0];
 
-    // Validate patientId presence and its status
+    // Validate patient ID presence and its status
     const patientValidationQuery = `
-      SELECT patientName, patientEmail, registeredDate
+      SELECT patientName, patientEmail, patientProfileImage, registeredDate
       FROM Patients
       WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0
     `;
@@ -776,15 +776,13 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
     if (patientResults.length === 0) {
       throw new Error("Invalid patient ID provided or patient does not belong to the same hospital.");
     }
-    const { patientName, patientEmail, registeredDate } = patientResults[0]; // Retrieve registeredDate
+    const { patientName, patientEmail, patientProfileImage, registeredDate } = patientResults[0]; // Retrieve registeredDate
 
     // Retrieve hospital details
     const hospitalQuery = `
       SELECT hospitalName, hospitalEmail 
       FROM Hospitals 
-      WHERE hospitalId = ? 
-        AND isActive = 1 
-        AND deleteStatus = 0
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
     `;
     const hospitalResult = await dbQuery(hospitalQuery, [hospitalId]);
     if (hospitalResult.length === 0) {
@@ -798,14 +796,14 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
     // Insert new medical record without dateGenerated since it's set by the database
     const insertQuery = `
       INSERT INTO Medical_Records (
-        patientId, hospitalId, hospitalStaffId, patientName, patientEmail,
+        patientId, hospitalId, hospitalStaffId, patientName, patientProfileImage, patientEmail,
         staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber,
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail,
         registeredDate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const insertValues = [
-      patientId, hospitalId, hospitalStaffId, patientName, patientEmail,
+      patientId, hospitalId, hospitalStaffId, patientName, patientProfileImage, patientEmail,
       staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber,
       hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, registeredDate
     ];
@@ -829,10 +827,6 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
     throw error;
   }
 };
-
-
-
-
 
 //
 //

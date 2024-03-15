@@ -77,14 +77,20 @@ InsuranceProvider.viewAllHospitals = async () => {
 //
 //
 // INSURANCE PROVIDER REGISTER
+// INSURANCE PROVIDER REGISTER
 InsuranceProvider.register = async (newInsuranceProvider) => {
   try {
+    const errors = {};
+
+    // Check if hospitalId is present
+    if (!newInsuranceProvider.hospitalId) {
+      errors["hospital"] = ["Select a hospital to continue"];
+    }
+
     const checkEmailQuery =
       "SELECT * FROM Insurance_Providers WHERE insuranceProviderEmail = ? AND deleteStatus=0 AND isActive=1";
     const checkAadharQuery =
       "SELECT * FROM Insurance_Providers WHERE insuranceProviderAadhar = ? AND deleteStatus=0 AND isActive=1";
-
-    const errors = {};
 
     const emailRes = await dbQuery(checkEmailQuery, [
       newInsuranceProvider.insuranceProviderEmail,
@@ -100,6 +106,7 @@ InsuranceProvider.register = async (newInsuranceProvider) => {
       errors["Aadhar"] = ["Aadhar number already exists"];
     }
 
+    // Check if there are any validation errors
     if (Object.keys(errors).length > 0) {
       throw { name: "ValidationError", errors: errors };
     }
@@ -120,6 +127,7 @@ InsuranceProvider.register = async (newInsuranceProvider) => {
     throw error;
   }
 };
+
 //
 //
 //

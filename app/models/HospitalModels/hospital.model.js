@@ -1889,7 +1889,7 @@ Hospital.viewAllMedicalRecords = async (hospitalId) => {
     // Query to select all medical records for the specified hospital
     const viewAllMedicalRecordsQuery = `
       SELECT 
-        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
+        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, patientProfileImage,
         staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
         registeredDate, dateGenerated
@@ -1929,7 +1929,7 @@ Hospital.viewOneMedicalRecord = async (hospitalId, recordId) => {
     // Query to select one medical record for the specified hospital and recordId
     const viewOneMedicalRecordQuery = `
       SELECT 
-        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
+        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, patientProfileImage,
         staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
         registeredDate, dateGenerated
@@ -1965,7 +1965,7 @@ Hospital.viewAllMedicalRecordsOfOnePatient = async (hospitalId, patientId) => {
       throw new Error("Hospital not found or not active.");
     }
 
-    // Validate existence of the patient
+    // Validate existence of the patient within the specified hospital
     const patientCheckQuery = "SELECT * FROM Patients WHERE patientId = ? AND hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
     const patientCheckRes = await dbQuery(patientCheckQuery, [patientId, hospitalId]);
     if (patientCheckRes.length === 0) {
@@ -1975,13 +1975,13 @@ Hospital.viewAllMedicalRecordsOfOnePatient = async (hospitalId, patientId) => {
     // Query to select all medical records for the specified patient in the hospital
     const viewAllMedicalRecordsOfOnePatientQuery = `
       SELECT 
-        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientEmail, 
+        recordId, patientId, hospitalId, hospitalStaffId, patientName, patientProfileImage, patientEmail, 
         staffReport, medicineAndLabCosts, byStanderName, byStanderMobileNumber, 
         hospitalName, hospitalEmail, hospitalStaffName, hospitalStaffEmail, 
         registeredDate, dateGenerated
       FROM Medical_Records
       WHERE patientId = ? AND hospitalId = ? AND deleteStatus = 0
-      ORDER BY dateGenerated DESC;`;
+      ORDER BY dateGenerated DESC`;
 
     // Execute the query with the provided patientId and hospitalId
     const medicalRecords = await dbQuery(viewAllMedicalRecordsOfOnePatientQuery, [patientId, hospitalId]);
@@ -1993,6 +1993,7 @@ Hospital.viewAllMedicalRecordsOfOnePatient = async (hospitalId, patientId) => {
     throw error;
   }
 };
+
 //
 //
 //
