@@ -2023,7 +2023,7 @@ exports.addMedicalRecord = async (req, res) => {
       errors: {}
     };
 
-    const staffReportValidation = dataValidator.isValidText(data.staffReport);
+    const staffReportValidation = dataValidator.isValidContent(data.staffReport);
     if (!staffReportValidation.isValid) {
       validationResults.isValid = false;
       validationResults.errors["staffReport"] = [staffReportValidation.message];
