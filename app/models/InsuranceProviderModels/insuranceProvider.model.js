@@ -77,7 +77,6 @@ InsuranceProvider.viewAllHospitals = async () => {
 //
 //
 // INSURANCE PROVIDER REGISTER
-// INSURANCE PROVIDER REGISTER
 InsuranceProvider.register = async (newInsuranceProvider) => {
   try {
     const errors = {};
