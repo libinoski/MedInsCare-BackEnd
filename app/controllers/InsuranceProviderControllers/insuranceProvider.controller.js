@@ -613,7 +613,6 @@ exports.changeIdProofImage = async (req, res) => {
     }
   );
 };
-
 //
 //
 //
@@ -653,7 +652,7 @@ exports.changeProfileImage = async (req, res) => {
 
       const uploadProfileImage = multer({
         storage: multer.memoryStorage(),
-      }).single("profileImage");
+      }).single("insuranceProviderProfileImage");
 
       uploadProfileImage(req, res, async (err) => {
         if (err) {
@@ -690,8 +689,8 @@ exports.changeProfileImage = async (req, res) => {
         }
 
         try {
-          const profileImageLocation = await uploadFileToS3(req.file);
-          await InsuranceProvider.changeProfileImage(insuranceProviderId, profileImageLocation);
+          const profileImageFileLocation = await uploadFileToS3(req.file);
+          await InsuranceProvider.changeProfileImage(insuranceProviderId, profileImageFileLocation);
           return res.status(200).json({
             status: "success",
             message: "Profile image updated successfully",
@@ -758,12 +757,12 @@ exports.changeProfileImage = async (req, res) => {
 
         if (!file) {
           validationResults.isValid = false;
-          validationResults.errors["profileImage"] = ["Profile image is required"];
+          validationResults.errors["insuranceProviderProfileImage"] = ["Profile image is required"];
         } else {
           const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
           if (!imageValidation.isValid) {
             validationResults.isValid = false;
-            validationResults.errors["profileImage"] = [imageValidation.message];
+            validationResults.errors["insuranceProviderProfileImage"] = [imageValidation.message];
           }
         }
 

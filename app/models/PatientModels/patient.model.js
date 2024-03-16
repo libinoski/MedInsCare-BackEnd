@@ -246,32 +246,32 @@ Patient.changeIdProofImage = async (patientId, newIdProofImageFilename) => {
     const verifyQuery = `
           SELECT patientId
           FROM Patients
-          WHERE patientId = ? AND isActive = 1
+          WHERE patientId = ?
       `;
-
+  
     try {
-        const verifyResult = await dbQuery(verifyQuery, [patientId]);
-
-        if (verifyResult.length === 0) {
-            throw new Error("Patient not found");
-        }
-
-        const updateQuery = `
+      const verifyResult = await dbQuery(verifyQuery, [patientId]);
+  
+      if (verifyResult.length === 0) {
+        throw new Error("Patient not found");
+      }
+  
+      const updateQuery = `
               UPDATE Patients
               SET 
                   patientIdProofImage = ?,
                   updateStatus = 1, 
                   updatedDate = CURRENT_TIMESTAMP()
-              WHERE patientId = ? AND isActive = 1
+              WHERE patientId = ? 
           `;
-
-        await dbQuery(updateQuery, [newIdProofImageFilename, patientId]);
-
-        return true;
+  
+      await dbQuery(updateQuery, [newIdProofImageFilename, patientId]);
+  
+      return true;
     } catch (error) {
-        throw error;
+      throw error;
     }
-};
+  };
 //
 //
 //
@@ -281,32 +281,33 @@ Patient.changeProfileImage = async (patientId, newProfileImageFilename) => {
     const verifyQuery = `
           SELECT patientId
           FROM Patients
-          WHERE patientId = ? AND isActive = 1
+          WHERE patientId = ? 
       `;
-
+  
     try {
-        const verifyResult = await dbQuery(verifyQuery, [patientId]);
-
-        if (verifyResult.length === 0) {
-            throw new Error("Patient not found");
-        }
-
-        const updateQuery = `
+      const verifyResult = await dbQuery(verifyQuery, [patientId]);
+  
+      if (verifyResult.length === 0) {
+        throw new Error("Patient not found");
+      }
+  
+      const updateQuery = `
               UPDATE Patients
               SET 
                   patientProfileImage = ?,
                   updateStatus = 1, 
                   updatedDate = CURRENT_TIMESTAMP()
-              WHERE patientId = ? AND isActive = 1
+              WHERE patientId = ? 
           `;
-
-        await dbQuery(updateQuery, [newProfileImageFilename, patientId]);
-
-        return true;
+  
+      await dbQuery(updateQuery, [newProfileImageFilename, patientId]);
+  
+      return true;
     } catch (error) {
-        throw error;
+      throw error;
     }
-};
+  };
+  
 //
 //
 //

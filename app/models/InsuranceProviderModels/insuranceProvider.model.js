@@ -254,7 +254,6 @@ InsuranceProvider.changeIdProofImage = async (insuranceProviderId, newIdProofIma
     throw error;
   }
 };
-
 //
 //
 //

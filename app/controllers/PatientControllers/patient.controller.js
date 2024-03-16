@@ -218,151 +218,157 @@ exports.changePassword = async (req, res) => {
 // PATIENT CHANGE ID PROOF IMAGE
 exports.changeIdProofImage = async (req, res) => {
     const token = req.headers.token;
-
+  
     if (!token) {
-        return res.status(403).json({
-            status: "failed",
-            message: "Token is missing"
-        });
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
     }
-
+  
     jwt.verify(
-        token,
-        process.env.JWT_SECRET_KEY_PATIENT,
-        async (err, decoded) => {
-            if (err) {
-                if (err.name === "JsonWebTokenError") {
-                    return res.status(403).json({
-                        status: "failed",
-                        message: "Invalid token"
-                    });
-                } else if (err.name === "TokenExpiredError") {
-                    return res.status(403).json({
-                        status: "failed",
-                        message: "Token has expired"
-                    });
-                }
-                return res.status(403).json({
-                    status: "failed",
-                    message: "Unauthorized access"
-                });
-            }
-
-            const uploadIdProofImage = multer({
-                storage: multer.memoryStorage(),
-            }).single("patientIdProofImage");
-
-            uploadIdProofImage(req, res, async (err) => {
-                if (err || !req.file) {
-                    return res.status(400).json({
-                        status: "error",
-                        message: "File upload failed",
-                        results: err ? err.message : "File is required.",
-                    });
-                }
-
-                const { patientId } = req.body;
-
-                if (!patientId) {
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-                    return res.status(401).json({
-                        status: "failed",
-                        message: "Patient ID is missing",
-                    });
-                }
-
-                if (decoded.patientId != patientId) {
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-                    return res.status(403).json({
-                        status: "failed",
-                        message: "Unauthorized access"
-                    });
-                }
-
-                function validateIdProofImage(file) {
-                    const validationResults = {
-                        isValid: true,
-                        errors: {},
-                    };
-
-                    const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-                    if (!imageValidation.isValid) {
-                        validationResults.isValid = false;
-                        validationResults.errors["patientIdProofImage"] = [imageValidation.message];
-                    }
-
-                    return validationResults;
-                }
-
-                const validationResults = validateIdProofImage(req.file);
-                if (!validationResults.isValid) {
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-                    return res.status(400).json({
-                        status: "error",
-                        message: "Invalid image file",
-                        results: validationResults.errors,
-                    });
-                }
-
-                async function uploadFileToS3(file) {
-                    const fileName = `patientIdProof-${Date.now()}${path.extname(file.originalname)}`;
-                    const uploadParams = {
-                        Bucket: process.env.S3_BUCKET_NAME,
-                        Key: `patientImages/${fileName}`,
-                        Body: file.buffer,
-                        ACL: "public-read",
-                        ContentType: file.mimetype,
-                    };
-
-                    const command = new PutObjectCommand(uploadParams);
-                    const result = await s3Client.send(command);
-                    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-                }
-
-                try {
-                    const idProofFileLocation = await uploadFileToS3(req.file);
-
-                    await Patient.changeIdProofImage(
-                        patientId,
-                        idProofFileLocation
-                    );
-                    return res.status(200).json({
-                        status: "success",
-                        message: "ID proof image updated successfully",
-                    });
-                } catch (error) {
-                    // Delete the uploaded image from S3
-                    const key = idProofFileLocation.split('/').pop(); // Extracting the filename from the URL
-                    const params = {
-                        Bucket: process.env.S3_BUCKET_NAME,
-                        Key: `patientImages/${key}` // Constructing the full key
-                    };
-                    await s3Client.send(new DeleteObjectCommand(params));
-
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-
-                    if (error.message === "Patient not found") {
-                        return res.status(422).json({
-                            status: "error",
-                            error: error.message
-                        });
-                    } else {
-                        console.error("Error updating ID proof image:", error);
-                        return res.status(500).json({
-                            status: "error",
-                            message: "Failed to update ID proof image",
-                            error: error.message,
-                        });
-                    }
-                }
+      token,
+      process.env.JWT_SECRET_KEY_PATIENT,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
             });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          }
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
         }
+  
+        const uploadIdProofImage = multer({
+          storage: multer.memoryStorage(),
+        }).single("patientIdProofImage");
+  
+        uploadIdProofImage(req, res, async (err) => {
+          if (err) {
+            return res.status(400).json({
+              status: "error",
+              message: "File upload failed",
+              results: err.message,
+            });
+          }
+  
+          const { patientId } = req.body;
+  
+          if (!patientId) {
+            return res.status(401).json({
+              status: "failed",
+              message: "Patient ID is missing",
+            });
+          }
+  
+          if (decoded.patientId != patientId) {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+  
+          const validationResults = validateIdProofImage(req.file);
+          if (!validationResults.isValid) {
+            return res.status(400).json({
+              status: "error",
+              message: "Invalid image file",
+              results: validationResults.errors,
+            });
+          }
+  
+          try {
+            const idProofFileLocation = await uploadFileToS3(req.file);
+            await Patient.changeIdProofImage(patientId, idProofFileLocation);
+            return res.status(200).json({
+              status: "success",
+              message: "ID proof image updated successfully",
+            });
+          } catch (error) {
+            console.error("Error updating ID proof image:", error);
+  
+            // Delete uploaded image from S3 if it exists
+            if (req.file) {
+              const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+              const params = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: `patientImages/${s3Key}`
+              };
+              try {
+                await s3Client.send(new DeleteObjectCommand(params));
+              } catch (s3Error) {
+                console.error("Error deleting image from S3:", s3Error);
+              }
+            }
+  
+            // Delete uploaded image from local storage
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
+  
+            // Handle specific errors
+            if (error.message === "Patient not found") {
+              return res.status(422).json({
+                status: "failed",
+                message: "Patient not found",
+                error: error.message
+              });
+            } else {
+              return res.status(500).json({
+                status: "error",
+                message: "Failed to update ID proof image",
+                error: error.message,
+              });
+            }
+          }
+        });
+  
+        async function uploadFileToS3(file) {
+          const fileName = `patientIdProof-${Date.now()}${path.extname(file.originalname)}`;
+          const uploadParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `patientImages/${fileName}`,
+            Body: file.buffer,
+            ACL: "public-read",
+            ContentType: file.mimetype,
+          };
+  
+          const command = new PutObjectCommand(uploadParams);
+          await s3Client.send(command);
+          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+        }
+  
+        function validateIdProofImage(file) {
+          const validationResults = {
+            isValid: true,
+            errors: {},
+          };
+  
+          if (!file) {
+            validationResults.isValid = false;
+            validationResults.errors["patientIdProofImage"] = ["ID proof image is required"];
+          } else {
+            const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+            if (!imageValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors["patientIdProofImage"] = [imageValidation.message];
+            }
+          }
+  
+          return validationResults;
+        }
+      }
     );
-};
+  };
 //
 //
 //
@@ -371,150 +377,158 @@ exports.changeIdProofImage = async (req, res) => {
 // PATIENT CHANGE PROFILE IMAGE
 exports.changeProfileImage = async (req, res) => {
     const token = req.headers.token;
-
+  
     if (!token) {
-        return res.status(403).json({
-            status: "failed",
-            message: "Token is missing"
-        });
+      return res.status(403).json({
+        status: "failed",
+        message: "Token is missing"
+      });
     }
-
+  
     jwt.verify(
-        token,
-        process.env.JWT_SECRET_KEY_PATIENT,
-        async (err, decoded) => {
-            if (err) {
-                if (err.name === "JsonWebTokenError") {
-                    return res.status(403).json({
-                        status: "failed",
-                        message: "Invalid token"
-                    });
-                } else if (err.name === "TokenExpiredError") {
-                    return res.status(403).json({
-                        status: "failed",
-                        message: "Token has expired"
-                    });
-                }
-                return res.status(403).json({
-                    status: "failed",
-                    message: "Unauthorized access"
-                });
-            }
-
-            const uploadProfileImage = multer({
-                storage: multer.memoryStorage(),
-            }).single("patientProfileImage");
-
-            uploadProfileImage(req, res, async (err) => {
-                if (err || !req.file) {
-                    return res.status(400).json({
-                        status: "error",
-                        message: "File upload failed",
-                        results: err ? err.message : "File is required.",
-                    });
-                }
-
-                const { patientId } = req.body;
-
-                // Check if patientId is missing
-                if (!patientId) {
-                    return res.status(401).json({
-                        status: "failed",
-                        message: "Patient ID is missing"
-                    });
-                }
-
-                if (decoded.patientId != patientId) {
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-                    return res.status(403).json({
-                        status: "failed",
-                        message: "Unauthorized access"
-                    });
-                }
-
-                function validateProfileImage(file) {
-                    const validationResults = {
-                        isValid: true,
-                        errors: {},
-                    };
-
-                    const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-                    if (!imageValidation.isValid) {
-                        validationResults.isValid = false;
-                        validationResults.errors["patientProfileImage"] = [imageValidation.message];
-                    }
-
-                    return validationResults;
-                }
-
-                const validationResults = validateProfileImage(req.file);
-                if (!validationResults.isValid) {
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-                    return res.status(400).json({
-                        status: "error",
-                        message: "Invalid image file",
-                        results: validationResults.errors,
-                    });
-                }
-
-                async function uploadFileToS3(file) {
-                    const fileName = `patientProfile-${Date.now()}${path.extname(file.originalname)}`;
-                    const uploadParams = {
-                        Bucket: process.env.S3_BUCKET_NAME,
-                        Key: `patientImages/${fileName}`,
-                        Body: file.buffer,
-                        ACL: "public-read",
-                        ContentType: file.mimetype,
-                    };
-
-                    const command = new PutObjectCommand(uploadParams);
-                    const result = await s3Client.send(command);
-                    return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-                }
-
-                try {
-                    const profileFileLocation = await uploadFileToS3(req.file);
-
-                    await Patient.changeProfileImage(
-                        patientId,
-                        profileFileLocation
-                    );
-                    return res.status(200).json({
-                        status: "success",
-                        message: "Profile image updated successfully",
-                    });
-                } catch (error) {
-                    // Delete the uploaded image from S3
-                    const key = profileFileLocation.split('/').pop(); // Extracting the filename from the URL
-                    const params = {
-                        Bucket: process.env.S3_BUCKET_NAME,
-                        Key: `patientImages/${key}` // Constructing the full key
-                    };
-                    await s3Client.send(new DeleteObjectCommand(params));
-
-                    // Delete the uploaded file
-                    fs.unlinkSync(req.file.path);
-
-                    if (error.message === "Patient not found") {
-                        return res.status(422).json({
-                            status: "error",
-                            error: error.message
-                        });
-                    } else {
-                        console.error("Error updating profile image:", error);
-                        return res.status(500).json({
-                            status: "error",
-                            message: "Failed to update profile image",
-                            error: error.message,
-                        });
-                    }
-                }
+      token,
+      process.env.JWT_SECRET_KEY_PATIENT,
+      async (err, decoded) => {
+        if (err) {
+          if (err.name === "JsonWebTokenError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Invalid token"
             });
+          } else if (err.name === "TokenExpiredError") {
+            return res.status(403).json({
+              status: "failed",
+              message: "Token has expired"
+            });
+          }
+          return res.status(403).json({
+            status: "failed",
+            message: "Unauthorized access"
+          });
         }
+  
+        const uploadProfileImage = multer({
+          storage: multer.memoryStorage(),
+        }).single("patientProfileImage");
+  
+        uploadProfileImage(req, res, async (err) => {
+          if (err) {
+            return res.status(400).json({
+              status: "error",
+              message: "File upload failed",
+              results: err.message,
+            });
+          }
+  
+          const { patientId } = req.body;
+  
+          if (!patientId) {
+            return res.status(401).json({
+              status: "failed",
+              message: "Patient ID is missing",
+            });
+          }
+  
+          if (decoded.patientId != patientId) {
+            return res.status(403).json({
+              status: "failed",
+              message: "Unauthorized access"
+            });
+          }
+  
+          const validationResults = validateProfileImage(req.file);
+          if (!validationResults.isValid) {
+            return res.status(400).json({
+              status: "error",
+              message: "Invalid image file",
+              results: validationResults.errors,
+            });
+          }
+  
+          try {
+            const profileFileLocation = await uploadFileToS3(req.file);
+            await Patient.changeProfileImage(patientId, profileFileLocation);
+            return res.status(200).json({
+              status: "success",
+              message: "Profile image updated successfully",
+            });
+          } catch (error) {
+            console.error("Error updating profile image:", error);
+  
+            // Delete uploaded image from S3 if it exists
+            if (req.file) {
+              const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+              const params = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: `patientImages/${s3Key}`
+              };
+              try {
+                await s3Client.send(new DeleteObjectCommand(params));
+              } catch (s3Error) {
+                console.error("Error deleting image from S3:", s3Error);
+              }
+            }
+  
+            // Delete uploaded image from local storage
+            if (req.file && req.file.path) {
+              fs.unlinkSync(req.file.path);
+            }
+  
+            // Handle specific errors
+            if (error.message === "Patient not found") {
+              return res.status(422).json({
+                status: "failed",
+                message: "Patient not found",
+                error: error.message
+              });
+            } else {
+              return res.status(500).json({
+                status: "error",
+                message: "Failed to update profile image",
+                error: error.message,
+              });
+            }
+          }
+        });
+  
+        async function uploadFileToS3(file) {
+          const fileName = `patientProfile-${Date.now()}${path.extname(file.originalname)}`;
+          const uploadParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: `patientImages/${fileName}`,
+            Body: file.buffer,
+            ACL: "public-read",
+            ContentType: file.mimetype,
+          };
+  
+          const command = new PutObjectCommand(uploadParams);
+          await s3Client.send(command);
+          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+        }
+  
+        function validateProfileImage(file) {
+          const validationResults = {
+            isValid: true,
+            errors: {},
+          };
+  
+          if (!file) {
+            validationResults.isValid = false;
+            validationResults.errors["patientProfileImage"] = ["Profile image is required"];
+          } else {
+            const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+            if (!imageValidation.isValid) {
+              validationResults.isValid = false;
+              validationResults.errors["patientProfileImage"] = [imageValidation.message];
+            }
+          }
+  
+          return validationResults;
+        }
+      }
     );
-};
+  };
+  
 //
 //
 //
