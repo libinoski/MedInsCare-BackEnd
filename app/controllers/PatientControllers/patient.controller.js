@@ -1836,7 +1836,7 @@ exports.reviewOneInsuranceProvider = async (req, res) => {
                 };
 
                 // Your validation logic here
-                const reviewValidation = dataValidator.isValidText(reviewContent);
+                const reviewValidation = dataValidator.isValidContent(reviewContent);
                 if (!reviewValidation.isValid) {
                     validationResults.isValid = false;
                     validationResults.errors["reviewContent"] = [reviewValidation.message];
@@ -1853,7 +1853,7 @@ exports.reviewOneInsuranceProvider = async (req, res) => {
                 return res.status(400).json({
                     status: "error",
                     message: "Validation failed",
-                    errors: validationResults.errors
+                    results: validationResults.errors
                 });
             }
 

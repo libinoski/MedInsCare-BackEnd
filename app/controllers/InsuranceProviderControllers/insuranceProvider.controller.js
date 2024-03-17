@@ -1155,7 +1155,7 @@ exports.viewOneNews = async (req, res) => {
     // Verifying the token
     jwt.verify(
       token,
-      process.env.JWT_SECRET_KEY_HOSPITAL,
+      process.env.JWT_SECRET_KEY_INSURANCE_PROVIDER,
       async (err, decoded) => {
         if (err) {
           if (err.name === "JsonWebTokenError") {

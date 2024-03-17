@@ -2029,7 +2029,54 @@ Hospital.viewAllReviews = async (hospitalId) => {
     throw error;
   }
 };
+//
+//
+//
+//
+//
+//
+// HOSPITAL GENERATE ONE BILL
+Hospital.generateOneBill = async (hospitalId, patientId, billDetails) => {
+  try {
+    // Check if the hospital exists and is active
+    const checkHospitalQuery = "SELECT * FROM Hospitals WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0";
+    const hospitalCheckResult = await dbQuery(checkHospitalQuery, [hospitalId]);
+    if (hospitalCheckResult.length === 0) {
+      throw new Error("Hospital not found");
+    }
 
+    // Check if the patient exists and is active
+    const checkPatientQuery = "SELECT * FROM Patients WHERE patientId = ? AND isActive = 1 AND deleteStatus = 0";
+    const patientCheckResult = await dbQuery(checkPatientQuery, [patientId]);
+    if (patientCheckResult.length === 0) {
+      throw new Error("Patient not found or not active");
+    }
+
+    // Extracting bill details
+    const { costsExplained, totalAmount } = billDetails;
+
+    // Insert the bill into the database
+    const insertBillQuery = "INSERT INTO Bills (hospitalId, patientId, costsExplained, totalAmount) VALUES (?, ?, ?, ?)";
+    const result = await dbQuery(insertBillQuery, [hospitalId, patientId, costsExplained, totalAmount]);
+
+    // Retrieve the inserted bill ID
+    const billId = result.insertId;
+
+    // Construct the bill details object
+    const insertedBillDetails = {
+      billId: billId,
+      hospitalId: hospitalId,
+      patientId: patientId,
+      costsExplained: costsExplained,
+      totalAmount: totalAmount
+    };
+
+    return insertedBillDetails;
+  } catch (error) {
+    console.error("Error generating bill:", error);
+    throw error;
+  }
+};
 
 
 

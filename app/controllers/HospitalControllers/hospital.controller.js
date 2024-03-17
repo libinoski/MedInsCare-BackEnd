@@ -210,7 +210,7 @@ exports.register = async (req, res) => {
       MedInsCare
       `,
       };
-      
+
 
       // Send email
       transporter.sendMail(mailOptions, (error, info) => {
@@ -1098,7 +1098,7 @@ exports.registerStaff = async (req, res) => {
         MedInsCare Team
         `,
         };
-        
+
         // Send email
         transporter.sendMail(mailOptions, (error, info) => {
           if (error) {
@@ -4374,9 +4374,6 @@ exports.updatePatient = async (req, res) => {
 //
 //
 //
-
-
-
 // HOSPITAL SEND NOTIFICATION TO INSURANCE PROVIDER
 exports.sendNotificationToInsuranceProvider = async (req, res) => {
   try {
@@ -5732,6 +5729,91 @@ exports.viewAllReviews = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
+  }
+};
+//
+//
+//
+// 
+// HOSPITAL GENERATE ONE BILL
+exports.generateOneBill = async (req, res) => {
+  try {
+    const token = req.headers.token;
+    const { hospitalId, patientId, costsExplained, totalAmount } = req.body;
+
+    // Check if token is missing
+    if (!token) {
+      return res.status(403).json({ status: "error", message: "Token is missing" });
+    }
+
+    // Check if hospitalId is missing
+    if (!hospitalId) {
+      return res.status(401).json({ status: "error", message: "Hospital ID is missing" });
+    }
+
+    // Check if patientId is missing
+    if (!patientId) {
+      return res.status(401).json({ status: "error", message: "Patient ID is missing" });
+    }
+
+    // Verify the token
+    jwt.verify(token, process.env.JWT_SECRET_KEY_HOSPITAL, async (err, decoded) => {
+      if (err) {
+        if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({ status: "error", message: "Invalid or missing token" });
+        } else if (err.name === "TokenExpiredError") {
+          return res.status(403).json({ status: "error", message: "Token has expired" });
+        } else {
+          return res.status(403).json({ status: "error", message: "Unauthorized access" });
+        }
+      }
+
+      // Check if decoded hospitalId matches the provided hospitalId
+      if (decoded.hospitalId != hospitalId) {
+        return res.status(403).json({ status: "error", message: "Unauthorized access" });
+      }
+
+      const billDetails = { costsExplained, totalAmount };
+
+      // Function to validate bill data
+      function validateBillData(billData) {
+        const validationResults = { isValid: true, errors: {} };
+        const contentValidation = dataValidator.isValidContent(billData.costsExplained);
+        if (!contentValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["costsExplained"] = [contentValidation.message];
+        }
+        const amountValidation = dataValidator.isValidCost(billData.totalAmount);
+        if (!amountValidation.isValid) {
+          validationResults.isValid = false;
+          validationResults.errors["totalAmount"] = [amountValidation.message];
+        }
+        return validationResults;
+      }
+
+      const validationResults = validateBillData(billDetails);
+
+      // If validation fails, return error response
+      if (!validationResults.isValid) {
+        return res.status(400).json({ status: "error", message: "Validation failed", errors: validationResults.errors });
+      }
+
+      try {
+        // Generate bill details
+        const costDetails = await Hospital.generateOneBill(hospitalId, patientId, billDetails);
+        return res.status(200).json({ status: "success", message: "Cost details sent successfully", data: costDetails });
+      } catch (error) {
+        console.error("Error adding bill:", error);
+        // Handle specific errors
+        if (error.message === "Hospital not found" || error.message === "Patient not found or not active") {
+          return res.status(422).json({ status: "error", error: error.message });
+        }
+        return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
+      }
+    });
+  } catch (error) {
+    console.error("Error in generateOneBill controller:", error);
+    return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
 

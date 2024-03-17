@@ -173,4 +173,8 @@ router.post("/viewOneMedicalRecord", HospitalController.viewOneMedicalRecord);
 // Route to view all medical records of one patient
 router.post("/viewAllMedicalRecordsOfOnePatient", HospitalController.viewAllMedicalRecordsOfOnePatient);
 
+
+// Route to generate one bill
+router.post("/generateOneBill", HospitalController.generateOneBill);
+
 module.exports = router;
