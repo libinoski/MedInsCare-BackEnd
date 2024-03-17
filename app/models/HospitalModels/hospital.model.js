@@ -1735,20 +1735,12 @@ Hospital.viewAllDischargeRequests = async (hospitalId) => {
       throw new Error("Hospital not found");
     }
 
-    // Query to select all discharge requests with additional details for the specified hospital
+    // Query to select all fields from the Discharge_Requests table for the specified hospital
     const viewAllDischargeRequestsQuery = `
-      SELECT 
-        dr.*, 
-        p.patientName, 
-        p.patientEmail, 
-        p.patientRegisteredDate, 
-        hs.hospitalStaffName, 
-        hs.hospitalStaffEmail
-      FROM Discharge_Requests dr
-      JOIN Patients p ON dr.patientId = p.patientId AND p.dischargeStatus = 0 AND p.deleteStatus = 0 AND p.isActive = 1
-      JOIN Hospital_Staffs hs ON dr.hospitalStaffId = hs.hospitalStaffId AND hs.isSuspended = 0 AND hs.isActive = 1 AND hs.deleteStatus = 0
-      WHERE dr.hospitalId = ? AND dr.deleteStatus = 0
-      ORDER BY dr.sendDate DESC;`;
+      SELECT *
+      FROM Discharge_Requests
+      WHERE hospitalId = ? AND isApproved = 0
+      ORDER BY sendDate DESC;`;
 
     // Execute the query with the provided hospitalId
     const allDischargeRequests = await dbQuery(viewAllDischargeRequestsQuery, [hospitalId]);
@@ -1758,13 +1750,14 @@ Hospital.viewAllDischargeRequests = async (hospitalId) => {
       throw new Error("No discharge requests found for this hospital.");
     }
 
-    // Return the list of discharge requests with the requested additional details
+    // Return the list of discharge requests
     return allDischargeRequests;
   } catch (error) {
     console.error("Error viewing all discharge requests with additional details:", error);
     throw error;
   }
 };
+
 //
 //
 //
@@ -1782,17 +1775,9 @@ Hospital.viewOneDischargeRequest = async (requestId, hospitalId) => {
 
     // Query to select one discharge request with additional details
     const viewOneDischargeRequestQuery = `
-      SELECT 
-        dr.*, 
-        p.patientName, 
-        p.patientEmail, 
-        p.patientRegisteredDate, 
-        hs.hospitalStaffName, 
-        hs.hospitalStaffEmail
-      FROM Discharge_Requests dr
-      JOIN Patients p ON dr.patientId = p.patientId AND p.dischargeStatus = 0 AND p.deleteStatus = 0 AND p.isActive = 1
-      JOIN Hospital_Staffs hs ON dr.hospitalStaffId = hs.hospitalStaffId AND hs.isSuspended = 0 AND hs.isActive = 1 AND hs.deleteStatus = 0
-      WHERE dr.requestId = ? AND dr.hospitalId = ? AND dr.deleteStatus = 0`;
+      SELECT *
+      FROM Discharge_Requests
+      WHERE requestId = ? AND hospitalId = ? AND isApproved = 0`;
 
     // Execute the query with provided requestId and hospitalId
     const dischargeRequestDetails = await dbQuery(viewOneDischargeRequestQuery, [requestId, hospitalId]);
@@ -1809,6 +1794,7 @@ Hospital.viewOneDischargeRequest = async (requestId, hospitalId) => {
     throw error;
   }
 };
+
 //
 //
 //
@@ -2033,8 +2019,6 @@ Hospital.viewAllReviews = async (hospitalId) => {
 //
 //
 //
-//
-//
 // HOSPITAL GENERATE ONE BILL
 Hospital.generateOneBill = async (hospitalId, patientId, billDetails) => {
   try {
@@ -2077,6 +2061,149 @@ Hospital.generateOneBill = async (hospitalId, patientId, billDetails) => {
     throw error;
   }
 };
+//
+//
+//
+//
+// HOSPITAL VIEW ALL BILLS 
+Hospital.viewAllBills = async (hospitalId) => {
+  try {
+      const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+      const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+      if (hospitalResult.length === 0) {
+          throw new Error("Hospital not found or inactive");
+      }
+
+      const viewAllBillsQuery = `
+      SELECT billId, patientId, hospitalId, costsExplained, totalAmount, isCancelled, generatedDate
+      FROM Bills
+      WHERE hospitalId = ? AND isCancelled = 0 AND isPaid = 0
+    `;
+      const allBills = await dbQuery(viewAllBillsQuery, [hospitalId]);
+
+      return allBills;
+  } catch (error) {
+      console.error("Error viewing all bills:", error);
+      throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ONE BILL
+Hospital.viewOneBill = async (billId, hospitalId) => {
+  try {
+      // Verify hospital existence and active status
+      const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+      const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+      if (hospitalResult.length === 0) {
+          throw new Error("Hospital not found or inactive");
+      }
+
+      // Fetch the bill
+      const query = `
+      SELECT *
+      FROM Bills
+      WHERE billId = ? AND hospitalId = ? AND isCancelled = 0 AND isPaid = 0
+    `;
+      const result = await dbQuery(query, [billId, hospitalId]);
+
+      if (result.length === 0) {
+          throw new Error("Bill not found");
+      }
+
+      return result[0];
+  } catch (error) {
+      console.error("Error fetching bill:", error);
+      throw error;
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ALL PAID BILLS 
+Hospital.viewAllPaidBills = async (hospitalId) => {
+  try {
+      const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+      const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+      if (hospitalResult.length === 0) {
+          throw new Error("Hospital not found or inactive");
+      }
+
+      const viewAllBillsQuery = `
+      SELECT billId, patientId, hospitalId, costsExplained, totalAmount, isCancelled, generatedDate
+      FROM Bills
+      WHERE hospitalId = ? AND isPaid = 1
+    `;
+      const allBills = await dbQuery(viewAllBillsQuery, [hospitalId]);
+
+      return allBills;
+  } catch (error) {
+      console.error("Error viewing all bills:", error);
+      throw error;
+  }
+};
+//
+//
+//
+// 
+// HOSPITAL VIEW ONE PAID BILL
+Hospital.viewOnePaidBill = async (billId, hospitalId) => {
+  try {
+      // Verify hospital existence and active status
+      const verifyHospitalQuery = `
+      SELECT hospitalId
+      FROM Hospitals
+      WHERE hospitalId = ? AND isActive = 1 AND deleteStatus = 0
+    `;
+      const hospitalResult = await dbQuery(verifyHospitalQuery, [hospitalId]);
+
+      if (hospitalResult.length === 0) {
+          throw new Error("Hospital not found or inactive");
+      }
+
+      // Fetch the bill
+      const query = `
+      SELECT *
+      FROM Bills
+      WHERE billId = ? AND hospitalId = ? AND isPaid = 1
+    `;
+      const result = await dbQuery(query, [billId, hospitalId]);
+
+      if (result.length === 0) {
+          throw new Error("Bill not found");
+      }
+
+      return result[0];
+  } catch (error) {
+      console.error("Error fetching bill:", error);
+      throw error;
+  }
+};
+
+
+
+
+
+
+
 
 
 

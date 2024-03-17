@@ -5110,7 +5110,7 @@ exports.viewAllDischargeRequests = async (req, res) => {
 //
 //
 // HOSPITAL VIEW ONE DISCHARGE REQUEST
-exports.viewOneDischargeRequestWithDetails = async (req, res) => {
+exports.viewOneDischargeRequest = async (req, res) => {
   const token = req.headers.token;
   const { hospitalId, requestId } = req.body;
 
@@ -5816,7 +5816,399 @@ exports.generateOneBill = async (req, res) => {
     return res.status(500).json({ status: "error", message: "Internal server error", error: error.message });
   }
 };
+//
+//
+//
+//
+// HOSPITAL VIEW ALL BILLS
+exports.viewAllBills = async (req, res) => {
+  try {
+      const token = req.headers.token;
+      const { hospitalId } = req.body;
 
+      // Check if token is missing
+      if (!token) {
+          return res.status(403).json({
+              status: "failed",
+              message: "Token is missing"
+          });
+      }
 
+      // Check if hospitalId is missing
+      if (!hospitalId) {
+          return res.status(401).json({
+              status: "failed",
+              message: "Hospital ID is missing"
+          });
+      }
 
+      // Verifying the token
+      jwt.verify(
+          token,
+          process.env.JWT_SECRET_KEY_HOSPITAL,
+          async (err, decoded) => {
+              if (err) {
+                  if (err.name === "JsonWebTokenError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Invalid token"
+                      });
+                  } else if (err.name === "TokenExpiredError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Token has expired"
+                      });
+                  } else {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Unauthorized access"
+                      });
+                  }
+              }
 
+              try {
+                  // Check if decoded token matches hospitalId from request body
+                  if (decoded.hospitalId != hospitalId) {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Unauthorized access"
+                      });
+                  }
+
+                  const allBillsData = await Hospital.viewAllBills(hospitalId); // Using the viewAllBills method from the model
+                  return res.status(200).json({
+                      status: "success",
+                      message: "All bills retrieved successfully",
+                      data: allBillsData,
+                  });
+              } catch (error) {
+                  console.error("Error viewing all bills:", error);
+
+                  if (error.message === "Hospital not found" || error.message === "Patient not found or inactive") {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message
+                      });
+                  }
+
+                  return res.status(500).json({
+                      status: "error",
+                      message: "Internal server error",
+                      error: error.message,
+                  });
+              }
+          }
+      );
+  } catch (error) {
+      console.error("Error during viewAllBills:", error);
+      return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};
+//
+//
+//
+// 
+// HOSPITAL VIEW ONE BILL
+exports.viewOneBill = async (req, res) => {
+  try {
+      const token = req.headers.token;
+      const { hospitalId, billId } = req.body;
+
+      // Check if token is missing
+      if (!token) {
+          return res.status(403).json({
+              status: "failed",
+              message: "Token is missing"
+          });
+      }
+
+      // Check if hospitalId is missing
+      if (!hospitalId) {
+          return res.status(401).json({
+              status: "failed",
+              message: "Hospital ID is missing"
+          });
+      }
+
+      // Check if billId is missing
+      if (!billId) {
+          return res.status(401).json({
+              status: "failed",
+              message: "Bill ID is missing"
+          });
+      }
+
+      // Verifying the token
+      jwt.verify(
+          token,
+          process.env.JWT_SECRET_KEY_HOSPITAL,
+          async (err, decoded) => {
+              if (err) {
+                  if (err.name === "JsonWebTokenError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Invalid token"
+                      });
+                  } else if (err.name === "TokenExpiredError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Token has expired"
+                      });
+                  } else {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Unauthorized access"
+                      });
+                  }
+              }
+
+              try {
+                  // Check if decoded token matches hospitalId from request body
+                  if (decoded.hospitalId != hospitalId) {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Unauthorized access"
+                      });
+                  }
+
+                  const billData = await Hospital.viewOneBill(
+                      billId,
+                      hospitalId
+                  );
+                  return res.status(200).json({
+                      status: "success",
+                      message: "Bill retrieved successfully",
+                      data: billData,
+                  });
+              } catch (error) {
+                  console.error("Error viewing one bill:", error);
+                  if (
+                      error.message === "Bill not found" ||
+                      error.message === "Hospital not found" ||
+                      error.message === "Patient not found"
+                  ) {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message
+                      });
+                  } else {
+                      return res.status(500).json({
+                          status: "error",
+                          message: "Internal server error",
+                          error: error.message,
+                      });
+                  }
+              }
+          }
+      );
+  } catch (error) {
+      console.error("Error during viewOneBill:", error);
+      return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ALL PAID BILLS
+exports.viewAllPaidBills = async (req, res) => {
+  try {
+      const token = req.headers.token;
+      const { hospitalId } = req.body;
+
+      // Check if token is missing
+      if (!token) {
+          return res.status(403).json({
+              status: "failed",
+              message: "Token is missing"
+          });
+      }
+
+      // Check if hospitalId is missing
+      if (!hospitalId) {
+          return res.status(401).json({
+              status: "failed",
+              message: "Hospital ID is missing"
+          });
+      }
+
+      // Verifying the token
+      jwt.verify(
+          token,
+          process.env.JWT_SECRET_KEY_HOSPITAL,
+          async (err, decoded) => {
+              if (err) {
+                  if (err.name === "JsonWebTokenError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Invalid token"
+                      });
+                  } else if (err.name === "TokenExpiredError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Token has expired"
+                      });
+                  } else {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Unauthorized access"
+                      });
+                  }
+              }
+
+              try {
+                  // Check if decoded token matches hospitalId from request body
+                  if (decoded.hospitalId != hospitalId) {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Unauthorized access"
+                      });
+                  }
+
+                  const allBillsData = await Hospital.viewAllPaidBills(hospitalId); // Using the viewAllBills method from the model
+                  return res.status(200).json({
+                      status: "success",
+                      message: "All bills retrieved successfully",
+                      data: allBillsData,
+                  });
+              } catch (error) {
+                  console.error("Error viewing all bills:", error);
+
+                  if (error.message === "Patient not found" || error.message === "Hospital not found or inactive") {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message
+                      });
+                  }
+
+                  return res.status(500).json({
+                      status: "error",
+                      message: "Internal server error",
+                      error: error.message,
+                  });
+              }
+          }
+      );
+  } catch (error) {
+      console.error("Error during viewAllBills:", error);
+      return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};
+//
+//
+//
+//
+// HOSPITAL VIEW ONE PAID BILL
+exports.viewOnePaidBill = async (req, res) => {
+  try {
+      const token = req.headers.token;
+      const { hospitalId, billId } = req.body;
+
+      // Check if token is missing
+      if (!token) {
+          return res.status(403).json({
+              status: "failed",
+              message: "Token is missing"
+          });
+      }
+
+      // Check if hospitalId is missing
+      if (!hospitalId) {
+          return res.status(401).json({
+              status: "failed",
+              message: "Hospital ID is missing"
+          });
+      }
+
+      // Check if billId is missing
+      if (!billId) {
+          return res.status(401).json({
+              status: "failed",
+              message: "Bill ID is missing"
+          });
+      }
+
+      // Verifying the token
+      jwt.verify(
+          token,
+          process.env.JWT_SECRET_KEY_HOSPITAL,
+          async (err, decoded) => {
+              if (err) {
+                  if (err.name === "JsonWebTokenError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Invalid token"
+                      });
+                  } else if (err.name === "TokenExpiredError") {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Token has expired"
+                      });
+                  } else {
+                      return res.status(403).json({
+                          status: "failed",
+                          message: "Unauthorized access"
+                      });
+                  }
+              }
+
+              try {
+                  // Check if decoded token matches hospitalId from request body
+                  if (decoded.hospitalId != hospitalId) {
+                      return res.status(403).json({
+                          status: "error",
+                          message: "Unauthorized access"
+                      });
+                  }
+
+                  const billData = await Hospital.viewOnePaidBill(
+                      billId,
+                      hospitalId
+                  );
+                  return res.status(200).json({
+                      status: "success",
+                      message: "Bill retrieved successfully",
+                      data: billData,
+                  });
+              } catch (error) {
+                  console.error("Error viewing one bill:", error);
+                  if (
+                      error.message === "Bill not found" ||
+                      error.message === "Hospital not found" ||
+                      error.message === "Patient not found"
+                  ) {
+                      return res.status(422).json({
+                          status: "error",
+                          error: error.message
+                      });
+                  } else {
+                      return res.status(500).json({
+                          status: "error",
+                          message: "Internal server error",
+                          error: error.message,
+                      });
+                  }
+              }
+          }
+      );
+  } catch (error) {
+      console.error("Error during viewOneBill:", error);
+      return res.status(500).json({
+          status: "error",
+          message: "Internal server error",
+          error: error.message,
+      });
+  }
+};

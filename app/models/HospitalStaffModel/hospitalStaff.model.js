@@ -835,29 +835,37 @@ HospitalStaff.addMedicalRecord = async (hospitalStaffId, patientId, recordDetail
 // HOSPITAL STAFF  REQUEST DISCHARGE OF ONE PATIENT
 HospitalStaff.requestDischarge = async (hospitalStaffId, patientId, message) => {
   try {
+    // Fetch hospitalId and hospitalStaffEmail
     const checkStaffQuery = `
-      SELECT hospitalId FROM Hospital_Staffs
-      WHERE hospitalStaffId = ? AND isActive = 1 AND deleteStatus = 0 AND isSuspended = 0`;
+      SELECT hs.hospitalId, hs.hospitalStaffEmail
+      FROM Hospital_Staffs hs
+      WHERE hs.hospitalStaffId = ? AND hs.isActive = 1 AND hs.deleteStatus = 0 AND hs.isSuspended = 0`;
     const staffResult = await dbQuery(checkStaffQuery, [hospitalStaffId]);
     if (staffResult.length === 0) {
       throw new Error("Hospital staff not found or not active");
     }
     const hospitalId = staffResult[0].hospitalId;
+    const hospitalStaffEmail = staffResult[0].hospitalStaffEmail;
 
+    // Fetch patientName and patientEmail
     const checkPatientQuery = `
-      SELECT patientId FROM Patients
-      WHERE patientId = ? AND hospitalId = ? AND dischargeStatus = 0
+      SELECT p.patientName, p.patientEmail
+      FROM Patients p
+      WHERE p.patientId = ? AND p.hospitalId = ? AND p.dischargeStatus = 0
     `;
     const patientResult = await dbQuery(checkPatientQuery, [patientId, hospitalId]);
     if (patientResult.length === 0) {
       throw new Error("Patient not found or already discharged");
     }
+    const patientName = patientResult[0].patientName;
+    const patientEmail = patientResult[0].patientEmail;
 
+    // Insert into Discharge_Requests
     const insertDischargeRequestQuery = `
-      INSERT INTO Discharge_Requests (hospitalId, hospitalStaffId, patientId, message)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO Discharge_Requests (hospitalId, hospitalStaffId, patientId, hospitalStaffEmail, patientName, patientEmail, message)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    await dbQuery(insertDischargeRequestQuery, [hospitalId, hospitalStaffId, patientId, message]);
+    await dbQuery(insertDischargeRequestQuery, [hospitalId, hospitalStaffId, patientId, hospitalStaffEmail, patientName, patientEmail, message]);
 
     return true; // Indicating successful operation
   } catch (error) {
@@ -865,6 +873,7 @@ HospitalStaff.requestDischarge = async (hospitalStaffId, patientId, message) => 
     throw error;
   }
 };
+
 
 //
 //

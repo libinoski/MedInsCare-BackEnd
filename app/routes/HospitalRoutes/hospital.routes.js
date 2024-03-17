@@ -156,7 +156,7 @@ router.post("/sendNotificationToPatient", HospitalController.sendNotificationToP
 router.post("/viewAllDischargeRequests", HospitalController.viewAllDischargeRequests);
 
 // Route to view one discharge request with details
-router.post("/viewOneDischargeRequestWithDetails", HospitalController.viewOneDischargeRequestWithDetails);
+router.post("/viewOneDischargeRequest", HospitalController.viewOneDischargeRequest);
 
 // Route to approve one discharge request
 router.post("/approveOneDischargeRequest", HospitalController.approveOneDischargeRequest);
@@ -176,5 +176,25 @@ router.post("/viewAllMedicalRecordsOfOnePatient", HospitalController.viewAllMedi
 
 // Route to generate one bill
 router.post("/generateOneBill", HospitalController.generateOneBill);
+
+// Hospital view all bills from hospital route
+router.post("/viewAllBills", HospitalController.viewAllBills);
+
+
+// Hospital view one bill from hospital route
+router.post("/viewOneBill", HospitalController.viewOneBill);
+
+
+
+// Hospital view all paid bills from hospital route
+router.post("/viewAllPaidBills", HospitalController.viewAllPaidBills);
+
+
+// Hospital view one paid bill from hospital route
+router.post("/viewOnePaidBill", HospitalController.viewOnePaidBill);
+
+
+
+
 
 module.exports = router;

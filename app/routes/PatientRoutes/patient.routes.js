@@ -54,6 +54,24 @@ router.post("/patientReviewOneInsuranceProvider", PatientController.reviewOneIns
 router.post("/viewAllNotifications", PatientController.viewAllNotifications);
 
 
+// Patient view all bills from hospital route
+router.post("/viewAllBills", PatientController.viewAllBills);
+
+
+// Patient view one bill from hospital route
+router.post("/viewOneBill", PatientController.viewOneBill);
+
+
+
+// Patient view all paid bills from hospital route
+router.post("/viewAllPaidBills", PatientController.viewAllPaidBills);
+
+
+// Patient view one paid bill from hospital route
+router.post("/viewOnePaidBill", PatientController.viewOnePaidBill);
+
+
+
 
 
 module.exports = router;

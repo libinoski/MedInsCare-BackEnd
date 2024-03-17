@@ -8,7 +8,7 @@ const { Patient } = require("../../models/PatientModels/patient.model");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 require("dotenv").config();
 
-  
+
 //
 //
 //
@@ -218,157 +218,157 @@ exports.changePassword = async (req, res) => {
 // PATIENT CHANGE ID PROOF IMAGE
 exports.changeIdProofImage = async (req, res) => {
     const token = req.headers.token;
-  
+
     if (!token) {
-      return res.status(403).json({
-        status: "failed",
-        message: "Token is missing"
-      });
-    }
-  
-    jwt.verify(
-      token,
-      process.env.JWT_SECRET_KEY_PATIENT,
-      async (err, decoded) => {
-        if (err) {
-          if (err.name === "JsonWebTokenError") {
-            return res.status(403).json({
-              status: "failed",
-              message: "Invalid token"
-            });
-          } else if (err.name === "TokenExpiredError") {
-            return res.status(403).json({
-              status: "failed",
-              message: "Token has expired"
-            });
-          }
-          return res.status(403).json({
+        return res.status(403).json({
             status: "failed",
-            message: "Unauthorized access"
-          });
-        }
-  
-        const uploadIdProofImage = multer({
-          storage: multer.memoryStorage(),
-        }).single("patientIdProofImage");
-  
-        uploadIdProofImage(req, res, async (err) => {
-          if (err) {
-            return res.status(400).json({
-              status: "error",
-              message: "File upload failed",
-              results: err.message,
-            });
-          }
-  
-          const { patientId } = req.body;
-  
-          if (!patientId) {
-            return res.status(401).json({
-              status: "failed",
-              message: "Patient ID is missing",
-            });
-          }
-  
-          if (decoded.patientId != patientId) {
-            return res.status(403).json({
-              status: "failed",
-              message: "Unauthorized access"
-            });
-          }
-  
-          const validationResults = validateIdProofImage(req.file);
-          if (!validationResults.isValid) {
-            return res.status(400).json({
-              status: "error",
-              message: "Invalid image file",
-              results: validationResults.errors,
-            });
-          }
-  
-          try {
-            const idProofFileLocation = await uploadFileToS3(req.file);
-            await Patient.changeIdProofImage(patientId, idProofFileLocation);
-            return res.status(200).json({
-              status: "success",
-              message: "ID proof image updated successfully",
-            });
-          } catch (error) {
-            console.error("Error updating ID proof image:", error);
-  
-            // Delete uploaded image from S3 if it exists
-            if (req.file) {
-              const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
-              const params = {
-                Bucket: process.env.S3_BUCKET_NAME,
-                Key: `patientImages/${s3Key}`
-              };
-              try {
-                await s3Client.send(new DeleteObjectCommand(params));
-              } catch (s3Error) {
-                console.error("Error deleting image from S3:", s3Error);
-              }
-            }
-  
-            // Delete uploaded image from local storage
-            if (req.file && req.file.path) {
-              fs.unlinkSync(req.file.path);
-            }
-  
-            // Handle specific errors
-            if (error.message === "Patient not found") {
-              return res.status(422).json({
-                status: "failed",
-                message: "Patient not found",
-                error: error.message
-              });
-            } else {
-              return res.status(500).json({
-                status: "error",
-                message: "Failed to update ID proof image",
-                error: error.message,
-              });
-            }
-          }
+            message: "Token is missing"
         });
-  
-        async function uploadFileToS3(file) {
-          const fileName = `patientIdProof-${Date.now()}${path.extname(file.originalname)}`;
-          const uploadParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `patientImages/${fileName}`,
-            Body: file.buffer,
-            ACL: "public-read",
-            ContentType: file.mimetype,
-          };
-  
-          const command = new PutObjectCommand(uploadParams);
-          await s3Client.send(command);
-          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-        }
-  
-        function validateIdProofImage(file) {
-          const validationResults = {
-            isValid: true,
-            errors: {},
-          };
-  
-          if (!file) {
-            validationResults.isValid = false;
-            validationResults.errors["patientIdProofImage"] = ["ID proof image is required"];
-          } else {
-            const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-            if (!imageValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["patientIdProofImage"] = [imageValidation.message];
+    }
+
+    jwt.verify(
+        token,
+        process.env.JWT_SECRET_KEY_PATIENT,
+        async (err, decoded) => {
+            if (err) {
+                if (err.name === "JsonWebTokenError") {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Invalid token"
+                    });
+                } else if (err.name === "TokenExpiredError") {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Token has expired"
+                    });
+                }
+                return res.status(403).json({
+                    status: "failed",
+                    message: "Unauthorized access"
+                });
             }
-          }
-  
-          return validationResults;
+
+            const uploadIdProofImage = multer({
+                storage: multer.memoryStorage(),
+            }).single("patientIdProofImage");
+
+            uploadIdProofImage(req, res, async (err) => {
+                if (err) {
+                    return res.status(400).json({
+                        status: "error",
+                        message: "File upload failed",
+                        results: err.message,
+                    });
+                }
+
+                const { patientId } = req.body;
+
+                if (!patientId) {
+                    return res.status(401).json({
+                        status: "failed",
+                        message: "Patient ID is missing",
+                    });
+                }
+
+                if (decoded.patientId != patientId) {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Unauthorized access"
+                    });
+                }
+
+                const validationResults = validateIdProofImage(req.file);
+                if (!validationResults.isValid) {
+                    return res.status(400).json({
+                        status: "error",
+                        message: "Invalid image file",
+                        results: validationResults.errors,
+                    });
+                }
+
+                try {
+                    const idProofFileLocation = await uploadFileToS3(req.file);
+                    await Patient.changeIdProofImage(patientId, idProofFileLocation);
+                    return res.status(200).json({
+                        status: "success",
+                        message: "ID proof image updated successfully",
+                    });
+                } catch (error) {
+                    console.error("Error updating ID proof image:", error);
+
+                    // Delete uploaded image from S3 if it exists
+                    if (req.file) {
+                        const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+                        const params = {
+                            Bucket: process.env.S3_BUCKET_NAME,
+                            Key: `patientImages/${s3Key}`
+                        };
+                        try {
+                            await s3Client.send(new DeleteObjectCommand(params));
+                        } catch (s3Error) {
+                            console.error("Error deleting image from S3:", s3Error);
+                        }
+                    }
+
+                    // Delete uploaded image from local storage
+                    if (req.file && req.file.path) {
+                        fs.unlinkSync(req.file.path);
+                    }
+
+                    // Handle specific errors
+                    if (error.message === "Patient not found") {
+                        return res.status(422).json({
+                            status: "failed",
+                            message: "Patient not found",
+                            error: error.message
+                        });
+                    } else {
+                        return res.status(500).json({
+                            status: "error",
+                            message: "Failed to update ID proof image",
+                            error: error.message,
+                        });
+                    }
+                }
+            });
+
+            async function uploadFileToS3(file) {
+                const fileName = `patientIdProof-${Date.now()}${path.extname(file.originalname)}`;
+                const uploadParams = {
+                    Bucket: process.env.S3_BUCKET_NAME,
+                    Key: `patientImages/${fileName}`,
+                    Body: file.buffer,
+                    ACL: "public-read",
+                    ContentType: file.mimetype,
+                };
+
+                const command = new PutObjectCommand(uploadParams);
+                await s3Client.send(command);
+                return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+            }
+
+            function validateIdProofImage(file) {
+                const validationResults = {
+                    isValid: true,
+                    errors: {},
+                };
+
+                if (!file) {
+                    validationResults.isValid = false;
+                    validationResults.errors["patientIdProofImage"] = ["ID proof image is required"];
+                } else {
+                    const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+                    if (!imageValidation.isValid) {
+                        validationResults.isValid = false;
+                        validationResults.errors["patientIdProofImage"] = [imageValidation.message];
+                    }
+                }
+
+                return validationResults;
+            }
         }
-      }
     );
-  };
+};
 //
 //
 //
@@ -377,158 +377,158 @@ exports.changeIdProofImage = async (req, res) => {
 // PATIENT CHANGE PROFILE IMAGE
 exports.changeProfileImage = async (req, res) => {
     const token = req.headers.token;
-  
+
     if (!token) {
-      return res.status(403).json({
-        status: "failed",
-        message: "Token is missing"
-      });
-    }
-  
-    jwt.verify(
-      token,
-      process.env.JWT_SECRET_KEY_PATIENT,
-      async (err, decoded) => {
-        if (err) {
-          if (err.name === "JsonWebTokenError") {
-            return res.status(403).json({
-              status: "failed",
-              message: "Invalid token"
-            });
-          } else if (err.name === "TokenExpiredError") {
-            return res.status(403).json({
-              status: "failed",
-              message: "Token has expired"
-            });
-          }
-          return res.status(403).json({
+        return res.status(403).json({
             status: "failed",
-            message: "Unauthorized access"
-          });
-        }
-  
-        const uploadProfileImage = multer({
-          storage: multer.memoryStorage(),
-        }).single("patientProfileImage");
-  
-        uploadProfileImage(req, res, async (err) => {
-          if (err) {
-            return res.status(400).json({
-              status: "error",
-              message: "File upload failed",
-              results: err.message,
-            });
-          }
-  
-          const { patientId } = req.body;
-  
-          if (!patientId) {
-            return res.status(401).json({
-              status: "failed",
-              message: "Patient ID is missing",
-            });
-          }
-  
-          if (decoded.patientId != patientId) {
-            return res.status(403).json({
-              status: "failed",
-              message: "Unauthorized access"
-            });
-          }
-  
-          const validationResults = validateProfileImage(req.file);
-          if (!validationResults.isValid) {
-            return res.status(400).json({
-              status: "error",
-              message: "Invalid image file",
-              results: validationResults.errors,
-            });
-          }
-  
-          try {
-            const profileFileLocation = await uploadFileToS3(req.file);
-            await Patient.changeProfileImage(patientId, profileFileLocation);
-            return res.status(200).json({
-              status: "success",
-              message: "Profile image updated successfully",
-            });
-          } catch (error) {
-            console.error("Error updating profile image:", error);
-  
-            // Delete uploaded image from S3 if it exists
-            if (req.file) {
-              const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
-              const params = {
-                Bucket: process.env.S3_BUCKET_NAME,
-                Key: `patientImages/${s3Key}`
-              };
-              try {
-                await s3Client.send(new DeleteObjectCommand(params));
-              } catch (s3Error) {
-                console.error("Error deleting image from S3:", s3Error);
-              }
-            }
-  
-            // Delete uploaded image from local storage
-            if (req.file && req.file.path) {
-              fs.unlinkSync(req.file.path);
-            }
-  
-            // Handle specific errors
-            if (error.message === "Patient not found") {
-              return res.status(422).json({
-                status: "failed",
-                message: "Patient not found",
-                error: error.message
-              });
-            } else {
-              return res.status(500).json({
-                status: "error",
-                message: "Failed to update profile image",
-                error: error.message,
-              });
-            }
-          }
+            message: "Token is missing"
         });
-  
-        async function uploadFileToS3(file) {
-          const fileName = `patientProfile-${Date.now()}${path.extname(file.originalname)}`;
-          const uploadParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: `patientImages/${fileName}`,
-            Body: file.buffer,
-            ACL: "public-read",
-            ContentType: file.mimetype,
-          };
-  
-          const command = new PutObjectCommand(uploadParams);
-          await s3Client.send(command);
-          return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
-        }
-  
-        function validateProfileImage(file) {
-          const validationResults = {
-            isValid: true,
-            errors: {},
-          };
-  
-          if (!file) {
-            validationResults.isValid = false;
-            validationResults.errors["patientProfileImage"] = ["Profile image is required"];
-          } else {
-            const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
-            if (!imageValidation.isValid) {
-              validationResults.isValid = false;
-              validationResults.errors["patientProfileImage"] = [imageValidation.message];
+    }
+
+    jwt.verify(
+        token,
+        process.env.JWT_SECRET_KEY_PATIENT,
+        async (err, decoded) => {
+            if (err) {
+                if (err.name === "JsonWebTokenError") {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Invalid token"
+                    });
+                } else if (err.name === "TokenExpiredError") {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Token has expired"
+                    });
+                }
+                return res.status(403).json({
+                    status: "failed",
+                    message: "Unauthorized access"
+                });
             }
-          }
-  
-          return validationResults;
+
+            const uploadProfileImage = multer({
+                storage: multer.memoryStorage(),
+            }).single("patientProfileImage");
+
+            uploadProfileImage(req, res, async (err) => {
+                if (err) {
+                    return res.status(400).json({
+                        status: "error",
+                        message: "File upload failed",
+                        results: err.message,
+                    });
+                }
+
+                const { patientId } = req.body;
+
+                if (!patientId) {
+                    return res.status(401).json({
+                        status: "failed",
+                        message: "Patient ID is missing",
+                    });
+                }
+
+                if (decoded.patientId != patientId) {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Unauthorized access"
+                    });
+                }
+
+                const validationResults = validateProfileImage(req.file);
+                if (!validationResults.isValid) {
+                    return res.status(400).json({
+                        status: "error",
+                        message: "Invalid image file",
+                        results: validationResults.errors,
+                    });
+                }
+
+                try {
+                    const profileFileLocation = await uploadFileToS3(req.file);
+                    await Patient.changeProfileImage(patientId, profileFileLocation);
+                    return res.status(200).json({
+                        status: "success",
+                        message: "Profile image updated successfully",
+                    });
+                } catch (error) {
+                    console.error("Error updating profile image:", error);
+
+                    // Delete uploaded image from S3 if it exists
+                    if (req.file) {
+                        const s3Key = req.file.location.split('/').pop(); // Extract filename from S3 URL
+                        const params = {
+                            Bucket: process.env.S3_BUCKET_NAME,
+                            Key: `patientImages/${s3Key}`
+                        };
+                        try {
+                            await s3Client.send(new DeleteObjectCommand(params));
+                        } catch (s3Error) {
+                            console.error("Error deleting image from S3:", s3Error);
+                        }
+                    }
+
+                    // Delete uploaded image from local storage
+                    if (req.file && req.file.path) {
+                        fs.unlinkSync(req.file.path);
+                    }
+
+                    // Handle specific errors
+                    if (error.message === "Patient not found") {
+                        return res.status(422).json({
+                            status: "failed",
+                            message: "Patient not found",
+                            error: error.message
+                        });
+                    } else {
+                        return res.status(500).json({
+                            status: "error",
+                            message: "Failed to update profile image",
+                            error: error.message,
+                        });
+                    }
+                }
+            });
+
+            async function uploadFileToS3(file) {
+                const fileName = `patientProfile-${Date.now()}${path.extname(file.originalname)}`;
+                const uploadParams = {
+                    Bucket: process.env.S3_BUCKET_NAME,
+                    Key: `patientImages/${fileName}`,
+                    Body: file.buffer,
+                    ACL: "public-read",
+                    ContentType: file.mimetype,
+                };
+
+                const command = new PutObjectCommand(uploadParams);
+                await s3Client.send(command);
+                return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uploadParams.Key}`;
+            }
+
+            function validateProfileImage(file) {
+                const validationResults = {
+                    isValid: true,
+                    errors: {},
+                };
+
+                if (!file) {
+                    validationResults.isValid = false;
+                    validationResults.errors["patientProfileImage"] = ["Profile image is required"];
+                } else {
+                    const imageValidation = dataValidator.isValidImageWith1MBConstraint(file);
+                    if (!imageValidation.isValid) {
+                        validationResults.isValid = false;
+                        validationResults.errors["patientProfileImage"] = [imageValidation.message];
+                    }
+                }
+
+                return validationResults;
+            }
         }
-      }
     );
-  };
-  
+};
+
 //
 //
 //
@@ -1773,7 +1773,7 @@ exports.searchInsuranceProviders = async (req, res) => {
 exports.reviewOneInsuranceProvider = async (req, res) => {
     try {
         const token = req.headers.token;
-        const {patientId, insuranceProviderId, reviewContent } = req.body;
+        const { patientId, insuranceProviderId, reviewContent } = req.body;
 
         // Check if token is provided
         if (!token) {
@@ -1900,97 +1900,499 @@ exports.reviewOneInsuranceProvider = async (req, res) => {
 //
 //
 //
+// PATIENT VIEW ALL BILLS
+exports.viewAllBills = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
+
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                try {
+                    // Check if decoded token matches patientId from request body
+                    if (decoded.patientId != patientId) {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Unauthorized access"
+                        });
+                    }
+
+                    const allBillsData = await Patient.viewAllBills(patientId); // Using the viewAllBills method from the model
+                    return res.status(200).json({
+                        status: "success",
+                        message: "All bills retrieved successfully",
+                        data: allBillsData,
+                    });
+                } catch (error) {
+                    console.error("Error viewing all bills:", error);
+
+                    if (error.message === "Patient not found" || error.message === "Hospital not found or inactive") {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    }
+
+                    return res.status(500).json({
+                        status: "error",
+                        message: "Internal server error",
+                        error: error.message,
+                    });
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error during viewAllBills:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
 //
+//
+//
+//
+// PATIENT VIEW ONE BILL
+exports.viewOneBill = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId, billId } = req.body;
 
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
 
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Check if billId is missing
+        if (!billId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Bill ID is missing"
+            });
+        }
+
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                try {
+                    // Check if decoded token matches patientId from request body
+                    if (decoded.patientId != patientId) {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Unauthorized access"
+                        });
+                    }
+
+                    const billData = await Patient.viewOneBill(
+                        billId,
+                        patientId
+                    );
+                    return res.status(200).json({
+                        status: "success",
+                        message: "Bill retrieved successfully",
+                        data: billData,
+                    });
+                } catch (error) {
+                    console.error("Error viewing one bill:", error);
+                    if (
+                        error.message === "Bill not found" ||
+                        error.message === "Hospital not found" ||
+                        error.message === "Patient not found"
+                    ) {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    } else {
+                        return res.status(500).json({
+                            status: "error",
+                            message: "Internal server error",
+                            error: error.message,
+                        });
+                    }
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error during viewOneBill:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+//
+//
+//
+//
+// PATIENT VIEW ALL PAID BILLS
+exports.viewAllPaidBills = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
+
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                try {
+                    // Check if decoded token matches patientId from request body
+                    if (decoded.patientId != patientId) {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Unauthorized access"
+                        });
+                    }
+
+                    const allBillsData = await Patient.viewAllPaidBills(patientId); // Using the viewAllBills method from the model
+                    return res.status(200).json({
+                        status: "success",
+                        message: "All bills retrieved successfully",
+                        data: allBillsData,
+                    });
+                } catch (error) {
+                    console.error("Error viewing all bills:", error);
+
+                    if (error.message === "Patient not found" || error.message === "Hospital not found or inactive") {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    }
+
+                    return res.status(500).json({
+                        status: "error",
+                        message: "Internal server error",
+                        error: error.message,
+                    });
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error during viewAllBills:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+//
+//
+//
+//
+//
+// PATIENT VIEW ONE BILL
+exports.viewOnePaidBill = async (req, res) => {
+    try {
+        const token = req.headers.token;
+        const { patientId, billId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
+            return res.status(403).json({
+                status: "failed",
+                message: "Token is missing"
+            });
+        }
+
+        // Check if patientId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
+            });
+        }
+
+        // Check if billId is missing
+        if (!billId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Bill ID is missing"
+            });
+        }
+
+        // Verifying the token
+        jwt.verify(
+            token,
+            process.env.JWT_SECRET_KEY_PATIENT,
+            async (err, decoded) => {
+                if (err) {
+                    if (err.name === "JsonWebTokenError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Invalid token"
+                        });
+                    } else if (err.name === "TokenExpiredError") {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Token has expired"
+                        });
+                    } else {
+                        return res.status(403).json({
+                            status: "failed",
+                            message: "Unauthorized access"
+                        });
+                    }
+                }
+
+                try {
+                    // Check if decoded token matches patientId from request body
+                    if (decoded.patientId != patientId) {
+                        return res.status(403).json({
+                            status: "error",
+                            message: "Unauthorized access"
+                        });
+                    }
+
+                    const billData = await Patient.viewOnePaidBill(
+                        billId,
+                        patientId
+                    );
+                    return res.status(200).json({
+                        status: "success",
+                        message: "Bill retrieved successfully",
+                        data: billData,
+                    });
+                } catch (error) {
+                    console.error("Error viewing one bill:", error);
+                    if (
+                        error.message === "Bill not found" ||
+                        error.message === "Hospital not found" ||
+                        error.message === "Patient not found"
+                    ) {
+                        return res.status(422).json({
+                            status: "error",
+                            error: error.message
+                        });
+                    } else {
+                        return res.status(500).json({
+                            status: "error",
+                            message: "Internal server error",
+                            error: error.message,
+                        });
+                    }
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error during viewOneBill:", error);
+        return res.status(500).json({
+            status: "error",
+            message: "Internal server error",
+            error: error.message,
+        });
+    }
+};
+//
+//
+//
+//
+//
+//
+// PATIENT VIEW ALL NOTIFICATIONS
 exports.viewAllNotifications = async (req, res) => {
     try {
-      const token = req.headers.token;
-      const {patientId} = req.body;
-  
-      // Check if token is missing
-      if (!token) {
-        return res.status(403).json({
-          status: "failed",
-          message: "Token is missing"
-        });
-      }
-  
-      // Check if hospitalStaffId is missing
-      if (!patientId) {
-        return res.status(401).json({
-          status: "failed",
-          message: "Patient ID is missing"
-        });
-      }
-  
-      // Verifying the token
-      jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
-        if (err) {
-          if (err.name === "JsonWebTokenError") {
+        const token = req.headers.token;
+        const { patientId } = req.body;
+
+        // Check if token is missing
+        if (!token) {
             return res.status(403).json({
-              status: "error",
-              message: "Invalid token"
+                status: "failed",
+                message: "Token is missing"
             });
-          } else if (err.name === "TokenExpiredError") {
-            return res.status(403).json({
-              status: "error",
-              message: "Token has expired"
-            });
-          } else {
-            return res.status(403).json({
-              status: "failed",
-              message: "Unauthorized access"
-            });
-          }
         }
-  
-        try {
-          // Check if decoded token matches hospitalStaffId from request body
-          if (decoded.patientId != patientId) {
-            return res.status(403).json({
-              status: "error",
-              message: "Unauthorized access"
+
+        // Check if hospitalStaffId is missing
+        if (!patientId) {
+            return res.status(401).json({
+                status: "failed",
+                message: "Patient ID is missing"
             });
-          }
-  
-          const notifications = await Patient.viewAllNotifications(patientId);
-  
-          return res.status(200).json({
-            status: "success",
-            message: "All notifications retrieved successfully",
-            data: notifications
-          });
-        } catch (error) {
-          // Handle specific errors returned by the model
-          if (error.message === "Patient not found") {
-            return res.status(422).json({
-              status: "error",
-              message: "Patient not found",
-              error : error.message
-            });
-          } else if (error.message === "No successful notifications found for this client") {
-            return res.status(422).json({
-              status: "error",
-              message: "No successful notifications found for this client",
-              error : error.message
-            });
-          }
-  
-          console.error("Error viewing all notifications for clients:", error);
-          return res.status(500).json({
+        }
+
+        // Verifying the token
+        jwt.verify(token, process.env.JWT_SECRET_KEY_PATIENT, async (err, decoded) => {
+            if (err) {
+                if (err.name === "JsonWebTokenError") {
+                    return res.status(403).json({
+                        status: "error",
+                        message: "Invalid token"
+                    });
+                } else if (err.name === "TokenExpiredError") {
+                    return res.status(403).json({
+                        status: "error",
+                        message: "Token has expired"
+                    });
+                } else {
+                    return res.status(403).json({
+                        status: "failed",
+                        message: "Unauthorized access"
+                    });
+                }
+            }
+
+            try {
+                // Check if decoded token matches hospitalStaffId from request body
+                if (decoded.patientId != patientId) {
+                    return res.status(403).json({
+                        status: "error",
+                        message: "Unauthorized access"
+                    });
+                }
+
+                const notifications = await Patient.viewAllNotifications(patientId);
+
+                return res.status(200).json({
+                    status: "success",
+                    message: "All notifications retrieved successfully",
+                    data: notifications
+                });
+            } catch (error) {
+                // Handle specific errors returned by the model
+                if (error.message === "Patient not found") {
+                    return res.status(422).json({
+                        status: "error",
+                        message: "Patient not found",
+                        error: error.message
+                    });
+                } else if (error.message === "No successful notifications found for this client") {
+                    return res.status(422).json({
+                        status: "error",
+                        message: "No successful notifications found for this client",
+                        error: error.message
+                    });
+                }
+
+                console.error("Error viewing all notifications for clients:", error);
+                return res.status(500).json({
+                    status: "error",
+                    message: "Internal server error",
+                    error: error.message
+                });
+            }
+        });
+    } catch (error) {
+        console.error("Error during viewAllNotifications:", error);
+        return res.status(500).json({
             status: "error",
             message: "Internal server error",
             error: error.message
-          });
-        }
-      });
-    } catch (error) {
-      console.error("Error during viewAllNotifications:", error);
-      return res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        error: error.message
-      });
+        });
     }
-  };
+};
+//
+//
+//
+//
+//
